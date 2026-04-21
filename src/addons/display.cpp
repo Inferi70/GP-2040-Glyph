@@ -14,6 +14,9 @@
 #include "version.h"
 #include "config.pb.h"
 #include "class/hid/hid.h"
+#ifdef GLYPH_DISPLAY_SCREEN
+#include "display/ui/screens/GlyphInputScreen.h"
+#endif
 
 bool DisplayAddon::available() {
     const DisplayOptions& options = Storage::getInstance().getDisplayOptions();
@@ -109,7 +112,11 @@ bool DisplayAddon::updateDisplayScreen() {
             gpScreen = new MainMenuScreen(gpDisplay);
             break;
         case BUTTONS:
+#ifdef GLYPH_DISPLAY_SCREEN
+            gpScreen = new GlyphInputScreen(gpDisplay);
+#else
             gpScreen = new ButtonLayoutScreen(gpDisplay);
+#endif
             break;
         case PIN_VIEWER:
             gpScreen = new PinViewerScreen(gpDisplay);
@@ -255,6 +262,11 @@ void DisplayAddon::handleSystemRestart(GPEvent* e) {
 }
 
 void DisplayAddon::handleMenuNavigation(GPEvent* e) {
+    if (((GPMenuNavigateEvent*)e)->menuAction == GpioAction::MENU_NAVIGATION_BACK && currDisplayMode == BUTTONS) {
+        nextDisplayMode = MAIN_MENU;
+        return;
+    }
+
     // Swap between main menu and buttons if we press toggle
     if (((GPMenuNavigateEvent*)e)->menuAction == GpioAction::MENU_NAVIGATION_TOGGLE) {
         if (currDisplayMode == BUTTONS) {

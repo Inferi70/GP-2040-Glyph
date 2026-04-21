@@ -1,0 +1,447 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index b944e102..f827a50e 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -193,6 +193,7 @@ src/gp2040.cpp
+ src/gp2040aux.cpp
+ src/gamepad.cpp
+ src/gamepad/GamepadState.cpp
++src/glyph/glyph_profiles.cpp
+ src/addonmanager.cpp
+ src/playerleds.cpp
+ src/drivers/shared/xinput_host.cpp
+@@ -253,6 +254,7 @@ src/display/ui/screens/StatsScreen.cpp
+ src/display/ui/screens/SplashScreen.cpp
+ src/display/ui/screens/DisplaySaverScreen.cpp
+ src/display/ui/screens/SystemErrorScreen.cpp
++src/display/ui/screens/GlyphInputScreen.cpp
+ src/display/GPGFX.cpp
+ src/display/GPGFX_UI.cpp
+ src/drivermanager.cpp
+@@ -293,6 +295,8 @@ src/addons/tilt.cpp
+ src/addons/spi_analog_ads1256.cpp
+ src/addons/gamepad_usb_host.cpp
+ src/addons/gamepad_usb_host_listener.cpp
++src/addons/glyph_matrix_input.cpp
++src/addons/glyph_newlib_lock_stubs.c
+ src/addons/tg16_input.cpp
+ src/animationstation/animation.cpp
+ src/animationstation/animationstation.cpp
+diff --git a/headers/display/ui/screens/MainMenuScreen.h b/headers/display/ui/screens/MainMenuScreen.h
+index 027eb38a..6996b56d 100644
+--- a/headers/display/ui/screens/MainMenuScreen.h
++++ b/headers/display/ui/screens/MainMenuScreen.h
+@@ -36,7 +36,11 @@
+ #define DPAD_MODE_LEFT_ANALOG_NAME "Left Analog"
+ #define DPAD_MODE_RIGHT_ANALOG_NAME "Right Analog"
+ 
++#ifdef GLYPH_DISPLAY_SCREEN
++#define MAIN_MENU_NAME "Glyph Menu"
++#else
+ #define MAIN_MENU_NAME "GP2040-CE Mini Menu"
++#endif
+ 
+ class MainMenuScreen : public GPScreen {
+     public:
+@@ -51,6 +55,7 @@ class MainMenuScreen : public GPScreen {
+         void testMenu() {}
+         void saveAndExit();
+         void exitOnly();
++        void rebootBootsel();
+         int32_t modeValue();
+ 
+         void selectInputMode();
+@@ -79,6 +84,12 @@ class MainMenuScreen : public GPScreen {
+     protected:
+         virtual void drawScreen();
+     private:
++#ifdef GLYPH_DISPLAY_SCREEN
++        void drawGlyphMenu();
++        void drawGlyphTopMenu();
++        void drawGlyphListMenu();
++        void drawGlyphControls();
++#endif
+         bool isPressed = false;
+         uint32_t checkDebounce;
+         std::vector<MenuEntry>* currentMenu;
+@@ -153,11 +164,12 @@ class MainMenuScreen : public GPScreen {
+ 
+         std::vector<MenuEntry> mainMenu = {
+             {"Input Mode", NULL, &inputModeMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
++            {"Profiles",   NULL, &profilesMenu,  std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
+             {"D-Pad Mode", NULL, &dpadModeMenu,  std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
+             {"SOCD Mode",  NULL, &socdModeMenu,  std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
+-            {"Profile",    NULL, &profilesMenu,  std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
+             /*{"Focus Mode", NULL, &focusModeMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},*/
+             {"Turbo",      NULL, &turboModeMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
++            {"FW Update",   NULL, nullptr,        std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::rebootBootsel, this)},
+             {"Exit",       NULL, &saveMenu,      std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
+         };
+ 
+@@ -167,4 +179,4 @@ class MainMenuScreen : public GPScreen {
+         };
+ };
+ 
+-#endif
+\ No newline at end of file
++#endif
+diff --git a/src/addons/display.cpp b/src/addons/display.cpp
+index 3dd7979d..eb6dd7d3 100644
+--- a/src/addons/display.cpp
++++ b/src/addons/display.cpp
+@@ -14,6 +14,9 @@
+ #include "version.h"
+ #include "config.pb.h"
+ #include "class/hid/hid.h"
++#ifdef GLYPH_DISPLAY_SCREEN
++#include "display/ui/screens/GlyphInputScreen.h"
++#endif
+ 
+ bool DisplayAddon::available() {
+     const DisplayOptions& options = Storage::getInstance().getDisplayOptions();
+@@ -109,7 +112,11 @@ bool DisplayAddon::updateDisplayScreen() {
+             gpScreen = new MainMenuScreen(gpDisplay);
+             break;
+         case BUTTONS:
++#ifdef GLYPH_DISPLAY_SCREEN
++            gpScreen = new GlyphInputScreen(gpDisplay);
++#else
+             gpScreen = new ButtonLayoutScreen(gpDisplay);
++#endif
+             break;
+         case PIN_VIEWER:
+             gpScreen = new PinViewerScreen(gpDisplay);
+@@ -255,6 +262,11 @@ void DisplayAddon::handleSystemRestart(GPEvent* e) {
+ }
+ 
+ void DisplayAddon::handleMenuNavigation(GPEvent* e) {
++    if (((GPMenuNavigateEvent*)e)->menuAction == GpioAction::MENU_NAVIGATION_BACK && currDisplayMode == BUTTONS) {
++        nextDisplayMode = MAIN_MENU;
++        return;
++    }
++
+     // Swap between main menu and buttons if we press toggle
+     if (((GPMenuNavigateEvent*)e)->menuAction == GpioAction::MENU_NAVIGATION_TOGGLE) {
+         if (currDisplayMode == BUTTONS) {
+diff --git a/src/display/ui/screens/MainMenuScreen.cpp b/src/display/ui/screens/MainMenuScreen.cpp
+index 31be10a7..76b4f7e8 100644
+--- a/src/display/ui/screens/MainMenuScreen.cpp
++++ b/src/display/ui/screens/MainMenuScreen.cpp
+@@ -1,9 +1,87 @@
+ #include "MainMenuScreen.h"
++#include "glyph/assets/GlyphButtonBitmaps.h"
++#include "glyph/assets/GlyphMenuBitmaps.h"
++#include "glyph/glyph_profiles.h"
+ #include "hardware/watchdog.h"
+ #include "system.h"
+ 
+ extern uint32_t getMillis();
+ 
++#ifdef GLYPH_DISPLAY_SCREEN
++namespace
++{
++std::string glyphTopLabel(const std::string& label)
++{
++    if (label == "Input Mode") return ".USB Mode";
++    if (label == "Profiles") return ".Profile";
++    if (label == "D-Pad Mode") return ".D-Pad Mode";
++    if (label == "SOCD Mode") return ".SOCD Mode";
++    if (label == "Turbo") return ".Turbo";
++    if (label == "FW Update") return "Manual FW.Update";
++    if (label == "Exit") return ".Exit";
++    return label;
++}
++
++const char* glyphIconText(const std::string& label)
++{
++    if (label == "Input Mode") return "USB";
++    if (label == "Profiles") return "PRO";
++    if (label == "D-Pad Mode") return "DP";
++    if (label == "SOCD Mode") return "SO";
++    if (label == "Turbo") return "TB";
++    if (label == "FW Update") return "FW";
++    if (label == "Exit") return "EX";
++    return "--";
++}
++
++const unsigned char* glyphSmallIcon(const std::string& label)
++{
++    if (label == "Input Mode") return bitmap_usb_small;
++    if (label == "Profiles") return bitmap_gamemode_small;
++    if (label == "D-Pad Mode") return bitmap_input_small;
++    if (label == "SOCD Mode") return bitmap_profile_small;
++    if (label == "Turbo") return bitmap_brightness_small;
++    if (label == "FW Update") return bitmap_firmware_small;
++    if (label == "Exit") return bitmap_save_small;
++    return bitmap_about_small;
++}
++
++const unsigned char* glyphLargeIcon(const std::string& label)
++{
++    if (label == "Input Mode") return bitmap_usb_large;
++    if (label == "Profiles") return bitmap_gamemode_large;
++    if (label == "D-Pad Mode") return bitmap_input_large;
++    if (label == "SOCD Mode") return bitmap_profile_large;
++    if (label == "Turbo") return bitmap_brightness_large;
++    if (label == "FW Update") return bitmap_firmware_large;
++    if (label == "Exit") return bitmap_save_large;
++    return bitmap_about_large;
++}
++
++void drawGlyphBitmap(GPGFX* renderer, const unsigned char* bitmap, uint16_t width, uint16_t height, uint16_t x, uint16_t y)
++{
++    renderer->drawSprite((uint8_t*)bitmap, width, height, 0, x, y, 1);
++}
++
++std::string glyphListTitle(std::vector<MenuEntry>* menu,
++                           std::vector<MenuEntry>* profilesMenu,
++                           std::vector<MenuEntry>* inputModeMenu,
++                           std::vector<MenuEntry>* dpadModeMenu,
++                           std::vector<MenuEntry>* socdModeMenu,
++                           std::vector<MenuEntry>* turboModeMenu,
++                           std::vector<MenuEntry>* saveMenu)
++{
++    if (menu == profilesMenu) return "Set Profile";
++    if (menu == inputModeMenu) return "USB Mode";
++    if (menu == dpadModeMenu) return "D-Pad Mode";
++    if (menu == socdModeMenu) return "SOCD Mode";
++    if (menu == turboModeMenu) return "Turbo";
++    if (menu == saveMenu) return "Exit";
++    return "Select";
++}
++}
++#endif
++
+ void MainMenuScreen::init() {
+     getRenderer()->clearScreen();
+     currentMenu = &mainMenu;
+@@ -31,6 +109,12 @@ void MainMenuScreen::init() {
+     mapMenuBack = new GamepadButtonMapping(GAMEPAD_MASK_B2);
+     mapMenuToggle = new GamepadButtonMapping(0);
+ 
++#ifdef GLYPH_DISPLAY_SCREEN
++    for (uint8_t profileCtr = 1; profileCtr <= GlyphProfiles::count(); profileCtr++) {
++        MenuEntry menuEntry = {GlyphProfiles::name(profileCtr), NULL, nullptr, std::bind(&MainMenuScreen::currentProfile, this), std::bind(&MainMenuScreen::selectProfile, this), profileCtr};
++        profilesMenu.push_back(menuEntry);
++    }
++#else
+     // populate the profiles menu
+     uint8_t profileCount = (sizeof(Storage::getInstance().getProfileOptions().gpioMappingsSets)/sizeof(GpioMappings))+1;
+     for (uint8_t profileCtr = 0; profileCtr < profileCount; profileCtr++) {
+@@ -52,6 +136,7 @@ void MainMenuScreen::init() {
+         MenuEntry menuEntry = {menuLabel, NULL, nullptr, std::bind(&MainMenuScreen::currentProfile, this), std::bind(&MainMenuScreen::selectProfile, this), profileCtr+1};
+         profilesMenu.push_back(menuEntry);
+     }
++#endif
+ 
+     GpioMappingInfo* pinMappings = Storage::getInstance().getProfilePinMappings();
+     for (Pin_t pin = 0; pin < (Pin_t)NUM_BANK0_GPIOS; pin++) {
+@@ -97,6 +182,11 @@ void MainMenuScreen::shutdown() {
+ 
+ void MainMenuScreen::drawScreen() {
+     if (gpMenu == nullptr) return;
++#ifdef GLYPH_DISPLAY_SCREEN
++    gpMenu->setVisibility(false);
++    drawGlyphMenu();
++    return;
++#endif
+     gpMenu->setVisibility(!screenIsPrompting);
+ 
+     if (!screenIsPrompting) {
+@@ -120,6 +210,125 @@ void MainMenuScreen::drawScreen() {
+     }
+ }
+ 
++#ifdef GLYPH_DISPLAY_SCREEN
++void MainMenuScreen::drawGlyphMenu()
++{
++    if (screenIsPrompting) {
++        getRenderer()->drawText(1, 1, "Config changed");
++        getRenderer()->drawText(2, 3, changeRequiresReboot ? "Save & restart?" : "Save changes?");
++        getRenderer()->drawText(6, 6, promptChoice ? "> Yes" : "  Yes");
++        getRenderer()->drawText(12, 6, promptChoice ? "  No" : "> No");
++        return;
++    }
++
++    if (currentMenu == &mainMenu) {
++        drawGlyphTopMenu();
++    } else {
++        drawGlyphListMenu();
++    }
++
++    drawGlyphControls();
++}
++
++void MainMenuScreen::drawGlyphTopMenu()
++{
++    const uint16_t menuSize = currentMenu->size();
++    const uint16_t index = gpMenu->getIndex();
++
++    drawGlyphBitmap(getRenderer(), bitmap_glyph_menu_base, 128, 64, 0, 0);
++
++    uint16_t x = 2;
++    for (uint16_t i = 0; i < menuSize; i++) {
++        const bool selected = i == index;
++        const uint16_t size = selected ? 28 : 10;
++        const uint16_t y = selected ? 8 : 17;
++        if (x + size > 70) {
++            break;
++        }
++
++        if (selected) {
++            drawGlyphBitmap(getRenderer(), glyphLargeIcon(currentMenu->at(i).label), 28, 28, x, y);
++        } else {
++            drawGlyphBitmap(getRenderer(), glyphSmallIcon(currentMenu->at(i).label), 10, 10, x, y);
++        }
++        x += size + 2;
++    }
++
++    std::string label = glyphTopLabel(currentMenu->at(index).label);
++    std::string firstLine = label;
++    std::string secondLine;
++    const size_t split = label.find('.');
++    if (split != std::string::npos) {
++        firstLine = label.substr(0, split);
++        secondLine = label.substr(split + 1);
++    }
++    if (firstLine.empty()) firstLine = secondLine;
++    if (firstLine.length() > 8) firstLine.resize(8);
++    if (secondLine.length() > 8) secondLine.resize(8);
++
++    getRenderer()->drawText(13, 5, firstLine);
++    if (!secondLine.empty()) {
++        getRenderer()->drawText(13, 6, secondLine);
++    }
++}
++
++void MainMenuScreen::drawGlyphListMenu()
++{
++    drawGlyphBitmap(getRenderer(), bitmap_glyph_list_menu_base, 128, 64, 0, 0);
++
++    std::string title = glyphListTitle(currentMenu, &profilesMenu, &inputModeMenu, &dpadModeMenu, &socdModeMenu, &turboModeMenu, &saveMenu);
++    if (title.length() > 10) {
++        title.resize(10);
++    }
++    getRenderer()->drawText(3, 3, title);
++
++    const uint16_t index = gpMenu->getIndex();
++    const uint16_t menuSize = currentMenu->size();
++    const uint16_t first = index > 2 ? index - 2 : 0;
++    const uint16_t visible = 6;
++
++    for (uint16_t line = 0; line < visible && (first + line) < menuSize; line++) {
++        const uint16_t item = first + line;
++        const bool selected = item == index;
++        std::string label = currentMenu->at(item).label;
++        if (label.length() > 8) {
++            label.resize(8);
++        }
++
++        const uint16_t y = line + 1;
++        if (selected) {
++            getRenderer()->drawText(12, y, ">");
++        }
++        getRenderer()->drawText(13, y, label);
++        if (currentMenu->at(item).optionValue == currentMenu->at(item).currentValue()) {
++            getRenderer()->drawText(21, y, "<");
++        }
++    }
++
++    if (currentMenu == &profilesMenu && menuSize > 0) {
++        const uint8_t profile = currentMenu->at(index).optionValue;
++        std::string backend = GlyphProfiles::backendSummary(profile);
++        if (backend.length() > 10) backend.resize(10);
++        getRenderer()->drawText(1, 5, backend);
++    }
++}
++
++void MainMenuScreen::drawGlyphControls()
++{
++    const bool topLevel = currentMenu == &mainMenu;
++    const unsigned char* icons[4] = {
++        Back12,
++        topLevel ? LeftArrow12 : UpArrow12,
++        topLevel ? RightArrow12 : DownArrow12,
++        Confirm12,
++    };
++    for (uint8_t i = 0; i < 4; i++) {
++        const uint16_t x = 2 + (i * 18);
++        drawGlyphBitmap(getRenderer(), icons[i], 12, 12, x + 2, 48);
++    }
++}
++#endif
++
+ void MainMenuScreen::setMenu(std::vector<MenuEntry>* menu) {
+     currentMenu = menu;
+ }
+@@ -228,17 +437,13 @@ void MainMenuScreen::updateMenuNavigation(GpioAction action) {
+         } else {
+             switch (action) { 
+                 case GpioAction::MENU_NAVIGATION_UP:
+-                    if ( menuIndex == 0 ) {
+-                        gpMenu->setIndex(menuSize-1);
+-                    } else {
++                    if ( menuIndex > 0 ) {
+                         gpMenu->setIndex(menuIndex-1);
+                     }
+                     break;
+                 case GpioAction::MENU_NAVIGATION_DOWN:
+                     if (menuIndex < menuSize-1) {
+                         gpMenu->setIndex(menuIndex+1);
+-                    } else {
+-                        gpMenu->setIndex(0);
+                     }
+                     break;
+                 case GpioAction::MENU_NAVIGATION_LEFT:
+@@ -308,6 +513,11 @@ void MainMenuScreen::exitOnly() {
+     exitToScreen = DisplayMode::BUTTONS;
+ }
+ 
++void MainMenuScreen::rebootBootsel() {
++    EventManager::getInstance().triggerEvent(new GPRestartEvent(System::BootMode::USB));
++    exitToScreen = DisplayMode::RESTART;
++}
++
+ int32_t MainMenuScreen::modeValue() {
+     return -1;
+ }
+@@ -431,6 +641,19 @@ void MainMenuScreen::selectProfile() {
+         prevProfile = Storage::getInstance().GetGamepad()->getOptions().profileNumber;
+         updateProfile = valueToSave;
+ 
++#ifdef GLYPH_DISPLAY_SCREEN
++        Storage::getInstance().getGamepadOptions().socdMode = GlyphProfiles::socdMode(valueToSave);
++        if (prevProfile != valueToSave && Storage::getInstance().setProfile(valueToSave)) {
++            EventManager::getInstance().triggerEvent(new GPStorageSaveEvent(true));
++        }
++        changeRequiresSave = false;
++        changeRequiresReboot = false;
++        screenIsPrompting = false;
++        exitToScreen = DisplayMode::BUTTONS;
++        exitToScreenBeforePrompt = DisplayMode::BUTTONS;
++        return;
++#endif
++
+         chooseAndReturn();
+ 
+         if (prevProfile != valueToSave) changeRequiresSave = true;
+diff --git a/src/gp2040.cpp b/src/gp2040.cpp
+index 89793dcc..5188cf11 100644
+--- a/src/gp2040.cpp
++++ b/src/gp2040.cpp
+@@ -30,6 +30,7 @@
+ #include "addons/i2c_gpio_pcf8575.h"
+ #include "addons/gamepad_usb_host.h"
+ #include "addons/he_trigger.h"
++#include "addons/glyph_matrix_input.h"
+ #include "addons/tg16_input.h"
+ 
+ // Pico includes
+@@ -120,6 +121,7 @@ void GP2040::setup() {
+ 	addons.LoadAddon(new RotaryEncoderInput());
+ 	addons.LoadAddon(new PCF8575Addon());
+ 	addons.LoadAddon(new TG16padInput());
++	addons.LoadAddon(new GlyphMatrixInput());
+ 
+ 	// Input override addons
+ 	addons.LoadAddon(new ReverseInput());

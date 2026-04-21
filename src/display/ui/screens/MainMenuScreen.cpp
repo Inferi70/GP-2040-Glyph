@@ -1,8 +1,92 @@
 #include "MainMenuScreen.h"
+#include "glyph/assets/GlyphButtonBitmaps.h"
+#include "glyph/assets/GlyphMenuBitmaps.h"
+#include "glyph/glyph_profiles.h"
 #include "hardware/watchdog.h"
 #include "system.h"
 
 extern uint32_t getMillis();
+
+#ifdef GLYPH_DISPLAY_SCREEN
+namespace
+{
+std::string glyphTopLabel(const std::string& label)
+{
+    if (label == "Input Mode" || label == "USB Mode") return ".USB Mode";
+    if (label == "USB Support") return ".USB Support";
+    if (label == "Profiles") return ".Profile";
+    if (label == "D-Pad Mode") return ".D-Pad Mode";
+    if (label == "SOCD Mode") return ".SOCD Mode";
+    if (label == "Turbo") return ".Turbo";
+    if (label == "FW Update") return "Manual FW.Update";
+    if (label == "Exit") return ".Exit";
+    return label;
+}
+
+const char* glyphIconText(const std::string& label)
+{
+    if (label == "Input Mode" || label == "USB Mode") return "USB";
+    if (label == "USB Support") return "USB";
+    if (label == "Profiles") return "PRO";
+    if (label == "D-Pad Mode") return "DP";
+    if (label == "SOCD Mode") return "SO";
+    if (label == "Turbo") return "TB";
+    if (label == "FW Update") return "FW";
+    if (label == "Exit") return "EX";
+    return "--";
+}
+
+const unsigned char* glyphSmallIcon(const std::string& label)
+{
+    if (label == "Input Mode" || label == "USB Mode") return bitmap_usb_small;
+    if (label == "USB Support") return bitmap_usb_small;
+    if (label == "Profiles") return bitmap_gamemode_small;
+    if (label == "D-Pad Mode") return bitmap_input_small;
+    if (label == "SOCD Mode") return bitmap_profile_small;
+    if (label == "Turbo") return bitmap_brightness_small;
+    if (label == "FW Update") return bitmap_firmware_small;
+    if (label == "Exit") return bitmap_save_small;
+    return bitmap_about_small;
+}
+
+const unsigned char* glyphLargeIcon(const std::string& label)
+{
+    if (label == "Input Mode" || label == "USB Mode") return bitmap_usb_large;
+    if (label == "USB Support") return bitmap_usb_large;
+    if (label == "Profiles") return bitmap_gamemode_large;
+    if (label == "D-Pad Mode") return bitmap_input_large;
+    if (label == "SOCD Mode") return bitmap_profile_large;
+    if (label == "Turbo") return bitmap_brightness_large;
+    if (label == "FW Update") return bitmap_firmware_large;
+    if (label == "Exit") return bitmap_save_large;
+    return bitmap_about_large;
+}
+
+void drawGlyphBitmap(GPGFX* renderer, const unsigned char* bitmap, uint16_t width, uint16_t height, uint16_t x, uint16_t y)
+{
+    renderer->drawSprite((uint8_t*)bitmap, width, height, 0, x, y, 1);
+}
+
+std::string glyphListTitle(std::vector<MenuEntry>* menu,
+                           std::vector<MenuEntry>* profilesMenu,
+                           std::vector<MenuEntry>* inputModeMenu,
+                           std::vector<MenuEntry>* backendSupportMenu,
+                           std::vector<MenuEntry>* dpadModeMenu,
+                           std::vector<MenuEntry>* socdModeMenu,
+                           std::vector<MenuEntry>* turboModeMenu,
+                           std::vector<MenuEntry>* saveMenu)
+{
+    if (menu == profilesMenu) return "Set Profile";
+    if (menu == inputModeMenu) return "USB Mode";
+    if (menu == backendSupportMenu) return "USB Support";
+    if (menu == dpadModeMenu) return "D-Pad Mode";
+    if (menu == socdModeMenu) return "SOCD Mode";
+    if (menu == turboModeMenu) return "Turbo";
+    if (menu == saveMenu) return "Exit";
+    return "Select";
+}
+}
+#endif
 
 void MainMenuScreen::init() {
     getRenderer()->clearScreen();
@@ -31,6 +115,12 @@ void MainMenuScreen::init() {
     mapMenuBack = new GamepadButtonMapping(GAMEPAD_MASK_B2);
     mapMenuToggle = new GamepadButtonMapping(0);
 
+#ifdef GLYPH_DISPLAY_SCREEN
+    for (uint8_t profileCtr = 1; profileCtr <= GlyphProfiles::count(); profileCtr++) {
+        MenuEntry menuEntry = {GlyphProfiles::name(profileCtr), NULL, nullptr, std::bind(&MainMenuScreen::currentProfile, this), std::bind(&MainMenuScreen::selectProfile, this), profileCtr};
+        profilesMenu.push_back(menuEntry);
+    }
+#else
     // populate the profiles menu
     uint8_t profileCount = (sizeof(Storage::getInstance().getProfileOptions().gpioMappingsSets)/sizeof(GpioMappings))+1;
     for (uint8_t profileCtr = 0; profileCtr < profileCount; profileCtr++) {
@@ -52,6 +142,7 @@ void MainMenuScreen::init() {
         MenuEntry menuEntry = {menuLabel, NULL, nullptr, std::bind(&MainMenuScreen::currentProfile, this), std::bind(&MainMenuScreen::selectProfile, this), profileCtr+1};
         profilesMenu.push_back(menuEntry);
     }
+#endif
 
     GpioMappingInfo* pinMappings = Storage::getInstance().getProfilePinMappings();
     for (Pin_t pin = 0; pin < (Pin_t)NUM_BANK0_GPIOS; pin++) {
@@ -87,6 +178,11 @@ void MainMenuScreen::init() {
     prevTurbo = Storage::getInstance().getAddonOptions().turboOptions.enabled;
     updateTurbo = Storage::getInstance().getAddonOptions().turboOptions.enabled;
 
+#ifdef GLYPH_DISPLAY_SCREEN
+    populateGlyphBackendMenu();
+    populateGlyphBackendSupportMenu();
+#endif
+
     setMenuHome();
 }
 
@@ -95,8 +191,90 @@ void MainMenuScreen::shutdown() {
     exitToScreen = -1;
 }
 
+#ifdef GLYPH_DISPLAY_SCREEN
+void MainMenuScreen::populateGlyphBackendMenu()
+{
+    const uint8_t profile = updateProfile >= 1 ? updateProfile : Storage::getInstance().GetGamepad()->getOptions().profileNumber;
+
+    inputModeMenu.clear();
+
+    const struct {
+        const char* label;
+        InputMode mode;
+    } modes[] = {
+        {"XInput",     INPUT_MODE_XINPUT},
+        {"DInput",     INPUT_MODE_GENERIC},
+        {"Switch",     INPUT_MODE_SWITCH},
+        {"Switch Pro", INPUT_MODE_SWITCH_PRO},
+        {"PS4",        INPUT_MODE_PS4},
+        {"PS5",        INPUT_MODE_PS5},
+        {"P5 General", INPUT_MODE_P5GENERAL},
+    };
+
+    for (const auto& mode : modes) {
+        if (GlyphProfiles::allowsInputMode(profile, mode.mode)) {
+            inputModeMenu.push_back({mode.label, NULL, nullptr, std::bind(&MainMenuScreen::currentInputMode, this), std::bind(&MainMenuScreen::selectInputMode, this), mode.mode});
+        }
+    }
+
+    if (inputModeMenu.empty()) {
+        inputModeMenu.push_back({"No GP USB", NULL, nullptr, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this), -1});
+    }
+}
+
+void MainMenuScreen::populateGlyphBackendSupportMenu()
+{
+    backendSupportMenu.clear();
+
+    const struct {
+        const char* label;
+        uint16_t mask;
+    } backends[] = {
+        {"XInput", GlyphProfiles::BackendXInput},
+        {"DInput", GlyphProfiles::BackendDInput},
+        {"Switch", GlyphProfiles::BackendSwitch},
+        {"PS4", GlyphProfiles::BackendPS4},
+        {"PS5", GlyphProfiles::BackendPS5},
+    };
+
+    for (const auto& backend : backends) {
+        backendSupportMenu.push_back({backend.label, NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphBackendSupport, this), std::bind(&MainMenuScreen::toggleGlyphBackendSupport, this), backend.mask});
+    }
+}
+
+void MainMenuScreen::toggleGlyphBackendSupport()
+{
+    if (currentMenu->at(gpMenu->getIndex()).optionValue == -1) {
+        return;
+    }
+
+    const uint8_t profile = updateProfile >= 1 ? updateProfile : Storage::getInstance().GetGamepad()->getOptions().profileNumber;
+    const uint16_t backendMask = static_cast<uint16_t>(currentMenu->at(gpMenu->getIndex()).optionValue);
+    const bool enabled = GlyphProfiles::backendEnabled(profile, backendMask);
+
+    GlyphProfiles::setBackendEnabled(profile, backendMask, !enabled);
+    populateGlyphBackendMenu();
+}
+
+int32_t MainMenuScreen::currentGlyphBackendSupport()
+{
+    if (currentMenu->at(gpMenu->getIndex()).optionValue == -1) {
+        return 0;
+    }
+
+    const uint8_t profile = updateProfile >= 1 ? updateProfile : Storage::getInstance().GetGamepad()->getOptions().profileNumber;
+    const uint16_t backendMask = static_cast<uint16_t>(currentMenu->at(gpMenu->getIndex()).optionValue);
+    return GlyphProfiles::backendEnabled(profile, backendMask) ? backendMask : 0;
+}
+#endif
+
 void MainMenuScreen::drawScreen() {
     if (gpMenu == nullptr) return;
+#ifdef GLYPH_DISPLAY_SCREEN
+    gpMenu->setVisibility(false);
+    drawGlyphMenu();
+    return;
+#endif
     gpMenu->setVisibility(!screenIsPrompting);
 
     if (!screenIsPrompting) {
@@ -119,6 +297,125 @@ void MainMenuScreen::drawScreen() {
         getRenderer()->drawText(12, 6, "No");
     }
 }
+
+#ifdef GLYPH_DISPLAY_SCREEN
+void MainMenuScreen::drawGlyphMenu()
+{
+    if (screenIsPrompting) {
+        getRenderer()->drawText(1, 1, "Config changed");
+        getRenderer()->drawText(2, 3, changeRequiresReboot ? "Save & restart?" : "Save changes?");
+        getRenderer()->drawText(6, 6, promptChoice ? "> Yes" : "  Yes");
+        getRenderer()->drawText(12, 6, promptChoice ? "  No" : "> No");
+        return;
+    }
+
+    if (currentMenu == &mainMenu) {
+        drawGlyphTopMenu();
+    } else {
+        drawGlyphListMenu();
+    }
+
+    drawGlyphControls();
+}
+
+void MainMenuScreen::drawGlyphTopMenu()
+{
+    const uint16_t menuSize = currentMenu->size();
+    const uint16_t index = gpMenu->getIndex();
+
+    drawGlyphBitmap(getRenderer(), bitmap_glyph_menu_base, 128, 64, 0, 0);
+
+    uint16_t x = 2;
+    for (uint16_t i = 0; i < menuSize; i++) {
+        const bool selected = i == index;
+        const uint16_t size = selected ? 28 : 10;
+        const uint16_t y = selected ? 8 : 17;
+        if (x + size > 70) {
+            break;
+        }
+
+        if (selected) {
+            drawGlyphBitmap(getRenderer(), glyphLargeIcon(currentMenu->at(i).label), 28, 28, x, y);
+        } else {
+            drawGlyphBitmap(getRenderer(), glyphSmallIcon(currentMenu->at(i).label), 10, 10, x, y);
+        }
+        x += size + 2;
+    }
+
+    std::string label = glyphTopLabel(currentMenu->at(index).label);
+    std::string firstLine = label;
+    std::string secondLine;
+    const size_t split = label.find('.');
+    if (split != std::string::npos) {
+        firstLine = label.substr(0, split);
+        secondLine = label.substr(split + 1);
+    }
+    if (firstLine.empty()) firstLine = secondLine;
+    if (firstLine.length() > 8) firstLine.resize(8);
+    if (secondLine.length() > 8) secondLine.resize(8);
+
+    getRenderer()->drawText(13, 5, firstLine);
+    if (!secondLine.empty()) {
+        getRenderer()->drawText(13, 6, secondLine);
+    }
+}
+
+void MainMenuScreen::drawGlyphListMenu()
+{
+    drawGlyphBitmap(getRenderer(), bitmap_glyph_list_menu_base, 128, 64, 0, 0);
+
+    std::string title = glyphListTitle(currentMenu, &profilesMenu, &inputModeMenu, &backendSupportMenu, &dpadModeMenu, &socdModeMenu, &turboModeMenu, &saveMenu);
+    if (title.length() > 10) {
+        title.resize(10);
+    }
+    getRenderer()->drawText(3, 3, title);
+
+    const uint16_t index = gpMenu->getIndex();
+    const uint16_t menuSize = currentMenu->size();
+    const uint16_t first = index > 2 ? index - 2 : 0;
+    const uint16_t visible = 6;
+
+    for (uint16_t line = 0; line < visible && (first + line) < menuSize; line++) {
+        const uint16_t item = first + line;
+        const bool selected = item == index;
+        std::string label = currentMenu->at(item).label;
+        if (label.length() > 8) {
+            label.resize(8);
+        }
+
+        const uint16_t y = line + 1;
+        if (selected) {
+            getRenderer()->drawText(12, y, ">");
+        }
+        getRenderer()->drawText(13, y, label);
+        if (currentMenu->at(item).optionValue == currentMenu->at(item).currentValue()) {
+            getRenderer()->drawText(21, y, "<");
+        }
+    }
+
+    if (currentMenu == &profilesMenu && menuSize > 0) {
+        const uint8_t profile = currentMenu->at(index).optionValue;
+        std::string backend = GlyphProfiles::backendSummary(profile);
+        if (backend.length() > 10) backend.resize(10);
+        getRenderer()->drawText(1, 5, backend);
+    }
+}
+
+void MainMenuScreen::drawGlyphControls()
+{
+    const bool topLevel = currentMenu == &mainMenu;
+    const unsigned char* icons[4] = {
+        Back12,
+        topLevel ? LeftArrow12 : UpArrow12,
+        topLevel ? RightArrow12 : DownArrow12,
+        Confirm12,
+    };
+    for (uint8_t i = 0; i < 4; i++) {
+        const uint16_t x = 2 + (i * 18);
+        drawGlyphBitmap(getRenderer(), icons[i], 12, 12, x + 2, 48);
+    }
+}
+#endif
 
 void MainMenuScreen::setMenu(std::vector<MenuEntry>* menu) {
     currentMenu = menu;
@@ -228,17 +525,13 @@ void MainMenuScreen::updateMenuNavigation(GpioAction action) {
         } else {
             switch (action) { 
                 case GpioAction::MENU_NAVIGATION_UP:
-                    if ( menuIndex == 0 ) {
-                        gpMenu->setIndex(menuSize-1);
-                    } else {
+                    if ( menuIndex > 0 ) {
                         gpMenu->setIndex(menuIndex-1);
                     }
                     break;
                 case GpioAction::MENU_NAVIGATION_DOWN:
                     if (menuIndex < menuSize-1) {
                         gpMenu->setIndex(menuIndex+1);
-                    } else {
-                        gpMenu->setIndex(0);
                     }
                     break;
                 case GpioAction::MENU_NAVIGATION_LEFT:
@@ -306,6 +599,11 @@ void MainMenuScreen::saveAndExit() {
 
 void MainMenuScreen::exitOnly() {
     exitToScreen = DisplayMode::BUTTONS;
+}
+
+void MainMenuScreen::rebootBootsel() {
+    EventManager::getInstance().triggerEvent(new GPRestartEvent(System::BootMode::USB));
+    exitToScreen = DisplayMode::RESTART;
 }
 
 int32_t MainMenuScreen::modeValue() {
@@ -430,6 +728,21 @@ void MainMenuScreen::selectProfile() {
         uint8_t valueToSave = currentMenu->at(gpMenu->getIndex()).optionValue;
         prevProfile = Storage::getInstance().GetGamepad()->getOptions().profileNumber;
         updateProfile = valueToSave;
+
+#ifdef GLYPH_DISPLAY_SCREEN
+        Storage::getInstance().getGamepadOptions().socdMode = GlyphProfiles::socdMode(valueToSave);
+        populateGlyphBackendMenu();
+        populateGlyphBackendSupportMenu();
+        if (prevProfile != valueToSave && Storage::getInstance().setProfile(valueToSave)) {
+            EventManager::getInstance().triggerEvent(new GPStorageSaveEvent(true));
+        }
+        changeRequiresSave = false;
+        changeRequiresReboot = false;
+        screenIsPrompting = false;
+        exitToScreen = DisplayMode::BUTTONS;
+        exitToScreenBeforePrompt = DisplayMode::BUTTONS;
+        return;
+#endif
 
         chooseAndReturn();
 

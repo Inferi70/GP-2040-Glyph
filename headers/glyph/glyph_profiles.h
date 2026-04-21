@@ -1,0 +1,91 @@
+#ifndef _GLYPH_PROFILES_H_
+#define _GLYPH_PROFILES_H_
+
+#include "enums.pb.h"
+
+#include <stdint.h>
+
+namespace GlyphProfiles
+{
+constexpr uint8_t MatrixRows = 4;
+constexpr uint8_t MatrixCols = 11;
+constexpr uint8_t MaxProfiles = 6;
+constexpr uint8_t ProfileNameLength = 16;
+
+enum class Layout : uint8_t {
+    Platform,
+    Fgc,
+    SplitFgc,
+};
+
+enum class Target : uint8_t {
+    None,
+    Dpad,
+    Button,
+    Aux,
+};
+
+struct Action {
+    Target target;
+    uint32_t mask;
+};
+
+enum BackendMask : uint16_t {
+    BackendXInput   = 1 << 0,
+    BackendDInput   = 1 << 1,
+    BackendSwitch   = 1 << 2,
+    BackendPS4      = 1 << 3,
+    BackendPS5      = 1 << 4,
+    BackendGameCube = 1 << 5,
+    BackendN64      = 1 << 6,
+};
+
+enum class OutputIcon : uint8_t {
+    None,
+    Home,
+    XboxBack,
+    Start,
+};
+
+struct Profile {
+    uint8_t number;
+    const char* name;
+    Layout layout;
+    SOCDMode socdMode;
+    uint8_t rgbConfig;
+    uint16_t backends;
+};
+
+struct ProfileState {
+    uint8_t number;
+    char name[ProfileNameLength + 1];
+    Layout layout;
+    SOCDMode socdMode;
+    uint8_t rgbConfig;
+    uint16_t backends;
+};
+
+uint8_t count();
+const Profile& get(uint8_t profileNumber);
+const ProfileState& state(uint8_t profileNumber);
+const char* name(uint8_t profileNumber);
+Layout layout(uint8_t profileNumber);
+SOCDMode socdMode(uint8_t profileNumber);
+uint8_t rgbConfig(uint8_t profileNumber);
+uint16_t backends(uint8_t profileNumber);
+void resetToDefaults();
+void setName(uint8_t profileNumber, const char* value);
+void setLayout(uint8_t profileNumber, Layout value);
+void setSOCDMode(uint8_t profileNumber, SOCDMode value);
+void setRgbConfig(uint8_t profileNumber, uint8_t value);
+void setBackends(uint8_t profileNumber, uint16_t value);
+bool backendEnabled(uint8_t profileNumber, uint16_t backendMask);
+void setBackendEnabled(uint8_t profileNumber, uint16_t backendMask, bool enabled);
+bool allowsInputMode(uint8_t profileNumber, InputMode mode);
+const char* backendSummary(uint8_t profileNumber);
+const char* layoutName(Layout layout);
+OutputIcon menuIcon(uint8_t profileNumber, uint8_t menuButtonIndex);
+Action matrixAction(uint8_t profileNumber, uint8_t row, uint8_t col);
+}
+
+#endif
