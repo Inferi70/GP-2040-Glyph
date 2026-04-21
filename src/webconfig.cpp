@@ -6,7 +6,6 @@
 #include "drivermanager.h"
 #include "storagemanager.h"
 #include "eventmanager.h"
-#include "glyph/glyph_profiles.h"
 #include "layoutmanager.h"
 #include "peripheralmanager.h"
 #include "animationstorage.h"
@@ -653,60 +652,6 @@ std::string getProfileOptions()
     }
 
     return serialize_json(doc);
-}
-
-std::string getGlyphOptions()
-{
-    DynamicJsonDocument doc(JSON_OBJECT_SIZE(4) + JSON_ARRAY_SIZE(GlyphProfiles::MaxProfiles) + (GlyphProfiles::MaxProfiles * JSON_OBJECT_SIZE(6)));
-
-    doc["version"] = 1;
-    JsonArray profiles = doc.createNestedArray("profiles");
-    for (uint8_t profileNumber = 1; profileNumber <= GlyphProfiles::count(); profileNumber++) {
-        const GlyphProfiles::ProfileState& profile = GlyphProfiles::state(profileNumber);
-        JsonObject item = profiles.createNestedObject();
-        item["number"] = profile.number;
-        item["name"] = profile.name;
-        item["layout"] = static_cast<uint8_t>(profile.layout);
-        item["socdMode"] = profile.socdMode;
-        item["rgbConfig"] = profile.rgbConfig;
-        item["backends"] = profile.backends;
-    }
-
-    return serialize_json(doc);
-}
-
-std::string setGlyphOptions()
-{
-    DynamicJsonDocument doc = get_post_data();
-
-    JsonArray profiles = doc["profiles"];
-    uint8_t index = 0;
-    for (JsonObject profile : profiles) {
-        const uint8_t profileNumber = index + 1;
-        if (profile.containsKey("name")) {
-            GlyphProfiles::setName(profileNumber, profile["name"]);
-        }
-        if (profile.containsKey("layout")) {
-            GlyphProfiles::setLayout(profileNumber, static_cast<GlyphProfiles::Layout>((uint32_t)profile["layout"]));
-        }
-        if (profile.containsKey("socdMode")) {
-            GlyphProfiles::setSOCDMode(profileNumber, static_cast<SOCDMode>((uint32_t)profile["socdMode"]));
-        }
-        if (profile.containsKey("rgbConfig")) {
-            GlyphProfiles::setRgbConfig(profileNumber, profile["rgbConfig"]);
-        }
-        if (profile.containsKey("backends")) {
-            GlyphProfiles::setBackends(profileNumber, profile["backends"]);
-        }
-
-        if (++index >= GlyphProfiles::count()) {
-            break;
-        }
-    }
-
-    GlyphProfiles::writeToConfig(Storage::getInstance().getGlyphOptions());
-    EventManager::getInstance().triggerEvent(new GPStorageSaveEvent(true));
-    return getGlyphOptions();
 }
 
 std::string setGamepadOptions()
@@ -2743,7 +2688,6 @@ static const std::pair<const char*, HandlerFuncPtr> handlerFuncs[] =
     { "/api/getCustomTheme", getCustomTheme },
     { "/api/setPinMappings", setPinMappings },
     { "/api/setProfileOptions", setProfileOptions },
-    { "/api/setGlyphOptions", setGlyphOptions },
     { "/api/setPeripheralOptions", setPeripheralOptions },
     { "/api/getPeripheralOptions", getPeripheralOptions },
     { "/api/getI2CPeripheralMap", getI2CPeripheralMap },
@@ -2769,7 +2713,6 @@ static const std::pair<const char*, HandlerFuncPtr> handlerFuncs[] =
     { "/api/getLedOptions", getLedOptions },
     { "/api/getPinMappings", getPinMappings },
     { "/api/getProfileOptions", getProfileOptions },
-    { "/api/getGlyphOptions", getGlyphOptions },
     { "/api/getKeyMappings", getKeyMappings },
     { "/api/getAddonsOptions", getAddonOptions },
     { "/api/getWiiControls", getWiiControls },
