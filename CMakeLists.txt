@@ -194,6 +194,7 @@ src/gp2040aux.cpp
 src/gamepad.cpp
 src/gamepad/GamepadState.cpp
 src/glyph/glyph_profiles.cpp
+src/glyph/glyph_webserial.cpp
 src/addonmanager.cpp
 src/playerleds.cpp
 src/drivers/shared/xinput_host.cpp
