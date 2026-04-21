@@ -130,6 +130,7 @@ void GP2040::setup() {
 
 	InputMode inputMode = gamepad->getOptions().inputMode;
 	const BootAction bootAction = getBootAction();
+	const bool glyphConfigMode = (bootAction == BootAction::ENTER_GLYPH_CONFIG_MODE);
 	switch (bootAction) {
 		case BootAction::ENTER_WEBCONFIG_MODE:
 		case BootAction::ENTER_GLYPH_CONFIG_MODE:
@@ -195,7 +196,7 @@ void GP2040::setup() {
 	}
 
 	// Setup USB Driver
-	DriverManager::getInstance().setup(inputMode);
+	DriverManager::getInstance().setup(inputMode, glyphConfigMode);
 
 	// save to match user expectations on choosing mode at boot, and this is
 	// before USB host will be used so we can force it to ignore the check
@@ -283,6 +284,7 @@ void GP2040::debounceGpioGetAll() {
 
 void GP2040::run() {
 	bool configMode = DriverManager::getInstance().isConfigMode();
+	bool glyphConfigMode = DriverManager::getInstance().isGlyphConfigMode();
 	GPDriver * inputDriver = DriverManager::getInstance().getDriver();
 	Gamepad * gamepad = Storage::getInstance().GetGamepad();
 	Gamepad * processedGamepad = Storage::getInstance().GetProcessedGamepad();
@@ -294,7 +296,7 @@ void GP2040::run() {
 	// Initialize our USB manager
 	USBHostManager::getInstance().start();
 
-	if (configMode == true ) {
+	if (configMode == true && glyphConfigMode == false) {
 		rndis_init();
 	}
 
@@ -316,6 +318,7 @@ void GP2040::run() {
 		// Config Loop (Web-Config skips Core0 add-ons)
 		if (configMode == true) {
 			inputDriver->process(gamepad);
+			tud_task();
 			rebootHotkeys.process(gamepad, configMode);
 			checkSaveRebootState();
 			continue;

@@ -20,7 +20,9 @@
 
 #include "usbhostmanager.h"
 
-void DriverManager::setup(InputMode mode) {
+void DriverManager::setup(InputMode mode, bool glyphConfig) {
+    glyphConfigMode = glyphConfig;
+
     switch (mode) {
         case INPUT_MODE_CONFIG:
             driver = new NetDriver();
