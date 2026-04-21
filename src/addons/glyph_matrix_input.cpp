@@ -145,7 +145,9 @@ void GlyphMatrixInput::apply(GamepadState& state)
 {
     Gamepad* gamepad = Storage::getInstance().GetGamepad();
     const uint8_t profile = gamepad != nullptr ? gamepad->getOptions().profileNumber : 1;
+    bool originalGlyphPressed[61] = {};
     bool glyphPressed[61] = {};
+    bool remappedPhysical[61] = {};
 
     for (uint8_t row = 0; row < kRows; row++) {
         for (uint8_t col = 0; col < kCols; col++) {
@@ -155,6 +157,7 @@ void GlyphMatrixInput::apply(GamepadState& state)
 
             const uint8_t buttonId = GlyphProfiles::matrixButton(row, col);
             if (buttonId > 0 && buttonId < sizeof(glyphPressed)) {
+                originalGlyphPressed[buttonId] = true;
                 glyphPressed[buttonId] = true;
             }
         }
@@ -162,12 +165,15 @@ void GlyphMatrixInput::apply(GamepadState& state)
 
     for (uint8_t remapIndex = 0; remapIndex < GlyphProfiles::buttonRemapCount(profile); remapIndex++) {
         const GlyphProfiles::ButtonRemap& remap = GlyphProfiles::buttonRemap(profile, remapIndex);
-        if (remap.physicalButton >= sizeof(glyphPressed) || !glyphPressed[remap.physicalButton]) {
+        if (remap.physicalButton >= sizeof(glyphPressed) || remappedPhysical[remap.physicalButton]) {
             continue;
         }
+        const bool shouldPress = originalGlyphPressed[remap.physicalButton] ||
+                                 (remap.activates < sizeof(glyphPressed) && glyphPressed[remap.activates]);
         glyphPressed[remap.physicalButton] = false;
-        if (remap.activates > 0 && remap.activates < sizeof(glyphPressed)) {
-            glyphPressed[remap.activates] = true;
+        remappedPhysical[remap.physicalButton] = true;
+        if (shouldPress && remap.activates > 0 && remap.activates < sizeof(glyphPressed)) {
+            glyphPressed[remap.activates] = shouldPress;
             if (glyphButtonPressedAt[remap.activates] == 0) {
                 glyphButtonPressedAt[remap.activates] = glyphButtonPressedAt[remap.physicalButton];
             }

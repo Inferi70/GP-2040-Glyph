@@ -744,7 +744,8 @@ void MainMenuScreen::selectProfile() {
         Storage::getInstance().getGamepadOptions().socdMode = GlyphProfiles::socdMode(valueToSave);
         populateGlyphBackendMenu();
         populateGlyphBackendSupportMenu();
-        if (prevProfile != valueToSave && Storage::getInstance().setProfile(valueToSave)) {
+        if (prevProfile != valueToSave) {
+            Storage::getInstance().getGamepadOptions().profileNumber = valueToSave;
             EventManager::getInstance().triggerEvent(new GPStorageSaveEvent(true));
         }
         changeRequiresSave = false;

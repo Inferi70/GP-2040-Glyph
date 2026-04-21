@@ -318,8 +318,11 @@ bool parseGameMode(const uint8_t* data, size_t length, uint8_t profileNumber)
     uint8_t rgbConfig = 0;
     uint16_t backends = 0;
     SOCDMode socdMode = GlyphProfiles::socdMode(profileNumber);
-    bool sawSocdPairs = false;
-    bool sawButtonRemaps = false;
+
+    // SET_CONFIG carries decoded protobuf state. Missing repeated fields mean
+    // zero entries, so clear first instead of retaining firmware defaults.
+    GlyphProfiles::clearSocdPairs(profileNumber);
+    GlyphProfiles::clearButtonRemaps(profileNumber);
 
     while (cursor < end) {
         uint32_t tag = 0;
@@ -339,19 +342,11 @@ bool parseGameMode(const uint8_t* data, size_t length, uint8_t profileNumber)
         } else if (field == 3 && wireType == 2) {
             uint32_t messageLength = 0;
             if (!readVarint(cursor, end, messageLength) || static_cast<size_t>(end - cursor) < messageLength) return false;
-            if (!sawSocdPairs) {
-                GlyphProfiles::clearSocdPairs(profileNumber);
-                sawSocdPairs = true;
-            }
             parseSocdPair(cursor, messageLength, profileNumber, socdMode);
             cursor += messageLength;
         } else if (field == 4 && wireType == 2) {
             uint32_t messageLength = 0;
             if (!readVarint(cursor, end, messageLength) || static_cast<size_t>(end - cursor) < messageLength) return false;
-            if (!sawButtonRemaps) {
-                GlyphProfiles::clearButtonRemaps(profileNumber);
-                sawButtonRemaps = true;
-            }
             parseButtonRemap(cursor, messageLength, profileNumber);
             cursor += messageLength;
         } else if (field == 8 && wireType == 0) {
