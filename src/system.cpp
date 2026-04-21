@@ -82,7 +82,10 @@ System::BootMode System::takeBootMode() {
     }
 
     BootMode bootMode = static_cast<BootMode>(watchdog_hw->scratch[5]);
-    if (bootMode != BootMode::GAMEPAD && bootMode != BootMode::WEBCONFIG && bootMode != BootMode::USB) {
+    if (bootMode != BootMode::GAMEPAD &&
+        bootMode != BootMode::WEBCONFIG &&
+        bootMode != BootMode::GLYPH_CONFIG &&
+        bootMode != BootMode::USB) {
         bootMode = BootMode::DEFAULT;
     }
 

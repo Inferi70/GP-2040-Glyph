@@ -56,7 +56,7 @@ class MainMenuScreen : public GPScreen {
         void saveAndExit();
         void exitOnly();
         void rebootBootsel();
-        void rebootWebConfig();
+        void rebootGlyphConfig();
         int32_t modeValue();
 
         void selectInputMode();
@@ -180,7 +180,7 @@ class MainMenuScreen : public GPScreen {
             {"SOCD Mode",  NULL, &socdModeMenu,  std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
             /*{"Focus Mode", NULL, &focusModeMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},*/
             {"Turbo",      NULL, &turboModeMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
-            {"Configurator", NULL, nullptr,       std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::rebootWebConfig, this)},
+            {"Configurator", NULL, nullptr,       std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::rebootGlyphConfig, this)},
             {"FW Update",   NULL, nullptr,        std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::rebootBootsel, this)},
             {"Exit",       NULL, &saveMenu,      std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
         };

@@ -21,6 +21,7 @@ namespace System {
         DEFAULT = 0,
         GAMEPAD = 0x43d566cd,
         WEBCONFIG = 0xe77784a5,
+        GLYPH_CONFIG = 0x676c7970,
         USB = 0xf737e4e1,
     };
 

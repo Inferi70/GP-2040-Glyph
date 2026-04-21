@@ -132,6 +132,7 @@ void GP2040::setup() {
 	const BootAction bootAction = getBootAction();
 	switch (bootAction) {
 		case BootAction::ENTER_WEBCONFIG_MODE:
+		case BootAction::ENTER_GLYPH_CONFIG_MODE:
 			inputMode = INPUT_MODE_CONFIG;
 			break;
 		case BootAction::ENTER_USB_MODE:
@@ -395,6 +396,7 @@ GP2040::BootAction GP2040::getBootAction() {
 	switch (System::takeBootMode()) {
 		case System::BootMode::GAMEPAD: return BootAction::NONE;
 		case System::BootMode::WEBCONFIG: return BootAction::ENTER_WEBCONFIG_MODE;
+		case System::BootMode::GLYPH_CONFIG: return BootAction::ENTER_GLYPH_CONFIG_MODE;
 		case System::BootMode::USB: return BootAction::ENTER_USB_MODE;
 		case System::BootMode::DEFAULT:
 			{

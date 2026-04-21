@@ -46,6 +46,7 @@ private:
     enum class BootAction {
         NONE,
         ENTER_WEBCONFIG_MODE,
+        ENTER_GLYPH_CONFIG_MODE,
         ENTER_USB_MODE,
         SET_INPUT_MODE_SWITCH,
         SET_INPUT_MODE_XINPUT,

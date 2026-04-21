@@ -612,8 +612,8 @@ void MainMenuScreen::rebootBootsel() {
     exitToScreen = DisplayMode::RESTART;
 }
 
-void MainMenuScreen::rebootWebConfig() {
-    EventManager::getInstance().triggerEvent(new GPRestartEvent(System::BootMode::WEBCONFIG));
+void MainMenuScreen::rebootGlyphConfig() {
+    EventManager::getInstance().triggerEvent(new GPRestartEvent(System::BootMode::GLYPH_CONFIG));
     exitToScreen = DisplayMode::RESTART;
 }
 
