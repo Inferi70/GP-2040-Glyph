@@ -18,6 +18,7 @@ std::string glyphTopLabel(const std::string& label)
     if (label == "D-Pad Mode") return ".D-Pad Mode";
     if (label == "SOCD Mode") return ".SOCD Mode";
     if (label == "Turbo") return ".Turbo";
+    if (label == "Configurator") return ".Configurator";
     if (label == "FW Update") return "Manual FW.Update";
     if (label == "Exit") return ".Exit";
     return label;
@@ -31,6 +32,7 @@ const char* glyphIconText(const std::string& label)
     if (label == "D-Pad Mode") return "DP";
     if (label == "SOCD Mode") return "SO";
     if (label == "Turbo") return "TB";
+    if (label == "Configurator") return "CFG";
     if (label == "FW Update") return "FW";
     if (label == "Exit") return "EX";
     return "--";
@@ -44,6 +46,7 @@ const unsigned char* glyphSmallIcon(const std::string& label)
     if (label == "D-Pad Mode") return bitmap_input_small;
     if (label == "SOCD Mode") return bitmap_profile_small;
     if (label == "Turbo") return bitmap_brightness_small;
+    if (label == "Configurator") return bitmap_usb_small;
     if (label == "FW Update") return bitmap_firmware_small;
     if (label == "Exit") return bitmap_save_small;
     return bitmap_about_small;
@@ -57,6 +60,7 @@ const unsigned char* glyphLargeIcon(const std::string& label)
     if (label == "D-Pad Mode") return bitmap_input_large;
     if (label == "SOCD Mode") return bitmap_profile_large;
     if (label == "Turbo") return bitmap_brightness_large;
+    if (label == "Configurator") return bitmap_usb_large;
     if (label == "FW Update") return bitmap_firmware_large;
     if (label == "Exit") return bitmap_save_large;
     return bitmap_about_large;
@@ -605,6 +609,11 @@ void MainMenuScreen::exitOnly() {
 
 void MainMenuScreen::rebootBootsel() {
     EventManager::getInstance().triggerEvent(new GPRestartEvent(System::BootMode::USB));
+    exitToScreen = DisplayMode::RESTART;
+}
+
+void MainMenuScreen::rebootWebConfig() {
+    EventManager::getInstance().triggerEvent(new GPRestartEvent(System::BootMode::WEBCONFIG));
     exitToScreen = DisplayMode::RESTART;
 }
 

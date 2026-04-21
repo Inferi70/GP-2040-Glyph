@@ -21,6 +21,52 @@ using GlyphProfiles::Target;
 
 constexpr uint16_t kModernBackends = BackendXInput | BackendDInput | BackendSwitch | BackendPS4 | BackendPS5;
 constexpr uint16_t kPlatformBackends = kModernBackends | BackendGameCube;
+constexpr uint8_t BTN_UNSPECIFIED = 0;
+constexpr uint8_t BTN_LF1 = 1;
+constexpr uint8_t BTN_LF2 = 2;
+constexpr uint8_t BTN_LF3 = 3;
+constexpr uint8_t BTN_LF4 = 4;
+constexpr uint8_t BTN_LF5 = 5;
+constexpr uint8_t BTN_LF6 = 6;
+constexpr uint8_t BTN_LF7 = 7;
+constexpr uint8_t BTN_LF8 = 8;
+constexpr uint8_t BTN_RF1 = 17;
+constexpr uint8_t BTN_RF2 = 18;
+constexpr uint8_t BTN_RF3 = 19;
+constexpr uint8_t BTN_RF4 = 20;
+constexpr uint8_t BTN_RF5 = 21;
+constexpr uint8_t BTN_RF6 = 22;
+constexpr uint8_t BTN_RF7 = 23;
+constexpr uint8_t BTN_RF8 = 24;
+constexpr uint8_t BTN_RF9 = 25;
+constexpr uint8_t BTN_RF10 = 26;
+constexpr uint8_t BTN_RF11 = 27;
+constexpr uint8_t BTN_RF12 = 28;
+constexpr uint8_t BTN_RF13 = 29;
+constexpr uint8_t BTN_RF14 = 30;
+constexpr uint8_t BTN_RF15 = 31;
+constexpr uint8_t BTN_RF16 = 32;
+constexpr uint8_t BTN_LT1 = 33;
+constexpr uint8_t BTN_LT2 = 34;
+constexpr uint8_t BTN_LT3 = 35;
+constexpr uint8_t BTN_LT4 = 36;
+constexpr uint8_t BTN_LT5 = 37;
+constexpr uint8_t BTN_LT6 = 38;
+constexpr uint8_t BTN_RT1 = 41;
+constexpr uint8_t BTN_RT2 = 42;
+constexpr uint8_t BTN_RT3 = 43;
+constexpr uint8_t BTN_RT4 = 44;
+constexpr uint8_t BTN_RT5 = 45;
+constexpr uint8_t BTN_MB1 = 49;
+constexpr uint8_t BTN_MB2 = 50;
+constexpr uint8_t BTN_MB3 = 51;
+constexpr uint8_t BTN_MB4 = 52;
+constexpr uint8_t BTN_MB5 = 53;
+constexpr uint8_t BTN_MB6 = 54;
+constexpr uint8_t BTN_MB7 = 55;
+constexpr uint8_t SOCD_NEUTRAL = 1;
+constexpr uint8_t SOCD_2IP = 2;
+constexpr uint8_t SOCD_2IP_NO_REAC = 3;
 
 constexpr Action none()
 {
@@ -51,11 +97,54 @@ constexpr Profile kProfiles[] = {
     {6, "Smash64",   Layout::Platform, SOCD_MODE_NEUTRAL,               6, BackendN64},
 };
 
+constexpr GlyphProfiles::SocdPair kPlatformSocdPairs[] = {
+    {BTN_LF3, BTN_LF1, SOCD_2IP_NO_REAC},
+    {BTN_LF2, BTN_RF4, SOCD_2IP_NO_REAC},
+    {BTN_RT3, BTN_RT5, SOCD_2IP_NO_REAC},
+    {BTN_RT2, BTN_RT4, SOCD_2IP_NO_REAC},
+};
+
+constexpr GlyphProfiles::SocdPair kUltimateSocdPairs[] = {
+    {BTN_LF3, BTN_LF1, SOCD_2IP},
+    {BTN_LF2, BTN_RF4, SOCD_2IP},
+    {BTN_RT3, BTN_RT5, SOCD_2IP},
+    {BTN_RT2, BTN_RT4, SOCD_2IP},
+};
+
+constexpr GlyphProfiles::SocdPair kFgcSocdPairs[] = {
+    {BTN_LF3, BTN_LF1, SOCD_NEUTRAL},
+    {BTN_LF2, BTN_LT1, SOCD_NEUTRAL},
+};
+
+constexpr GlyphProfiles::ButtonRemap kMeleeRemaps[] = {
+    {BTN_MB1, BTN_UNSPECIFIED},
+    {BTN_LF8, BTN_UNSPECIFIED},
+    {BTN_LF7, BTN_UNSPECIFIED},
+    {BTN_LF6, BTN_UNSPECIFIED},
+    {BTN_LT6, BTN_UNSPECIFIED},
+};
+
+constexpr GlyphProfiles::ButtonRemap kBrawlRemaps[] = {
+    {BTN_MB1, BTN_UNSPECIFIED},
+    {BTN_LF8, BTN_UNSPECIFIED},
+    {BTN_LF7, BTN_UNSPECIFIED},
+    {BTN_LF6, BTN_UNSPECIFIED},
+    {BTN_LT6, BTN_UNSPECIFIED},
+    {BTN_RF9, BTN_UNSPECIFIED},
+};
+
 constexpr Action kPlatformMatrix[GlyphProfiles::MatrixRows][GlyphProfiles::MatrixCols] = {
     {button(GAMEPAD_MASK_E1),  button(GAMEPAD_MASK_E2),  button(GAMEPAD_MASK_E3),  button(GAMEPAD_MASK_E4),  aux(AUX_MASK_FUNCTION), button(GAMEPAD_MASK_S1), button(GAMEPAD_MASK_S2), button(GAMEPAD_MASK_L2), button(GAMEPAD_MASK_E9), none(), none()},
     {dpad(GAMEPAD_MASK_LEFT),  dpad(GAMEPAD_MASK_DOWN),  button(GAMEPAD_MASK_E8),  button(GAMEPAD_MASK_E7),  button(GAMEPAD_MASK_E10), button(GAMEPAD_MASK_E11), button(GAMEPAD_MASK_E12), button(GAMEPAD_MASK_B3), button(GAMEPAD_MASK_B4), button(GAMEPAD_MASK_R1), button(GAMEPAD_MASK_L1)},
     {button(GAMEPAD_MASK_E5),  button(GAMEPAD_MASK_E6),  dpad(GAMEPAD_MASK_RIGHT), dpad(GAMEPAD_MASK_UP),    button(GAMEPAD_MASK_E10), button(GAMEPAD_MASK_E11), button(GAMEPAD_MASK_E12), button(GAMEPAD_MASK_B1), button(GAMEPAD_MASK_B2), button(GAMEPAD_MASK_R2), dpad(GAMEPAD_MASK_UP)},
     {button(GAMEPAD_MASK_A3),  button(GAMEPAD_MASK_A4),  button(GAMEPAD_MASK_A1),  button(GAMEPAD_MASK_A2),  button(GAMEPAD_MASK_L3), button(GAMEPAD_MASK_R3), button(GAMEPAD_MASK_E2), button(GAMEPAD_MASK_R3), button(GAMEPAD_MASK_R3), button(GAMEPAD_MASK_E3), button(GAMEPAD_MASK_E4)},
+};
+
+constexpr uint8_t kGlyphButtonMatrix[GlyphProfiles::MatrixRows][GlyphProfiles::MatrixCols] = {
+    {BTN_MB1, BTN_MB2, BTN_MB3, BTN_MB4, BTN_MB5, BTN_MB6, BTN_MB7, BTN_RF16, BTN_RF9, BTN_UNSPECIFIED, BTN_UNSPECIFIED},
+    {BTN_LF3, BTN_LF2, BTN_LF8, BTN_LF7, BTN_RF13, BTN_RF14, BTN_RF15, BTN_RF5, BTN_RF6, BTN_RF7, BTN_RF8},
+    {BTN_LF4, BTN_LF5, BTN_LF1, BTN_LF6, BTN_RF10, BTN_RF11, BTN_RF12, BTN_RF1, BTN_RF2, BTN_RF3, BTN_RF4},
+    {BTN_LT5, BTN_LT4, BTN_LT1, BTN_LT3, BTN_LT2, BTN_LT6, BTN_RT2, BTN_RT3, BTN_RT1, BTN_RT4, BTN_RT5},
 };
 
 constexpr Action kFgcMatrix[GlyphProfiles::MatrixRows][GlyphProfiles::MatrixCols] = {
@@ -117,6 +206,7 @@ void ensureMutableProfiles()
         return;
     }
 
+    mutableProfilesReady = true;
     for (uint8_t i = 0; i < GlyphProfiles::count(); i++) {
         mutableProfiles[i].number = kProfiles[i].number;
         copyName(mutableProfiles[i].name, kProfiles[i].name);
@@ -124,8 +214,30 @@ void ensureMutableProfiles()
         mutableProfiles[i].socdMode = kProfiles[i].socdMode;
         mutableProfiles[i].rgbConfig = kProfiles[i].rgbConfig;
         mutableProfiles[i].backends = kProfiles[i].backends;
+        mutableProfiles[i].socdPairCount = 0;
+        mutableProfiles[i].buttonRemapCount = 0;
     }
-    mutableProfilesReady = true;
+
+    for (const auto& pair : kPlatformSocdPairs) {
+        GlyphProfiles::addSocdPair(1, pair.buttonDir1, pair.buttonDir2, pair.socdType);
+        GlyphProfiles::addSocdPair(2, pair.buttonDir1, pair.buttonDir2, pair.socdType);
+    }
+    for (const auto& pair : kUltimateSocdPairs) {
+        GlyphProfiles::addSocdPair(3, pair.buttonDir1, pair.buttonDir2, pair.socdType);
+        GlyphProfiles::addSocdPair(6, pair.buttonDir1, pair.buttonDir2, pair.socdType);
+    }
+    for (const auto& pair : kFgcSocdPairs) {
+        GlyphProfiles::addSocdPair(4, pair.buttonDir1, pair.buttonDir2, pair.socdType);
+        GlyphProfiles::addSocdPair(5, pair.buttonDir1, pair.buttonDir2, pair.socdType);
+    }
+
+    for (const auto& remap : kMeleeRemaps) {
+        GlyphProfiles::addButtonRemap(1, remap.physicalButton, remap.activates);
+        GlyphProfiles::addButtonRemap(3, remap.physicalButton, remap.activates);
+    }
+    for (const auto& remap : kBrawlRemaps) {
+        GlyphProfiles::addButtonRemap(2, remap.physicalButton, remap.activates);
+    }
 }
 
 bool validLayout(uint32_t value)
@@ -149,6 +261,19 @@ const Action (&matrixForLayout(Layout layout))[GlyphProfiles::MatrixRows][GlyphP
         default:
             return kPlatformMatrix;
     }
+}
+
+GlyphProfiles::Action actionForButton(Layout layout, uint8_t buttonId)
+{
+    const Action (&matrix)[GlyphProfiles::MatrixRows][GlyphProfiles::MatrixCols] = matrixForLayout(layout);
+    for (uint8_t row = 0; row < GlyphProfiles::MatrixRows; row++) {
+        for (uint8_t col = 0; col < GlyphProfiles::MatrixCols; col++) {
+            if (kGlyphButtonMatrix[row][col] == buttonId) {
+                return matrix[row][col];
+            }
+        }
+    }
+    return none();
 }
 }
 
@@ -219,6 +344,27 @@ void loadFromConfig(const GlyphOptions& options)
         destination.socdMode = source.socdMode;
         destination.rgbConfig = static_cast<uint8_t>(source.rgbConfig);
         destination.backends = static_cast<uint16_t>(source.backends);
+
+        if (source.socdPairs_count > 0) {
+            clearSocdPairs(i + 1);
+            const uint8_t pairCount = source.socdPairs_count < MaxSocdPairs ? source.socdPairs_count : MaxSocdPairs;
+            for (uint8_t pair = 0; pair < pairCount; pair++) {
+                addSocdPair(i + 1,
+                            static_cast<uint8_t>(source.socdPairs[pair].buttonDir1),
+                            static_cast<uint8_t>(source.socdPairs[pair].buttonDir2),
+                            static_cast<uint8_t>(source.socdPairs[pair].socdType));
+            }
+        }
+
+        if (source.buttonRemaps_count > 0) {
+            clearButtonRemaps(i + 1);
+            const uint8_t remapCount = source.buttonRemaps_count < MaxButtonRemaps ? source.buttonRemaps_count : MaxButtonRemaps;
+            for (uint8_t remap = 0; remap < remapCount; remap++) {
+                addButtonRemap(i + 1,
+                               static_cast<uint8_t>(source.buttonRemaps[remap].physicalButton),
+                               static_cast<uint8_t>(source.buttonRemaps[remap].activates));
+            }
+        }
     }
 }
 
@@ -237,6 +383,17 @@ void writeToConfig(GlyphOptions& options)
         destination.socdMode = source.socdMode;
         destination.rgbConfig = source.rgbConfig;
         destination.backends = source.backends;
+        destination.socdPairs_count = source.socdPairCount;
+        for (uint8_t pair = 0; pair < source.socdPairCount; pair++) {
+            destination.socdPairs[pair].buttonDir1 = source.socdPairs[pair].buttonDir1;
+            destination.socdPairs[pair].buttonDir2 = source.socdPairs[pair].buttonDir2;
+            destination.socdPairs[pair].socdType = source.socdPairs[pair].socdType;
+        }
+        destination.buttonRemaps_count = source.buttonRemapCount;
+        for (uint8_t remap = 0; remap < source.buttonRemapCount; remap++) {
+            destination.buttonRemaps[remap].physicalButton = source.buttonRemaps[remap].physicalButton;
+            destination.buttonRemaps[remap].activates = source.buttonRemaps[remap].activates;
+        }
     }
 }
 
@@ -268,6 +425,62 @@ void setBackends(uint8_t profileNumber, uint16_t value)
 {
     ensureMutableProfiles();
     mutableProfiles[clampProfile(profileNumber) - 1].backends = value;
+}
+
+uint8_t socdPairCount(uint8_t profileNumber)
+{
+    return state(profileNumber).socdPairCount;
+}
+
+const SocdPair& socdPair(uint8_t profileNumber, uint8_t index)
+{
+    const ProfileState& profile = state(profileNumber);
+    const uint8_t safeIndex = index < profile.socdPairCount ? index : 0;
+    return profile.socdPairs[safeIndex];
+}
+
+uint8_t buttonRemapCount(uint8_t profileNumber)
+{
+    return state(profileNumber).buttonRemapCount;
+}
+
+const ButtonRemap& buttonRemap(uint8_t profileNumber, uint8_t index)
+{
+    const ProfileState& profile = state(profileNumber);
+    const uint8_t safeIndex = index < profile.buttonRemapCount ? index : 0;
+    return profile.buttonRemaps[safeIndex];
+}
+
+void clearSocdPairs(uint8_t profileNumber)
+{
+    ensureMutableProfiles();
+    mutableProfiles[clampProfile(profileNumber) - 1].socdPairCount = 0;
+}
+
+void addSocdPair(uint8_t profileNumber, uint8_t buttonDir1, uint8_t buttonDir2, uint8_t socdType)
+{
+    ensureMutableProfiles();
+    ProfileState& profile = mutableProfiles[clampProfile(profileNumber) - 1];
+    if (profile.socdPairCount >= MaxSocdPairs || buttonDir1 == 0 || buttonDir2 == 0 || socdType == 0) {
+        return;
+    }
+    profile.socdPairs[profile.socdPairCount++] = {buttonDir1, buttonDir2, socdType};
+}
+
+void clearButtonRemaps(uint8_t profileNumber)
+{
+    ensureMutableProfiles();
+    mutableProfiles[clampProfile(profileNumber) - 1].buttonRemapCount = 0;
+}
+
+void addButtonRemap(uint8_t profileNumber, uint8_t physicalButton, uint8_t activates)
+{
+    ensureMutableProfiles();
+    ProfileState& profile = mutableProfiles[clampProfile(profileNumber) - 1];
+    if (profile.buttonRemapCount >= MaxButtonRemaps || physicalButton == 0) {
+        return;
+    }
+    profile.buttonRemaps[profile.buttonRemapCount++] = {physicalButton, activates};
 }
 
 bool backendEnabled(uint8_t profileNumber, uint16_t backendMask)
@@ -352,5 +565,18 @@ Action matrixAction(uint8_t profileNumber, uint8_t row, uint8_t col)
 
     const Action (&matrix)[MatrixRows][MatrixCols] = matrixForLayout(layout(profileNumber));
     return matrix[row][col];
+}
+
+Action buttonAction(uint8_t profileNumber, uint8_t buttonId)
+{
+    return actionForButton(layout(profileNumber), buttonId);
+}
+
+uint8_t matrixButton(uint8_t row, uint8_t col)
+{
+    if (row >= MatrixRows || col >= MatrixCols) {
+        return 0;
+    }
+    return kGlyphButtonMatrix[row][col];
 }
 }

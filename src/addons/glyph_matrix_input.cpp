@@ -36,6 +36,7 @@ static GlyphMatrixInput::DebounceState debounce[kRows][kCols] = {};
 static bool pressed[kRows][kCols] = {};
 static bool menuControlHeld[4] = {};
 static uint32_t menuControlLastSent[4] = {};
+static uint32_t glyphButtonPressedAt[61] = {};
 
 bool GlyphMatrixInput::available()
 {
@@ -96,10 +97,9 @@ void GlyphMatrixInput::applyProfileOptions()
 {
     Storage& storage = Storage::getInstance();
     GamepadOptions& options = storage.getGamepadOptions();
-    const SOCDMode profileSocd = GlyphProfiles::socdMode(options.profileNumber);
 
-    if (options.socdMode != profileSocd) {
-        options.socdMode = profileSocd;
+    if (options.socdMode != SOCD_MODE_BYPASS) {
+        options.socdMode = SOCD_MODE_BYPASS;
     }
 }
 
@@ -145,6 +145,7 @@ void GlyphMatrixInput::apply(GamepadState& state)
 {
     Gamepad* gamepad = Storage::getInstance().GetGamepad();
     const uint8_t profile = gamepad != nullptr ? gamepad->getOptions().profileNumber : 1;
+    bool glyphPressed[61] = {};
 
     for (uint8_t row = 0; row < kRows; row++) {
         for (uint8_t col = 0; col < kCols; col++) {
@@ -152,20 +153,77 @@ void GlyphMatrixInput::apply(GamepadState& state)
                 continue;
             }
 
-            const GlyphProfiles::Action action = GlyphProfiles::matrixAction(profile, row, col);
-            switch (action.target) {
-                case GlyphProfiles::Target::Dpad:
-                    state.dpad |= action.mask;
-                    break;
-                case GlyphProfiles::Target::Button:
-                    state.buttons |= action.mask;
-                    break;
-                case GlyphProfiles::Target::Aux:
-                    state.aux |= action.mask;
-                    break;
-                case GlyphProfiles::Target::None:
-                    break;
+            const uint8_t buttonId = GlyphProfiles::matrixButton(row, col);
+            if (buttonId > 0 && buttonId < sizeof(glyphPressed)) {
+                glyphPressed[buttonId] = true;
             }
+        }
+    }
+
+    for (uint8_t remapIndex = 0; remapIndex < GlyphProfiles::buttonRemapCount(profile); remapIndex++) {
+        const GlyphProfiles::ButtonRemap& remap = GlyphProfiles::buttonRemap(profile, remapIndex);
+        if (remap.physicalButton >= sizeof(glyphPressed) || !glyphPressed[remap.physicalButton]) {
+            continue;
+        }
+        glyphPressed[remap.physicalButton] = false;
+        if (remap.activates > 0 && remap.activates < sizeof(glyphPressed)) {
+            glyphPressed[remap.activates] = true;
+            if (glyphButtonPressedAt[remap.activates] == 0) {
+                glyphButtonPressedAt[remap.activates] = glyphButtonPressedAt[remap.physicalButton];
+            }
+        }
+    }
+
+    for (uint8_t pairIndex = 0; pairIndex < GlyphProfiles::socdPairCount(profile); pairIndex++) {
+        const GlyphProfiles::SocdPair& pair = GlyphProfiles::socdPair(profile, pairIndex);
+        if (pair.buttonDir1 >= sizeof(glyphPressed) || pair.buttonDir2 >= sizeof(glyphPressed)) {
+            continue;
+        }
+        if (!glyphPressed[pair.buttonDir1] || !glyphPressed[pair.buttonDir2]) {
+            continue;
+        }
+
+        switch (pair.socdType) {
+            case 1: // Neutral
+                glyphPressed[pair.buttonDir1] = false;
+                glyphPressed[pair.buttonDir2] = false;
+                break;
+            case 4: // Dir1 priority
+                glyphPressed[pair.buttonDir2] = false;
+                break;
+            case 5: // Dir2 priority
+                glyphPressed[pair.buttonDir1] = false;
+                break;
+            case 2: // 2IP
+            case 3: // 2IP no-react, approximated as 2IP for now
+            default:
+                if (glyphButtonPressedAt[pair.buttonDir1] <= glyphButtonPressedAt[pair.buttonDir2]) {
+                    glyphPressed[pair.buttonDir1] = false;
+                } else {
+                    glyphPressed[pair.buttonDir2] = false;
+                }
+                break;
+        }
+    }
+
+    for (uint8_t buttonId = 1; buttonId < sizeof(glyphPressed); buttonId++) {
+        if (!glyphPressed[buttonId]) {
+            continue;
+        }
+
+        const GlyphProfiles::Action action = GlyphProfiles::buttonAction(profile, buttonId);
+        switch (action.target) {
+            case GlyphProfiles::Target::Dpad:
+                state.dpad |= action.mask;
+                break;
+            case GlyphProfiles::Target::Button:
+                state.buttons |= action.mask;
+                break;
+            case GlyphProfiles::Target::Aux:
+                state.aux |= action.mask;
+                break;
+            case GlyphProfiles::Target::None:
+                break;
         }
     }
 }
@@ -212,6 +270,10 @@ void GlyphMatrixInput::setCell(uint8_t row, uint8_t col, bool isPressed, uint32_
 
     if (cell.stable != cell.observed && (now - cell.changedAt) >= GLYPH_MATRIX_DEBOUNCE_MS) {
         cell.stable = cell.observed;
+        const uint8_t buttonId = GlyphProfiles::matrixButton(row, col);
+        if (buttonId > 0 && buttonId < sizeof(glyphButtonPressedAt)) {
+            glyphButtonPressedAt[buttonId] = cell.stable ? now : 0;
+        }
     }
 
     pressed[row][col] = cell.stable;

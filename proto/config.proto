@@ -894,6 +894,19 @@ message HETriggerOptions
     optional int32 smoothingFactor = 13;
 }
 
+message GlyphSocdPair
+{
+    optional uint32 buttonDir1 = 1;
+    optional uint32 buttonDir2 = 2;
+    optional uint32 socdType = 3;
+}
+
+message GlyphButtonRemap
+{
+    optional uint32 physicalButton = 1;
+    optional uint32 activates = 2;
+}
+
 message GlyphProfileEntry
 {
     optional string name = 1 [(nanopb).max_length = 16];
@@ -901,6 +914,8 @@ message GlyphProfileEntry
     optional SOCDMode socdMode = 3;
     optional uint32 rgbConfig = 4;
     optional uint32 backends = 5;
+    repeated GlyphSocdPair socdPairs = 6 [(nanopb).max_count = 10];
+    repeated GlyphButtonRemap buttonRemaps = 7 [(nanopb).max_count = 60];
 }
 
 message GlyphOptions

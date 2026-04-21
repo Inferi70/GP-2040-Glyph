@@ -12,6 +12,8 @@ constexpr uint8_t MatrixRows = 4;
 constexpr uint8_t MatrixCols = 11;
 constexpr uint8_t MaxProfiles = 6;
 constexpr uint8_t ProfileNameLength = 16;
+constexpr uint8_t MaxSocdPairs = 10;
+constexpr uint8_t MaxButtonRemaps = 60;
 
 enum class Layout : uint8_t {
     Platform,
@@ -57,6 +59,17 @@ struct Profile {
     uint16_t backends;
 };
 
+struct SocdPair {
+    uint8_t buttonDir1;
+    uint8_t buttonDir2;
+    uint8_t socdType;
+};
+
+struct ButtonRemap {
+    uint8_t physicalButton;
+    uint8_t activates;
+};
+
 struct ProfileState {
     uint8_t number;
     char name[ProfileNameLength + 1];
@@ -64,6 +77,10 @@ struct ProfileState {
     SOCDMode socdMode;
     uint8_t rgbConfig;
     uint16_t backends;
+    uint8_t socdPairCount;
+    SocdPair socdPairs[MaxSocdPairs];
+    uint8_t buttonRemapCount;
+    ButtonRemap buttonRemaps[MaxButtonRemaps];
 };
 
 uint8_t count();
@@ -74,6 +91,10 @@ Layout layout(uint8_t profileNumber);
 SOCDMode socdMode(uint8_t profileNumber);
 uint8_t rgbConfig(uint8_t profileNumber);
 uint16_t backends(uint8_t profileNumber);
+uint8_t socdPairCount(uint8_t profileNumber);
+const SocdPair& socdPair(uint8_t profileNumber, uint8_t index);
+uint8_t buttonRemapCount(uint8_t profileNumber);
+const ButtonRemap& buttonRemap(uint8_t profileNumber, uint8_t index);
 void resetToDefaults();
 void loadFromConfig(const GlyphOptions& options);
 void writeToConfig(GlyphOptions& options);
@@ -82,6 +103,10 @@ void setLayout(uint8_t profileNumber, Layout value);
 void setSOCDMode(uint8_t profileNumber, SOCDMode value);
 void setRgbConfig(uint8_t profileNumber, uint8_t value);
 void setBackends(uint8_t profileNumber, uint16_t value);
+void clearSocdPairs(uint8_t profileNumber);
+void addSocdPair(uint8_t profileNumber, uint8_t buttonDir1, uint8_t buttonDir2, uint8_t socdType);
+void clearButtonRemaps(uint8_t profileNumber);
+void addButtonRemap(uint8_t profileNumber, uint8_t physicalButton, uint8_t activates);
 bool backendEnabled(uint8_t profileNumber, uint16_t backendMask);
 void setBackendEnabled(uint8_t profileNumber, uint16_t backendMask, bool enabled);
 bool allowsInputMode(uint8_t profileNumber, InputMode mode);
@@ -89,6 +114,8 @@ const char* backendSummary(uint8_t profileNumber);
 const char* layoutName(Layout layout);
 OutputIcon menuIcon(uint8_t profileNumber, uint8_t menuButtonIndex);
 Action matrixAction(uint8_t profileNumber, uint8_t row, uint8_t col);
+Action buttonAction(uint8_t profileNumber, uint8_t buttonId);
+uint8_t matrixButton(uint8_t row, uint8_t col);
 }
 
 #endif
