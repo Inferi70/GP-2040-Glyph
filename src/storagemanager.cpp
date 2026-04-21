@@ -12,6 +12,7 @@
 #include "eventmanager.h"
 #include "peripheralmanager.h"
 #include "config.pb.h"
+#include "glyph/glyph_profiles.h"
 #include "hardware/watchdog.h"
 #include "CRC32.h"
 #include "types.h"
@@ -25,6 +26,7 @@ void Storage::init() {
 	systemFlashSize = System::getPhysicalFlash(); // System Flash Size must be called once
 	EEPROM.start();
 	ConfigUtils::load(config);
+	GlyphProfiles::loadFromConfig(config.glyphOptions);
 }
 
 /**

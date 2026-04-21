@@ -91,6 +91,8 @@ constexpr const char* kBackendSummaries[] = {
     "N64",
 };
 
+constexpr uint32_t kGlyphOptionsVersion = 1;
+
 GlyphProfiles::ProfileState mutableProfiles[GlyphProfiles::MaxProfiles] = {};
 bool mutableProfilesReady = false;
 
@@ -124,6 +126,11 @@ void ensureMutableProfiles()
         mutableProfiles[i].backends = kProfiles[i].backends;
     }
     mutableProfilesReady = true;
+}
+
+bool validLayout(uint32_t value)
+{
+    return value <= static_cast<uint32_t>(Layout::SplitFgc);
 }
 
 uint8_t clampProfile(uint8_t profileNumber)
@@ -192,6 +199,45 @@ void resetToDefaults()
 {
     mutableProfilesReady = false;
     ensureMutableProfiles();
+}
+
+void loadFromConfig(const GlyphOptions& options)
+{
+    resetToDefaults();
+
+    const uint8_t profileCount = options.profiles_count < count() ? options.profiles_count : count();
+    for (uint8_t i = 0; i < profileCount; i++) {
+        const GlyphProfileEntry& source = options.profiles[i];
+        ProfileState& destination = mutableProfiles[i];
+
+        if (source.name[0] != '\0') {
+            copyName(destination.name, source.name);
+        }
+        if (validLayout(source.layout)) {
+            destination.layout = static_cast<Layout>(source.layout);
+        }
+        destination.socdMode = source.socdMode;
+        destination.rgbConfig = static_cast<uint8_t>(source.rgbConfig);
+        destination.backends = static_cast<uint16_t>(source.backends);
+    }
+}
+
+void writeToConfig(GlyphOptions& options)
+{
+    ensureMutableProfiles();
+
+    options.version = kGlyphOptionsVersion;
+    options.profiles_count = count();
+    for (uint8_t i = 0; i < count(); i++) {
+        GlyphProfileEntry& destination = options.profiles[i];
+        const ProfileState& source = mutableProfiles[i];
+
+        copyName(destination.name, source.name);
+        destination.layout = static_cast<uint32_t>(source.layout);
+        destination.socdMode = source.socdMode;
+        destination.rgbConfig = source.rgbConfig;
+        destination.backends = source.backends;
+    }
 }
 
 void setName(uint8_t profileNumber, const char* value)

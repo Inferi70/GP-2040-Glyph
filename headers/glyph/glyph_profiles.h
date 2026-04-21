@@ -2,6 +2,7 @@
 #define _GLYPH_PROFILES_H_
 
 #include "enums.pb.h"
+#include "config.pb.h"
 
 #include <stdint.h>
 
@@ -74,6 +75,8 @@ SOCDMode socdMode(uint8_t profileNumber);
 uint8_t rgbConfig(uint8_t profileNumber);
 uint16_t backends(uint8_t profileNumber);
 void resetToDefaults();
+void loadFromConfig(const GlyphOptions& options);
+void writeToConfig(GlyphOptions& options);
 void setName(uint8_t profileNumber, const char* value);
 void setLayout(uint8_t profileNumber, Layout value);
 void setSOCDMode(uint8_t profileNumber, SOCDMode value);

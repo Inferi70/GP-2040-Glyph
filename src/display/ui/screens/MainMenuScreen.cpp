@@ -253,7 +253,9 @@ void MainMenuScreen::toggleGlyphBackendSupport()
     const bool enabled = GlyphProfiles::backendEnabled(profile, backendMask);
 
     GlyphProfiles::setBackendEnabled(profile, backendMask, !enabled);
+    GlyphProfiles::writeToConfig(Storage::getInstance().getGlyphOptions());
     populateGlyphBackendMenu();
+    EventManager::getInstance().triggerEvent(new GPStorageSaveEvent(true));
 }
 
 int32_t MainMenuScreen::currentGlyphBackendSupport()
