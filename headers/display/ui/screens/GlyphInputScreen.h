@@ -28,6 +28,8 @@ public:
     virtual void shutdown();
     virtual int8_t update();
 
+    static void setInputViewerMode(bool enabled);
+
 protected:
     virtual void drawScreen();
 
@@ -39,6 +41,7 @@ private:
     bool dotPressed(const ButtonDot& dot, const GamepadState& state) const;
 
     Gamepad* gamepad = nullptr;
+    static bool inputViewerMode;
 };
 
 #endif

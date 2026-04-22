@@ -241,6 +241,13 @@ const unsigned char* activeInputIcon(const GamepadState& state, InputMode mode)
 }
 }
 
+bool GlyphInputScreen::inputViewerMode = false;
+
+void GlyphInputScreen::setInputViewerMode(bool enabled)
+{
+    inputViewerMode = enabled;
+}
+
 void GlyphInputScreen::init()
 {
     gamepad = Storage::getInstance().GetGamepad();
@@ -287,10 +294,12 @@ void GlyphInputScreen::drawScreen()
         drawGlyphBitmap(getRenderer(), currentInput, 16, 16, 109, 3);
     }
 
-    size_t dotCount = 0;
-    const ButtonDot* dots = activeDots(dotCount);
-    for (size_t i = 0; i < dotCount; i++) {
-        drawDot(dots[i], state);
+    if (inputViewerMode) {
+        size_t dotCount = 0;
+        const ButtonDot* dots = activeDots(dotCount);
+        for (size_t i = 0; i < dotCount; i++) {
+            drawDot(dots[i], state);
+        }
     }
 
     constexpr uint16_t kHintX[] = {4, 22, 40, 58, 76, 94, 112};

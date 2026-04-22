@@ -2,6 +2,7 @@
 #include "glyph/assets/GlyphButtonBitmaps.h"
 #include "glyph/assets/GlyphMenuBitmaps.h"
 #include "glyph/glyph_profiles.h"
+#include "display/ui/screens/GlyphInputScreen.h"
 #include "hardware/watchdog.h"
 #include "system.h"
 
@@ -79,6 +80,11 @@ const unsigned char* glyphLargeIcon(const std::string& label)
 void drawGlyphBitmap(GPGFX* renderer, const unsigned char* bitmap, uint16_t width, uint16_t height, uint16_t x, uint16_t y)
 {
     renderer->drawSprite((uint8_t*)bitmap, width, height, 0, x, y, 1);
+}
+
+void setGlyphButtonsScreenMode(bool inputViewer)
+{
+    GlyphInputScreen::setInputViewerMode(inputViewer);
 }
 
 std::string glyphListTitle(std::vector<MenuEntry>* menu,
@@ -470,6 +476,9 @@ int8_t MainMenuScreen::update() {
             else if (values & mapMenuBack->pinMask) updateMenuNavigation(GpioAction::MENU_NAVIGATION_BACK);
             else if (values & mapMenuToggle->pinMask) {
                 // Menu toggle will always exit out of main menu
+#ifdef GLYPH_DISPLAY_SCREEN
+                setGlyphButtonsScreenMode(false);
+#endif
                 exitToScreen = DisplayMode::BUTTONS;
                 exitToScreenBeforePrompt = DisplayMode::BUTTONS;
             }
@@ -537,6 +546,9 @@ void MainMenuScreen::updateMenuNavigation(GpioAction action) {
                         saveOptions();
                     } else {
                         resetOptions();
+#ifdef GLYPH_DISPLAY_SCREEN
+                        setGlyphButtonsScreenMode(false);
+#endif
                         exitToScreen = DisplayMode::BUTTONS;
                         exitToScreenBeforePrompt = DisplayMode::BUTTONS;
                     }
@@ -576,6 +588,9 @@ void MainMenuScreen::updateMenuNavigation(GpioAction action) {
                         }
                         break;
                     case GpioAction::MENU_NAVIGATION_BACK:
+#ifdef GLYPH_DISPLAY_SCREEN
+                        setGlyphButtonsScreenMode(false);
+#endif
                         exitToScreen = DisplayMode::BUTTONS;
                         exitToScreenBeforePrompt = DisplayMode::BUTTONS;
                         break;
@@ -617,6 +632,9 @@ void MainMenuScreen::updateMenuNavigation(GpioAction action) {
                         gpMenu->setMenuTitle(MAIN_MENU_NAME);
                         gpMenu->setIndex(0);
                     } else {
+#ifdef GLYPH_DISPLAY_SCREEN
+                        setGlyphButtonsScreenMode(false);
+#endif
                         exitToScreen = DisplayMode::BUTTONS;
                         exitToScreenBeforePrompt = DisplayMode::BUTTONS;
                     }
@@ -689,6 +707,9 @@ void MainMenuScreen::chooseAndReturn() {
         gpMenu->setMenuTitle(MAIN_MENU_NAME);
         gpMenu->setIndex(0);
     } else {
+#ifdef GLYPH_DISPLAY_SCREEN
+        setGlyphButtonsScreenMode(false);
+#endif
         exitToScreen = DisplayMode::BUTTONS;
         exitToScreenBeforePrompt = DisplayMode::BUTTONS;
         isPressed = false;
@@ -697,14 +718,23 @@ void MainMenuScreen::chooseAndReturn() {
 
 void MainMenuScreen::saveAndExit() {
     saveOptions();
+#ifdef GLYPH_DISPLAY_SCREEN
+    setGlyphButtonsScreenMode(false);
+#endif
     exitToScreen = DisplayMode::BUTTONS;
 }
 
 void MainMenuScreen::exitOnly() {
+#ifdef GLYPH_DISPLAY_SCREEN
+    setGlyphButtonsScreenMode(false);
+#endif
     exitToScreen = DisplayMode::BUTTONS;
 }
 
 void MainMenuScreen::openInputViewer() {
+#ifdef GLYPH_DISPLAY_SCREEN
+    setGlyphButtonsScreenMode(true);
+#endif
     exitToScreen = DisplayMode::BUTTONS;
     exitToScreenBeforePrompt = DisplayMode::BUTTONS;
 }
@@ -771,6 +801,7 @@ void MainMenuScreen::selectDPadMode() {
         changeRequiresSave = false;
         changeRequiresReboot = false;
         screenIsPrompting = false;
+        setGlyphButtonsScreenMode(false);
         exitToScreen = DisplayMode::BUTTONS;
         exitToScreenBeforePrompt = DisplayMode::BUTTONS;
         return;
@@ -803,6 +834,7 @@ void MainMenuScreen::selectSOCDMode() {
         changeRequiresSave = false;
         changeRequiresReboot = false;
         screenIsPrompting = false;
+        setGlyphButtonsScreenMode(false);
         exitToScreen = DisplayMode::BUTTONS;
         exitToScreenBeforePrompt = DisplayMode::BUTTONS;
         return;
@@ -878,6 +910,11 @@ void MainMenuScreen::saveOptions() {
     screenIsPrompting = false;
 
     if (exitToScreenBeforePrompt != -1) {
+#ifdef GLYPH_DISPLAY_SCREEN
+        if (exitToScreenBeforePrompt == DisplayMode::BUTTONS) {
+            setGlyphButtonsScreenMode(false);
+        }
+#endif
         exitToScreen = exitToScreenBeforePrompt;
         exitToScreenBeforePrompt = -1;
     }
@@ -900,6 +937,7 @@ void MainMenuScreen::selectProfile() {
         changeRequiresSave = false;
         changeRequiresReboot = false;
         screenIsPrompting = false;
+        setGlyphButtonsScreenMode(false);
         exitToScreen = DisplayMode::BUTTONS;
         exitToScreenBeforePrompt = DisplayMode::BUTTONS;
         return;
@@ -945,6 +983,7 @@ void MainMenuScreen::selectTurboMode() {
         changeRequiresSave = false;
         changeRequiresReboot = false;
         screenIsPrompting = false;
+        setGlyphButtonsScreenMode(false);
         exitToScreen = DisplayMode::BUTTONS;
         exitToScreenBeforePrompt = DisplayMode::BUTTONS;
         return;
@@ -976,6 +1015,7 @@ void MainMenuScreen::selectRgbBrightness() {
     changeRequiresSave = false;
     changeRequiresReboot = false;
     screenIsPrompting = false;
+    setGlyphButtonsScreenMode(false);
     exitToScreen = DisplayMode::BUTTONS;
     exitToScreenBeforePrompt = DisplayMode::BUTTONS;
 #else

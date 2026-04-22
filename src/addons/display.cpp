@@ -272,6 +272,9 @@ void DisplayAddon::handleMenuNavigation(GPEvent* e) {
         if (currDisplayMode == BUTTONS) {
             nextDisplayMode = MAIN_MENU;
         } else if (currDisplayMode == MAIN_MENU) {
+#ifdef GLYPH_DISPLAY_SCREEN
+            GlyphInputScreen::setInputViewerMode(false);
+#endif
             nextDisplayMode = BUTTONS;
         }
     } else if (currDisplayMode == MAIN_MENU) {
