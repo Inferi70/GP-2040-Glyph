@@ -40,10 +40,19 @@ bool SwitchDriver::process(Gamepad * gamepad) {
 	}
 
 	switchReport.buttons = 0
+#if GLYPH_MATRIX_INPUT_ENABLED == 1
+		// Glyph profiles are named by logical output (B1 = A, B2 = B,
+		// B3 = X, B4 = Y). Keep those semantics stable in Switch mode.
+		| (gamepad->pressedB1() ? SWITCH_MASK_A       : 0)
+		| (gamepad->pressedB2() ? SWITCH_MASK_B       : 0)
+		| (gamepad->pressedB3() ? SWITCH_MASK_X       : 0)
+		| (gamepad->pressedB4() ? SWITCH_MASK_Y       : 0)
+#else
 		| (gamepad->pressedB1() ? SWITCH_MASK_B       : 0)
 		| (gamepad->pressedB2() ? SWITCH_MASK_A       : 0)
 		| (gamepad->pressedB3() ? SWITCH_MASK_Y       : 0)
 		| (gamepad->pressedB4() ? SWITCH_MASK_X       : 0)
+#endif
 		| (gamepad->pressedL1() ? SWITCH_MASK_L       : 0)
 		| (gamepad->pressedR1() ? SWITCH_MASK_R       : 0)
 		| (gamepad->pressedL2() ? SWITCH_MASK_ZL      : 0)
