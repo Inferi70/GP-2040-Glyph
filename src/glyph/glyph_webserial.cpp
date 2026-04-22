@@ -279,7 +279,7 @@ bool parseSocdPair(const uint8_t* data, size_t length, GlyphProfiles::SocdPair& 
         static_cast<uint8_t>(buttonDir2),
         static_cast<uint8_t>(socdType),
     };
-    return true;
+    return pair.buttonDir1 != 0 && pair.buttonDir2 != 0 && pair.socdType != 0;
 }
 
 bool parseButtonRemap(const uint8_t* data, size_t length, GlyphProfiles::ButtonRemap& remap)
@@ -307,7 +307,7 @@ bool parseButtonRemap(const uint8_t* data, size_t length, GlyphProfiles::ButtonR
         static_cast<uint8_t>(physicalButton),
         static_cast<uint8_t>(activates),
     };
-    return true;
+    return remap.physicalButton != 0;
 }
 
 bool parseGameMode(const uint8_t* data, size_t length, uint8_t profileNumber)
@@ -350,16 +350,18 @@ bool parseGameMode(const uint8_t* data, size_t length, uint8_t profileNumber)
         } else if (field == 3 && wireType == 2) {
             uint32_t messageLength = 0;
             if (!readVarint(cursor, end, messageLength) || static_cast<size_t>(end - cursor) < messageLength) return false;
-            if (socdPairCount >= GlyphProfiles::MaxSocdPairs) return false;
-            if (!parseSocdPair(cursor, messageLength, socdPairs[socdPairCount], socdMode)) return false;
-            socdPairCount++;
+            GlyphProfiles::SocdPair pair = {};
+            if (parseSocdPair(cursor, messageLength, pair, socdMode) && socdPairCount < GlyphProfiles::MaxSocdPairs) {
+                socdPairs[socdPairCount++] = pair;
+            }
             cursor += messageLength;
         } else if (field == 4 && wireType == 2) {
             uint32_t messageLength = 0;
             if (!readVarint(cursor, end, messageLength) || static_cast<size_t>(end - cursor) < messageLength) return false;
-            if (buttonRemapCount >= GlyphProfiles::MaxButtonRemaps) return false;
-            if (!parseButtonRemap(cursor, messageLength, buttonRemaps[buttonRemapCount])) return false;
-            buttonRemapCount++;
+            GlyphProfiles::ButtonRemap remap = {};
+            if (parseButtonRemap(cursor, messageLength, remap) && buttonRemapCount < GlyphProfiles::MaxButtonRemaps) {
+                buttonRemaps[buttonRemapCount++] = remap;
+            }
             cursor += messageLength;
         } else if (field == 8 && wireType == 0) {
             uint32_t value = 0;
