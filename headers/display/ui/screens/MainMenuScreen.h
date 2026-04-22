@@ -85,6 +85,9 @@ class MainMenuScreen : public GPScreen {
         void selectTurboMode();
         int32_t currentTurboMode();
 
+        void selectRgbBrightness();
+        int32_t currentRgbBrightness();
+
         void updateMenuNavigation(GpioAction action);
         void updateEventMenuNavigation(GpioAction action);
         void chooseAndReturn();
@@ -173,6 +176,15 @@ class MainMenuScreen : public GPScreen {
         bool prevTurbo;
         bool updateTurbo;
 
+        std::vector<MenuEntry> rgbBrightnessMenu = {
+            {"Off",        NULL, nullptr,        std::bind(&MainMenuScreen::currentRgbBrightness, this), std::bind(&MainMenuScreen::selectRgbBrightness, this), 0},
+            {"1",          NULL, nullptr,        std::bind(&MainMenuScreen::currentRgbBrightness, this), std::bind(&MainMenuScreen::selectRgbBrightness, this), 1},
+            {"2",          NULL, nullptr,        std::bind(&MainMenuScreen::currentRgbBrightness, this), std::bind(&MainMenuScreen::selectRgbBrightness, this), 2},
+            {"3",          NULL, nullptr,        std::bind(&MainMenuScreen::currentRgbBrightness, this), std::bind(&MainMenuScreen::selectRgbBrightness, this), 3},
+            {"4",          NULL, nullptr,        std::bind(&MainMenuScreen::currentRgbBrightness, this), std::bind(&MainMenuScreen::selectRgbBrightness, this), 4},
+            {"5",          NULL, nullptr,        std::bind(&MainMenuScreen::currentRgbBrightness, this), std::bind(&MainMenuScreen::selectRgbBrightness, this), 5},
+        };
+
         std::vector<MenuEntry> mainMenu = {
             {"Input Viewer", NULL, nullptr,      std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::openInputViewer, this)},
             {"Profiles",   NULL, &profilesMenu,  std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
@@ -180,6 +192,7 @@ class MainMenuScreen : public GPScreen {
             {"USB Support",NULL, &backendSupportMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
             {"D-Pad Mode", NULL, &dpadModeMenu,  std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
             {"SOCD Mode",  NULL, &socdModeMenu,  std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
+            {"RGB Brightness", NULL, &rgbBrightnessMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
             /*{"Focus Mode", NULL, &focusModeMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},*/
             {"Turbo",      NULL, &turboModeMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
             {"Configurator", NULL, nullptr,       std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::rebootGlyphConfig, this)},

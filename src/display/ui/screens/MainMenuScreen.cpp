@@ -20,6 +20,7 @@ std::pair<std::string, std::string> glyphTopLabelLines(const std::string& label)
     if (label == "Profiles") return {"Profile", ""};
     if (label == "D-Pad Mode") return {"D-Pad", "Mode"};
     if (label == "SOCD Mode") return {"SOCD", "Mode"};
+    if (label == "RGB Brightness") return {"RGB", "Bright"};
     if (label == "Turbo") return {"Turbo", ""};
     if (label == "Configurator") return {"Config", ""};
     if (label == "FW Update") return {"Bootsel", ""};
@@ -35,6 +36,7 @@ const char* glyphIconText(const std::string& label)
     if (label == "Profiles") return "PRO";
     if (label == "D-Pad Mode") return "DP";
     if (label == "SOCD Mode") return "SO";
+    if (label == "RGB Brightness") return "RGB";
     if (label == "Turbo") return "TB";
     if (label == "Configurator") return "CFG";
     if (label == "FW Update") return "FW";
@@ -50,7 +52,8 @@ const unsigned char* glyphSmallIcon(const std::string& label)
     if (label == "Profiles") return bitmap_gamemode_small;
     if (label == "D-Pad Mode") return bitmap_input_small;
     if (label == "SOCD Mode") return bitmap_profile_small;
-    if (label == "Turbo") return bitmap_brightness_small;
+    if (label == "RGB Brightness") return bitmap_brightness_small;
+    if (label == "Turbo") return bitmap_profile_small;
     if (label == "Configurator") return bitmap_config_small;
     if (label == "FW Update") return bitmap_firmware_small;
     if (label == "Exit") return bitmap_save_small;
@@ -65,7 +68,8 @@ const unsigned char* glyphLargeIcon(const std::string& label)
     if (label == "Profiles") return bitmap_gamemode_large;
     if (label == "D-Pad Mode") return bitmap_input_large;
     if (label == "SOCD Mode") return bitmap_profile_large;
-    if (label == "Turbo") return bitmap_brightness_large;
+    if (label == "RGB Brightness") return bitmap_brightness_large;
+    if (label == "Turbo") return bitmap_profile_large;
     if (label == "Configurator") return bitmap_config_large;
     if (label == "FW Update") return bitmap_firmware_large;
     if (label == "Exit") return bitmap_save_large;
@@ -83,6 +87,7 @@ std::string glyphListTitle(std::vector<MenuEntry>* menu,
                            std::vector<MenuEntry>* backendSupportMenu,
                            std::vector<MenuEntry>* dpadModeMenu,
                            std::vector<MenuEntry>* socdModeMenu,
+                           std::vector<MenuEntry>* rgbBrightnessMenu,
                            std::vector<MenuEntry>* turboModeMenu,
                            std::vector<MenuEntry>* saveMenu)
 {
@@ -91,6 +96,7 @@ std::string glyphListTitle(std::vector<MenuEntry>* menu,
     if (menu == backendSupportMenu) return "USB Support";
     if (menu == dpadModeMenu) return "D-Pad Mode";
     if (menu == socdModeMenu) return "SOCD Mode";
+    if (menu == rgbBrightnessMenu) return "RGB Bright";
     if (menu == turboModeMenu) return "Turbo";
     if (menu == saveMenu) return "Exit";
     return "Select";
@@ -376,7 +382,7 @@ void MainMenuScreen::drawGlyphListMenu()
 {
     drawGlyphBitmap(getRenderer(), bitmap_glyph_list_menu_base, 128, 64, 0, 0);
 
-    std::string title = glyphListTitle(currentMenu, &profilesMenu, &inputModeMenu, &backendSupportMenu, &dpadModeMenu, &socdModeMenu, &turboModeMenu, &saveMenu);
+    std::string title = glyphListTitle(currentMenu, &profilesMenu, &inputModeMenu, &backendSupportMenu, &dpadModeMenu, &socdModeMenu, &rgbBrightnessMenu, &turboModeMenu, &saveMenu);
     if (title.length() > 14) {
         title.resize(14);
     }
@@ -948,4 +954,31 @@ void MainMenuScreen::selectTurboMode() {
 
 int32_t MainMenuScreen::currentTurboMode() {
     return updateTurbo;
+}
+
+void MainMenuScreen::selectRgbBrightness() {
+    if (currentMenu->at(gpMenu->getIndex()).optionValue == -1) {
+        return;
+    }
+
+    AnimationOptions& animationOptions = Storage::getInstance().getAnimationOptions();
+    const uint8_t valueToSave = static_cast<uint8_t>(currentMenu->at(gpMenu->getIndex()).optionValue);
+    if (animationOptions.brightness != valueToSave) {
+        animationOptions.brightness = valueToSave;
+        EventManager::getInstance().triggerEvent(new GPStorageSaveEvent(true));
+    }
+
+#ifdef GLYPH_DISPLAY_SCREEN
+    changeRequiresSave = false;
+    changeRequiresReboot = false;
+    screenIsPrompting = false;
+    exitToScreen = DisplayMode::BUTTONS;
+    exitToScreenBeforePrompt = DisplayMode::BUTTONS;
+#else
+    chooseAndReturn();
+#endif
+}
+
+int32_t MainMenuScreen::currentRgbBrightness() {
+    return Storage::getInstance().getAnimationOptions().brightness;
 }

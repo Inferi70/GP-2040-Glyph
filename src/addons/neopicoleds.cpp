@@ -291,6 +291,8 @@ void NeoPicoLEDAddon::setup() {
 	as.SetMatrix(matrix);
     as.SetMode(animationOptions.baseAnimationIndex);
 	as.SetBrightness(animationOptions.brightness);
+    currentAnimationMode = animationOptions.baseAnimationIndex;
+    currentBrightness = animationOptions.brightness;
 
 	// Next Run
     nextRunTime = make_timeout_time_ms(0); // Reset timeout
@@ -508,6 +510,16 @@ void NeoPicoLEDAddon::process() {
     if (!isValidPin(ledOptions.dataPin) || !time_reached(this->nextRunTime))
         return;
 
+    AnimationOptions& animationOptions = Storage::getInstance().getAnimationOptions();
+    if (currentAnimationMode != animationOptions.baseAnimationIndex) {
+        as.SetMode(animationOptions.baseAnimationIndex);
+        currentAnimationMode = animationOptions.baseAnimationIndex;
+    }
+    if (currentBrightness != animationOptions.brightness) {
+        as.SetBrightness(animationOptions.brightness);
+        currentBrightness = animationOptions.brightness;
+    }
+
     // Get turbo options (turbo RGB led)
     const TurboOptions& turboOptions = Storage::getInstance().getAddonOptions().turboOptions;
     Gamepad * gamepad = Storage::getInstance().GetProcessedGamepad();
@@ -544,6 +556,8 @@ void NeoPicoLEDAddon::process() {
 
     if ( action != HOTKEY_LEDS_NONE ) {
         as.HandleEvent(action);
+        currentAnimationMode = Storage::getInstance().getAnimationOptions().baseAnimationIndex;
+        currentBrightness = Storage::getInstance().getAnimationOptions().brightness;
     }
 
     uint32_t buttonState = gamepad->state.dpad << 16 | gamepad->state.buttons;
