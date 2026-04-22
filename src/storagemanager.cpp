@@ -65,7 +65,8 @@ void Storage::ResetSettings()
 bool Storage::setProfile(const uint32_t profileNum)
 {
 	// is this profile defined?
-	if (profileNum >= 1 && profileNum <= config.profileOptions.gpioMappingsSets_count + 1) {
+	const uint32_t gpioProfileCeiling = config.profileOptions.gpioMappingsSets_count + 1;
+	if (profileNum >= 1 && profileNum <= gpioProfileCeiling) {
 		// is this profile enabled?
 		// profile 1 (core) is always enabled, others we must check
 		if (profileNum == 1 || config.profileOptions.gpioMappingsSets[profileNum-2].enabled) {
@@ -74,13 +75,24 @@ bool Storage::setProfile(const uint32_t profileNum)
 			return true;
 		}
 	}
+
+#ifdef GLYPH_DISPLAY_SCREEN
+	if (profileNum >= 1 && profileNum <= GlyphProfiles::count()) {
+		this->config.gamepadOptions.profileNumber = profileNum;
+		return true;
+	}
+#endif
 	// if we get here, the requested profile doesn't exist or isn't enabled, so don't change it
 	return false;
 }
 
 void Storage::nextProfile()
 {
+#ifdef GLYPH_DISPLAY_SCREEN
+	uint32_t profileCeiling = GlyphProfiles::count();
+#else
 	uint32_t profileCeiling = config.profileOptions.gpioMappingsSets_count + 1;
+#endif
 	uint32_t requestedProfile = (this->config.gamepadOptions.profileNumber % profileCeiling) + 1;
 	while (!setProfile(requestedProfile)) {
 		// if the set failed, try again with the next in the sequence
@@ -89,7 +101,11 @@ void Storage::nextProfile()
 }
 void Storage::previousProfile()
 {
+#ifdef GLYPH_DISPLAY_SCREEN
+	uint32_t profileCeiling = GlyphProfiles::count();
+#else
 	uint32_t profileCeiling = config.profileOptions.gpioMappingsSets_count + 1;
+#endif
 	uint32_t requestedProfile = this->config.gamepadOptions.profileNumber > 1 ?
 			config.gamepadOptions.profileNumber - 1 : profileCeiling;
 	while (!setProfile(requestedProfile)) {
@@ -104,15 +120,20 @@ void Storage::previousProfile()
 char* Storage::currentProfileLabel() {
 	if (this->config.gamepadOptions.profileNumber == 1)
 		return this->config.gpioMappings.profileLabel;
-	else
+	else if (this->config.gamepadOptions.profileNumber <= static_cast<uint32_t>(this->config.profileOptions.gpioMappingsSets_count + 1))
 		return this->config.profileOptions.gpioMappingsSets[config.gamepadOptions.profileNumber-2].profileLabel;
+#ifdef GLYPH_DISPLAY_SCREEN
+	else
+		return const_cast<char*>(GlyphProfiles::name(this->config.gamepadOptions.profileNumber));
+#endif
+	return this->config.gpioMappings.profileLabel;
 }
 
 void Storage::setFunctionalPinMappings()
 {
 	GpioMappingInfo* alts = nullptr;
 	if (config.gamepadOptions.profileNumber >= 2 &&
-			config.gamepadOptions.profileNumber <= config.profileOptions.gpioMappingsSets_count + 1) {
+			config.gamepadOptions.profileNumber <= static_cast<uint32_t>(config.profileOptions.gpioMappingsSets_count + 1)) {
 		if (config.profileOptions.gpioMappingsSets[config.gamepadOptions.profileNumber-2].enabled) {
 			alts = config.profileOptions.gpioMappingsSets[config.gamepadOptions.profileNumber-2].pins;
 		}

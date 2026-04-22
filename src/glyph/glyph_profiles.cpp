@@ -2,6 +2,7 @@
 
 #include "gamepad/GamepadState.h"
 
+#include <stdio.h>
 #include <string.h>
 
 namespace
@@ -106,6 +107,7 @@ constexpr Profile kProfiles[] = {
     {5, "FGC",       Layout::Fgc,      SOCD_MODE_NEUTRAL,               5, kModernBackends},
     {6, "Smash64",   Layout::Platform, SOCD_MODE_NEUTRAL,               6, BackendN64},
 };
+constexpr uint8_t kPresetProfileCount = sizeof(kProfiles) / sizeof(kProfiles[0]);
 
 constexpr GlyphProfiles::SocdPair kPlatformSocdPairs[] = {
     {BTN_LF3, BTN_LF1, SOCD_2IP_NO_REAC},
@@ -268,17 +270,9 @@ constexpr OutputIcon kMenuButtonIcons[][7] = {
     {OutputIcon::None, OutputIcon::None, OutputIcon::None, OutputIcon::None, OutputIcon::Home, OutputIcon::XboxBack, OutputIcon::Start},
 };
 
-constexpr const char* kBackendSummaries[] = {
-    "",
-    "X/D/SW/PS/GC",
-    "X/D/SW/PS/GC",
-    "X/D/SW/PS/GC",
-    "X/D/SW/PS",
-    "X/D/SW/PS",
-    "N64",
-};
-
 constexpr uint32_t kGlyphOptionsVersion = 1;
+constexpr uint8_t kPackedSocdPairSize = 3;
+constexpr uint8_t kPackedButtonRemapSize = 2;
 
 GlyphProfiles::ProfileState mutableProfiles[GlyphProfiles::MaxProfiles] = {};
 bool mutableProfilesReady = false;
@@ -306,12 +300,21 @@ void ensureMutableProfiles()
 
     mutableProfilesReady = true;
     for (uint8_t i = 0; i < GlyphProfiles::count(); i++) {
-        mutableProfiles[i].number = kProfiles[i].number;
-        copyName(mutableProfiles[i].name, kProfiles[i].name);
-        mutableProfiles[i].layout = kProfiles[i].layout;
-        mutableProfiles[i].socdMode = kProfiles[i].socdMode;
-        mutableProfiles[i].rgbConfig = kProfiles[i].rgbConfig;
-        mutableProfiles[i].backends = kProfiles[i].backends;
+        if (i < kPresetProfileCount) {
+            mutableProfiles[i].number = kProfiles[i].number;
+            copyName(mutableProfiles[i].name, kProfiles[i].name);
+            mutableProfiles[i].layout = kProfiles[i].layout;
+            mutableProfiles[i].socdMode = kProfiles[i].socdMode;
+            mutableProfiles[i].rgbConfig = kProfiles[i].rgbConfig;
+            mutableProfiles[i].backends = kProfiles[i].backends;
+        } else {
+            mutableProfiles[i].number = i + 1;
+            snprintf(mutableProfiles[i].name, sizeof(mutableProfiles[i].name), "Profile %u", i + 1);
+            mutableProfiles[i].layout = Layout::Platform;
+            mutableProfiles[i].socdMode = SOCD_MODE_NEUTRAL;
+            mutableProfiles[i].rgbConfig = i + 1;
+            mutableProfiles[i].backends = kModernBackends;
+        }
         mutableProfiles[i].socdPairCount = 0;
         mutableProfiles[i].buttonRemapCount = 0;
     }
@@ -389,12 +392,13 @@ namespace GlyphProfiles
 {
 uint8_t count()
 {
-    return sizeof(kProfiles) / sizeof(kProfiles[0]);
+    return MaxProfiles;
 }
 
 const Profile& get(uint8_t profileNumber)
 {
-    return kProfiles[clampProfile(profileNumber) - 1];
+    const uint8_t profile = clampProfile(profileNumber);
+    return kProfiles[(profile <= kPresetProfileCount ? profile : 1) - 1];
 }
 
 const ProfileState& state(uint8_t profileNumber)
@@ -453,24 +457,28 @@ void loadFromConfig(const GlyphOptions& options)
         destination.rgbConfig = static_cast<uint8_t>(source.rgbConfig);
         destination.backends = static_cast<uint16_t>(source.backends);
 
-        if (source.socdPairs_count > 0) {
+        if (source.has_socdPairs && source.socdPairs.size >= kPackedSocdPairSize) {
             clearSocdPairs(i + 1);
-            const uint8_t pairCount = source.socdPairs_count < MaxSocdPairs ? source.socdPairs_count : MaxSocdPairs;
+            const uint8_t pairCount = (source.socdPairs.size / kPackedSocdPairSize) < MaxSocdPairs ?
+                                      (source.socdPairs.size / kPackedSocdPairSize) : MaxSocdPairs;
             for (uint8_t pair = 0; pair < pairCount; pair++) {
+                const uint8_t offset = pair * kPackedSocdPairSize;
                 addSocdPair(i + 1,
-                            static_cast<uint8_t>(source.socdPairs[pair].buttonDir1),
-                            static_cast<uint8_t>(source.socdPairs[pair].buttonDir2),
-                            static_cast<uint8_t>(source.socdPairs[pair].socdType));
+                            source.socdPairs.bytes[offset],
+                            source.socdPairs.bytes[offset + 1],
+                            source.socdPairs.bytes[offset + 2]);
             }
         }
 
-        if (source.buttonRemaps_count > 0) {
+        if (source.has_buttonRemaps && source.buttonRemaps.size >= kPackedButtonRemapSize) {
             clearButtonRemaps(i + 1);
-            const uint8_t remapCount = source.buttonRemaps_count < MaxButtonRemaps ? source.buttonRemaps_count : MaxButtonRemaps;
+            const uint8_t remapCount = (source.buttonRemaps.size / kPackedButtonRemapSize) < MaxButtonRemaps ?
+                                       (source.buttonRemaps.size / kPackedButtonRemapSize) : MaxButtonRemaps;
             for (uint8_t remap = 0; remap < remapCount; remap++) {
+                const uint8_t offset = remap * kPackedButtonRemapSize;
                 addButtonRemap(i + 1,
-                               static_cast<uint8_t>(source.buttonRemaps[remap].physicalButton),
-                               static_cast<uint8_t>(source.buttonRemaps[remap].activates));
+                               source.buttonRemaps.bytes[offset],
+                               source.buttonRemaps.bytes[offset + 1]);
             }
         }
     }
@@ -491,16 +499,28 @@ void writeToConfig(GlyphOptions& options)
         destination.socdMode = source.socdMode;
         destination.rgbConfig = source.rgbConfig;
         destination.backends = source.backends;
-        destination.socdPairs_count = source.socdPairCount;
+        destination.has_socdPairs = true;
+        destination.socdPairs.size = 0;
         for (uint8_t pair = 0; pair < source.socdPairCount; pair++) {
-            destination.socdPairs[pair].buttonDir1 = source.socdPairs[pair].buttonDir1;
-            destination.socdPairs[pair].buttonDir2 = source.socdPairs[pair].buttonDir2;
-            destination.socdPairs[pair].socdType = source.socdPairs[pair].socdType;
+            if (static_cast<size_t>(destination.socdPairs.size) + kPackedSocdPairSize > sizeof(destination.socdPairs.bytes)) {
+                break;
+            }
+            uint8_t* destinationPair = &destination.socdPairs.bytes[destination.socdPairs.size];
+            destinationPair[0] = source.socdPairs[pair].buttonDir1;
+            destinationPair[1] = source.socdPairs[pair].buttonDir2;
+            destinationPair[2] = source.socdPairs[pair].socdType;
+            destination.socdPairs.size += kPackedSocdPairSize;
         }
-        destination.buttonRemaps_count = source.buttonRemapCount;
+        destination.has_buttonRemaps = true;
+        destination.buttonRemaps.size = 0;
         for (uint8_t remap = 0; remap < source.buttonRemapCount; remap++) {
-            destination.buttonRemaps[remap].physicalButton = source.buttonRemaps[remap].physicalButton;
-            destination.buttonRemaps[remap].activates = source.buttonRemaps[remap].activates;
+            if (static_cast<size_t>(destination.buttonRemaps.size) + kPackedButtonRemapSize > sizeof(destination.buttonRemaps.bytes)) {
+                break;
+            }
+            uint8_t* destinationRemap = &destination.buttonRemaps.bytes[destination.buttonRemaps.size];
+            destinationRemap[0] = source.buttonRemaps[remap].physicalButton;
+            destinationRemap[1] = source.buttonRemaps[remap].activates;
+            destination.buttonRemaps.size += kPackedButtonRemapSize;
         }
     }
 }
@@ -642,7 +662,10 @@ const char* backendSummary(uint8_t profileNumber)
         (BackendXInput | BackendDInput | BackendSwitch | BackendPS4 | BackendPS5)) {
         return "X/D/SW/PS";
     }
-    return kBackendSummaries[clampProfile(profileNumber)];
+    if (mask == 0) {
+        return "None";
+    }
+    return "Custom";
 }
 
 const char* layoutName(Layout layout)
@@ -662,7 +685,9 @@ OutputIcon menuIcon(uint8_t profileNumber, uint8_t menuButtonIndex)
         return OutputIcon::None;
     }
 
-    return kMenuButtonIcons[clampProfile(profileNumber) - 1][menuButtonIndex];
+    const uint8_t profile = clampProfile(profileNumber);
+    const uint8_t presetIndex = (profile <= kPresetProfileCount ? profile : 1) - 1;
+    return kMenuButtonIcons[presetIndex][menuButtonIndex];
 }
 
 Action matrixAction(uint8_t profileNumber, uint8_t row, uint8_t col)

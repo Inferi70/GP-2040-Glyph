@@ -914,14 +914,14 @@ message GlyphProfileEntry
     optional SOCDMode socdMode = 3;
     optional uint32 rgbConfig = 4;
     optional uint32 backends = 5;
-    repeated GlyphSocdPair socdPairs = 6 [(nanopb).max_count = 10];
-    repeated GlyphButtonRemap buttonRemaps = 7 [(nanopb).max_count = 60];
+    optional bytes socdPairs = 6 [(nanopb).max_size = 30];
+    optional bytes buttonRemaps = 7 [(nanopb).max_size = 120];
 }
 
 message GlyphOptions
 {
     optional uint32 version = 1;
-    repeated GlyphProfileEntry profiles = 2 [(nanopb).max_count = 6];
+    repeated GlyphProfileEntry profiles = 2 [(nanopb).max_count = 20];
 }
 
 message AddonOptions

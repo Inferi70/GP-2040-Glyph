@@ -10,7 +10,7 @@ namespace GlyphProfiles
 {
 constexpr uint8_t MatrixRows = 4;
 constexpr uint8_t MatrixCols = 11;
-constexpr uint8_t MaxProfiles = 6;
+constexpr uint8_t MaxProfiles = 20;
 constexpr uint8_t ProfileNameLength = 16;
 constexpr uint8_t MaxSocdPairs = 10;
 constexpr uint8_t MaxButtonRemaps = 60;

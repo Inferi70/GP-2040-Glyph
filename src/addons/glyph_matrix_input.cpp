@@ -97,11 +97,15 @@ void GlyphMatrixInput::ensureProfiles()
 
     setProfileLabel(config.gpioMappings.profileLabel, sizeof(config.gpioMappings.profileLabel), GlyphProfiles::name(1));
 
-    if (config.profileOptions.gpioMappingsSets_count < GlyphProfiles::count() - 1) {
-        config.profileOptions.gpioMappingsSets_count = GlyphProfiles::count() - 1;
+    const uint8_t gpioProfileCount = sizeof(config.profileOptions.gpioMappingsSets) / sizeof(config.profileOptions.gpioMappingsSets[0]);
+    const uint8_t glyphMappingCount = GlyphProfiles::count() > 0 ? GlyphProfiles::count() - 1 : 0;
+    const uint8_t mappedProfileCount = glyphMappingCount < gpioProfileCount ? glyphMappingCount : gpioProfileCount;
+
+    if (config.profileOptions.gpioMappingsSets_count < mappedProfileCount) {
+        config.profileOptions.gpioMappingsSets_count = mappedProfileCount;
     }
 
-    for (uint8_t profile = 0; profile < GlyphProfiles::count() - 1; profile++) {
+    for (uint8_t profile = 0; profile < mappedProfileCount; profile++) {
         GpioMappings& mapping = config.profileOptions.gpioMappingsSets[profile];
         mapping.enabled = true;
         if (mapping.pins_count == 0) {
