@@ -121,6 +121,10 @@ void MainMenuScreen::init() {
     gpMenu->setShape(GPShape_Type::GP_SHAPE_SQUARE);
     gpMenu->setMenuData(currentMenu);
     gpMenu->setMenuTitle(MAIN_MENU_NAME);
+#ifdef GLYPH_DISPLAY_SCREEN
+    // Glyph renders its own menu surface; keep GPMenu as state only.
+    gpMenu->setVisibility(false);
+#endif
     addElement(gpMenu);
 
     mapMenuUp = new GamepadButtonMapping(GAMEPAD_MASK_UP);
