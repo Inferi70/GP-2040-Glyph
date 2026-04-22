@@ -78,6 +78,16 @@ constexpr Action dpad(uint32_t mask)
     return {Target::Dpad, mask};
 }
 
+constexpr Action leftAnalog(uint32_t mask)
+{
+    return {Target::LeftAnalog, mask};
+}
+
+constexpr Action rightAnalog(uint32_t mask)
+{
+    return {Target::RightAnalog, mask};
+}
+
 constexpr Action button(uint32_t mask)
 {
     return {Target::Button, mask};
@@ -133,6 +143,56 @@ constexpr GlyphProfiles::ButtonRemap kBrawlRemaps[] = {
     {BTN_RF9, BTN_UNSPECIFIED},
 };
 
+constexpr GlyphProfiles::ButtonRemap kSplitFgcRemaps[] = {
+    {BTN_RT1, BTN_LT1},
+    {BTN_LF5, BTN_LT2},
+    {BTN_RF9, BTN_RT1},
+    {BTN_LF8, BTN_UNSPECIFIED},
+    {BTN_LF7, BTN_UNSPECIFIED},
+    {BTN_LF6, BTN_UNSPECIFIED},
+    {BTN_LT6, BTN_UNSPECIFIED},
+    {BTN_LT2, BTN_UNSPECIFIED},
+    {BTN_RT2, BTN_UNSPECIFIED},
+    {BTN_RT3, BTN_UNSPECIFIED},
+    {BTN_RT4, BTN_UNSPECIFIED},
+    {BTN_RT5, BTN_UNSPECIFIED},
+    {BTN_MB1, BTN_UNSPECIFIED},
+};
+
+constexpr GlyphProfiles::ButtonRemap kFgcRemaps[] = {
+    {BTN_RF10, BTN_RF1},
+    {BTN_RF11, BTN_RF2},
+    {BTN_RF12, BTN_RF3},
+    {BTN_RF1, BTN_RF4},
+    {BTN_RF13, BTN_RF5},
+    {BTN_RF14, BTN_RF6},
+    {BTN_RF15, BTN_RF7},
+    {BTN_RF5, BTN_RF8},
+    {BTN_LF6, BTN_LF1},
+    {BTN_LF7, BTN_LF2},
+    {BTN_LF8, BTN_LF3},
+    {BTN_LT6, BTN_LT1},
+    {BTN_RF16, BTN_LT2},
+    {BTN_RF2, BTN_UNSPECIFIED},
+    {BTN_RF3, BTN_UNSPECIFIED},
+    {BTN_RF4, BTN_UNSPECIFIED},
+    {BTN_RF6, BTN_UNSPECIFIED},
+    {BTN_RF7, BTN_UNSPECIFIED},
+    {BTN_RF8, BTN_UNSPECIFIED},
+    {BTN_LF1, BTN_UNSPECIFIED},
+    {BTN_LF2, BTN_UNSPECIFIED},
+    {BTN_LF3, BTN_UNSPECIFIED},
+    {BTN_LF5, BTN_UNSPECIFIED},
+    {BTN_LT1, BTN_UNSPECIFIED},
+    {BTN_LT2, BTN_UNSPECIFIED},
+    {BTN_RT1, BTN_UNSPECIFIED},
+    {BTN_RT2, BTN_UNSPECIFIED},
+    {BTN_RT3, BTN_UNSPECIFIED},
+    {BTN_RT4, BTN_UNSPECIFIED},
+    {BTN_RT5, BTN_UNSPECIFIED},
+    {BTN_MB1, BTN_UNSPECIFIED},
+};
+
 constexpr Action kPlatformMatrix[GlyphProfiles::MatrixRows][GlyphProfiles::MatrixCols] = {
     {button(GAMEPAD_MASK_E1),  button(GAMEPAD_MASK_E2),  button(GAMEPAD_MASK_E3),  button(GAMEPAD_MASK_E4),  aux(AUX_MASK_FUNCTION), button(GAMEPAD_MASK_S1), button(GAMEPAD_MASK_S2), button(GAMEPAD_MASK_L2), button(GAMEPAD_MASK_E9), none(), none()},
     {dpad(GAMEPAD_MASK_LEFT),  dpad(GAMEPAD_MASK_DOWN),  button(GAMEPAD_MASK_E8),  button(GAMEPAD_MASK_E7),  button(GAMEPAD_MASK_E10), button(GAMEPAD_MASK_E11), button(GAMEPAD_MASK_E12), button(GAMEPAD_MASK_B3), button(GAMEPAD_MASK_B4), button(GAMEPAD_MASK_R1), button(GAMEPAD_MASK_L1)},
@@ -160,6 +220,44 @@ constexpr Action kSplitFgcMatrix[GlyphProfiles::MatrixRows][GlyphProfiles::Matri
     {none(),                  button(GAMEPAD_MASK_L3), dpad(GAMEPAD_MASK_RIGHT), none(),                 dpad(GAMEPAD_MASK_UP),   none(),                 none(),                 button(GAMEPAD_MASK_B3), button(GAMEPAD_MASK_B1), button(GAMEPAD_MASK_B2), button(GAMEPAD_MASK_R1)},
     {none(),                  none(),                  button(GAMEPAD_MASK_A1), none(),                  none(),                  none(),                 none(),                 none(),                 button(GAMEPAD_MASK_R3), none(),                 none()},
 };
+
+constexpr Action fgcActionForButton(uint8_t buttonId)
+{
+    switch (buttonId) {
+        case BTN_LF3: return dpad(GAMEPAD_MASK_LEFT);
+        case BTN_LF1: return dpad(GAMEPAD_MASK_RIGHT);
+        case BTN_LF2: return dpad(GAMEPAD_MASK_DOWN);
+        case BTN_LT1: return dpad(GAMEPAD_MASK_UP);
+
+        case BTN_LF8: return leftAnalog(GAMEPAD_MASK_LEFT);
+        case BTN_LF6: return leftAnalog(GAMEPAD_MASK_RIGHT);
+        case BTN_LF7: return leftAnalog(GAMEPAD_MASK_DOWN);
+        case BTN_LT6: return leftAnalog(GAMEPAD_MASK_UP);
+
+        case BTN_RT3: return rightAnalog(GAMEPAD_MASK_LEFT);
+        case BTN_RT5: return rightAnalog(GAMEPAD_MASK_RIGHT);
+        case BTN_RT2: return rightAnalog(GAMEPAD_MASK_DOWN);
+        case BTN_RT4: return rightAnalog(GAMEPAD_MASK_UP);
+
+        case BTN_RF1: return button(GAMEPAD_MASK_B1);
+        case BTN_RF2: return button(GAMEPAD_MASK_B2);
+        case BTN_RF5: return button(GAMEPAD_MASK_B3);
+        case BTN_RF6: return button(GAMEPAD_MASK_B4);
+        case BTN_RF8: return button(GAMEPAD_MASK_L1);
+        case BTN_RF7: return button(GAMEPAD_MASK_R1);
+        case BTN_RF4: return button(GAMEPAD_MASK_L2);
+        case BTN_RF3: return button(GAMEPAD_MASK_R2);
+
+        case BTN_MB6: return button(GAMEPAD_MASK_S1);
+        case BTN_MB7: return button(GAMEPAD_MASK_S2);
+        case BTN_LT2: return button(GAMEPAD_MASK_L3);
+        case BTN_RT1: return button(GAMEPAD_MASK_R3);
+        case BTN_MB5: return button(GAMEPAD_MASK_A1);
+        case BTN_MB4: return button(GAMEPAD_MASK_A2);
+
+        default: return none();
+    }
+}
 
 constexpr OutputIcon kMenuButtonIcons[][7] = {
     {OutputIcon::None, OutputIcon::None, OutputIcon::None, OutputIcon::None, OutputIcon::Home, OutputIcon::XboxBack, OutputIcon::Start},
@@ -238,6 +336,12 @@ void ensureMutableProfiles()
     for (const auto& remap : kBrawlRemaps) {
         GlyphProfiles::addButtonRemap(2, remap.physicalButton, remap.activates);
     }
+    for (const auto& remap : kSplitFgcRemaps) {
+        GlyphProfiles::addButtonRemap(4, remap.physicalButton, remap.activates);
+    }
+    for (const auto& remap : kFgcRemaps) {
+        GlyphProfiles::addButtonRemap(5, remap.physicalButton, remap.activates);
+    }
 }
 
 bool validLayout(uint32_t value)
@@ -265,6 +369,10 @@ const Action (&matrixForLayout(Layout layout))[GlyphProfiles::MatrixRows][GlyphP
 
 GlyphProfiles::Action actionForButton(Layout layout, uint8_t buttonId)
 {
+    if (layout == Layout::Fgc || layout == Layout::SplitFgc) {
+        return fgcActionForButton(buttonId);
+    }
+
     const Action (&matrix)[GlyphProfiles::MatrixRows][GlyphProfiles::MatrixCols] = matrixForLayout(layout);
     for (uint8_t row = 0; row < GlyphProfiles::MatrixRows; row++) {
         for (uint8_t col = 0; col < GlyphProfiles::MatrixCols; col++) {

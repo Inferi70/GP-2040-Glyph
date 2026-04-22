@@ -24,6 +24,8 @@ enum class Layout : uint8_t {
 enum class Target : uint8_t {
     None,
     Dpad,
+    LeftAnalog,
+    RightAnalog,
     Button,
     Aux,
 };

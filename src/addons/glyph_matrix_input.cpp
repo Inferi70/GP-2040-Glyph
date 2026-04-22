@@ -31,20 +31,27 @@ void setProfileLabel(char* dest, size_t len, const char* label)
     dest[len - 1] = '\0';
 }
 
+void applyAnalogOutput(GamepadState& state, uint8_t mask, bool rightStick)
+{
+    uint16_t& x = rightStick ? state.rx : state.lx;
+    uint16_t& y = rightStick ? state.ry : state.ly;
+
+    if (mask & GAMEPAD_MASK_LEFT) x = GAMEPAD_JOYSTICK_MIN;
+    if (mask & GAMEPAD_MASK_RIGHT) x = GAMEPAD_JOYSTICK_MAX;
+    if (mask & GAMEPAD_MASK_UP) y = GAMEPAD_JOYSTICK_MIN;
+    if (mask & GAMEPAD_MASK_DOWN) y = GAMEPAD_JOYSTICK_MAX;
+}
+
 void applyDirectionalOutput(GamepadState& state, uint8_t dpadMask, DpadMode dpadMode)
 {
+    // GP2040 stick mode only redirects the main dpad target. Dedicated LS/RS
+    // targets are handled separately and always write that stick directly.
     switch (dpadMode) {
         case DpadMode::DPAD_MODE_LEFT_ANALOG:
-            if (dpadMask & GAMEPAD_MASK_LEFT) state.lx = GAMEPAD_JOYSTICK_MIN;
-            if (dpadMask & GAMEPAD_MASK_RIGHT) state.lx = GAMEPAD_JOYSTICK_MAX;
-            if (dpadMask & GAMEPAD_MASK_UP) state.ly = GAMEPAD_JOYSTICK_MIN;
-            if (dpadMask & GAMEPAD_MASK_DOWN) state.ly = GAMEPAD_JOYSTICK_MAX;
+            applyAnalogOutput(state, dpadMask, false);
             break;
         case DpadMode::DPAD_MODE_RIGHT_ANALOG:
-            if (dpadMask & GAMEPAD_MASK_LEFT) state.rx = GAMEPAD_JOYSTICK_MIN;
-            if (dpadMask & GAMEPAD_MASK_RIGHT) state.rx = GAMEPAD_JOYSTICK_MAX;
-            if (dpadMask & GAMEPAD_MASK_UP) state.ry = GAMEPAD_JOYSTICK_MIN;
-            if (dpadMask & GAMEPAD_MASK_DOWN) state.ry = GAMEPAD_JOYSTICK_MAX;
+            applyAnalogOutput(state, dpadMask, true);
             break;
         case DpadMode::DPAD_MODE_DIGITAL:
         default:
@@ -178,6 +185,8 @@ void GlyphMatrixInput::apply(GamepadState& state)
     bool glyphPressed[61] = {};
     bool remappedPhysical[61] = {};
     uint8_t dpadOutput = 0;
+    uint8_t leftAnalogOutput = 0;
+    uint8_t rightAnalogOutput = 0;
 
     for (uint8_t row = 0; row < kRows; row++) {
         for (uint8_t col = 0; col < kCols; col++) {
@@ -258,6 +267,12 @@ void GlyphMatrixInput::apply(GamepadState& state)
             case GlyphProfiles::Target::Dpad:
                 dpadOutput |= static_cast<uint8_t>(action.mask);
                 break;
+            case GlyphProfiles::Target::LeftAnalog:
+                leftAnalogOutput |= static_cast<uint8_t>(action.mask);
+                break;
+            case GlyphProfiles::Target::RightAnalog:
+                rightAnalogOutput |= static_cast<uint8_t>(action.mask);
+                break;
             case GlyphProfiles::Target::Button:
                 state.buttons |= action.mask;
                 break;
@@ -272,6 +287,8 @@ void GlyphMatrixInput::apply(GamepadState& state)
     if (gamepad != nullptr) {
         applyDirectionalOutput(state, dpadOutput, gamepad->getOptions().dpadMode);
     }
+    applyAnalogOutput(state, leftAnalogOutput, false);
+    applyAnalogOutput(state, rightAnalogOutput, true);
 }
 
 void GlyphMatrixInput::handleMenuControls()
