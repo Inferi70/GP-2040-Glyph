@@ -219,7 +219,6 @@ void DisplayAddon::process() {
     }
 
     int8_t screenReturn = gpScreen->update();
-    gpScreen->draw();
 
     if (!configMode && screenReturn < 0) {
         Mask_t values = Storage::getInstance().GetGamepad()->debouncedGpio;
@@ -241,6 +240,8 @@ void DisplayAddon::process() {
             updateDisplayScreen();
         }
     }
+
+    gpScreen->draw();
 }
 
 const DisplayOptions& DisplayAddon::getDisplayOptions() {
@@ -263,6 +264,9 @@ void DisplayAddon::handleSystemRestart(GPEvent* e) {
 
 void DisplayAddon::handleMenuNavigation(GPEvent* e) {
     if (((GPMenuNavigateEvent*)e)->menuAction == GpioAction::MENU_NAVIGATION_BACK && currDisplayMode == BUTTONS) {
+#ifdef GLYPH_DISPLAY_SCREEN
+        GlyphInputScreen::setInputViewerMode(false);
+#endif
         nextDisplayMode = MAIN_MENU;
         return;
     }

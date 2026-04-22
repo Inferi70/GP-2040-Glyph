@@ -295,8 +295,8 @@ void GlyphInputScreen::drawScreen()
     }
 
     if (inputViewerMode) {
-        size_t dotCount = 0;
-        const ButtonDot* dots = activeDots(dotCount);
+        const ButtonDot* dots = kFullLayoutDots;
+        const size_t dotCount = sizeof(kFullLayoutDots) / sizeof(kFullLayoutDots[0]);
         for (size_t i = 0; i < dotCount; i++) {
             drawDot(dots[i], state);
         }
