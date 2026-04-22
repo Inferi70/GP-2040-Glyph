@@ -138,6 +138,12 @@ void drawGlyphBitmap(GPGFX* renderer, const unsigned char* bitmap, uint16_t widt
     renderer->drawSprite((uint8_t*)bitmap, width, height, 0, x, y, 1);
 }
 
+void drawRightAlignedText(GPGFX* renderer, uint8_t rightColumn, uint8_t row, const std::string& text)
+{
+    const uint8_t startColumn = text.length() >= rightColumn ? 0 : rightColumn - text.length() + 1;
+    renderer->drawText(startColumn, row, text);
+}
+
 void drawHintIcon(GPGFX* renderer, const unsigned char* bitmap, uint16_t x, bool pressed)
 {
     if (bitmap == nullptr) {
@@ -266,12 +272,12 @@ void GlyphInputScreen::drawScreen()
     getRenderer()->drawText(2, 3, layout);
     getRenderer()->drawText(2, 4, backend);
 
-    getRenderer()->drawText(13, 1, std::to_string(axisToSigned8(state.lx)));
-    getRenderer()->drawText(13, 2, std::to_string(axisToSigned8(state.ly)));
-    getRenderer()->drawText(14, 3, std::to_string(axisToSigned8(state.rx)));
-    getRenderer()->drawText(14, 4, std::to_string(axisToSigned8(state.ry)));
-    getRenderer()->drawText(18, 3, std::to_string(state.rt));
-    getRenderer()->drawText(18, 4, std::to_string(state.lt));
+    drawRightAlignedText(getRenderer(), 15, 1, std::to_string(axisToSigned8(state.lx)));
+    drawRightAlignedText(getRenderer(), 15, 2, std::to_string(axisToSigned8(state.ly)));
+    drawRightAlignedText(getRenderer(), 15, 3, std::to_string(axisToSigned8(state.rx)));
+    drawRightAlignedText(getRenderer(), 15, 4, std::to_string(axisToSigned8(state.ry)));
+    drawRightAlignedText(getRenderer(), 21, 3, std::to_string(state.rt));
+    drawRightAlignedText(getRenderer(), 21, 4, std::to_string(state.lt));
 
     const unsigned char* currentInput = activeInputIcon(state, mode);
     if (currentInput != nullptr) {
@@ -349,7 +355,7 @@ const GlyphInputScreen::ButtonDot* GlyphInputScreen::activeDots(size_t& count) c
             return kSplitFgcLayoutDots;
         case GlyphProfiles::Layout::Platform:
         default:
-            count = sizeof(kPlatformLayoutDots) / sizeof(kPlatformLayoutDots[0]);
-            return kPlatformLayoutDots;
+            count = sizeof(kFullLayoutDots) / sizeof(kFullLayoutDots[0]);
+            return kFullLayoutDots;
     }
 }

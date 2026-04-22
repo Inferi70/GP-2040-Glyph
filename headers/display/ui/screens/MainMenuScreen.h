@@ -55,6 +55,7 @@ class MainMenuScreen : public GPScreen {
         void testMenu() {}
         void saveAndExit();
         void exitOnly();
+        void openInputViewer();
         void rebootBootsel();
         void rebootGlyphConfig();
         int32_t modeValue();
@@ -173,16 +174,16 @@ class MainMenuScreen : public GPScreen {
         bool updateTurbo;
 
         std::vector<MenuEntry> mainMenu = {
+            {"Input Viewer", NULL, nullptr,      std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::openInputViewer, this)},
+            {"Profiles",   NULL, &profilesMenu,  std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
             {"USB Mode",   NULL, &inputModeMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
             {"USB Support",NULL, &backendSupportMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
-            {"Profiles",   NULL, &profilesMenu,  std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
             {"D-Pad Mode", NULL, &dpadModeMenu,  std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
             {"SOCD Mode",  NULL, &socdModeMenu,  std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
             /*{"Focus Mode", NULL, &focusModeMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},*/
             {"Turbo",      NULL, &turboModeMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
             {"Configurator", NULL, nullptr,       std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::rebootGlyphConfig, this)},
             {"FW Update",   NULL, nullptr,        std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::rebootBootsel, this)},
-            {"Exit",       NULL, &saveMenu,      std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
         };
 
         std::vector<MenuEntry> saveMenu = {
