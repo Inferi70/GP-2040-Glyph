@@ -169,6 +169,9 @@ void GlyphMatrixInput::applyProfileOptions()
     if (animationOptions.baseAnimationIndex != animationMode) {
         animationOptions.baseAnimationIndex = animationMode;
     }
+    if (animationOptions.ambientLightEffectsCountIndex != animationMode) {
+        animationOptions.ambientLightEffectsCountIndex = animationMode;
+    }
 }
 
 void GlyphMatrixInput::process()

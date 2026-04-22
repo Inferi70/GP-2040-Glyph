@@ -240,13 +240,38 @@ PLEDAnimationState getSwitchProAnimationNEOPICO(uint16_t ledState)
 }
 
 bool NeoPicoLEDAddon::available() {
-    const LEDOptions& ledOptions = Storage::getInstance().getLedOptions();
+    LEDOptions& ledOptions = Storage::getInstance().getLedOptions();
+#if GLYPH_MATRIX_INPUT_ENABLED == 1
+    if (!isValidPin(ledOptions.dataPin)) {
+        ledOptions.dataPin = BOARD_LEDS_PIN;
+    }
+    if (ledOptions.caseRGBType == CASE_RGB_TYPE_NONE) {
+        ledOptions.caseRGBType = CASE_RGB_TYPE_AMBIENT;
+        ledOptions.caseRGBIndex = 0;
+        ledOptions.caseRGBCount = LED_COUNT;
+    }
+#endif
     return isValidPin(ledOptions.dataPin);
 }
 
 void NeoPicoLEDAddon::setup() {
     // Set Default LED Options
-    const LEDOptions& ledOptions = Storage::getInstance().getLedOptions();
+    LEDOptions& ledOptions = Storage::getInstance().getLedOptions();
+
+#if GLYPH_MATRIX_INPUT_ENABLED == 1
+    if (!isValidPin(ledOptions.dataPin)) {
+        ledOptions.dataPin = BOARD_LEDS_PIN;
+    }
+    if (ledOptions.caseRGBType == CASE_RGB_TYPE_NONE) {
+        ledOptions.caseRGBType = CASE_RGB_TYPE_AMBIENT;
+    }
+    if (ledOptions.caseRGBIndex < 0) {
+        ledOptions.caseRGBIndex = 0;
+    }
+    if (ledOptions.caseRGBCount == 0) {
+        ledOptions.caseRGBCount = LED_COUNT;
+    }
+#endif
 
 	// Setup our aux state player ID sensors
     Gamepad * gamepad = Storage::getInstance().GetProcessedGamepad();
@@ -316,8 +341,13 @@ void NeoPicoLEDAddon::setup() {
 	chaseLightIndex = ledOptions.caseRGBIndex;
 	chaseLightMaxIndexPos = ledCount;
 
-	multipleOfButtonLedsCount = (ledOptions.caseRGBCount) / (buttonLedCount);
-	remainderOfButtonLedsCount = (ledOptions.caseRGBCount) % (buttonLedCount);
+    if (buttonLedCount > 0) {
+	    multipleOfButtonLedsCount = (ledOptions.caseRGBCount) / (buttonLedCount);
+	    remainderOfButtonLedsCount = (ledOptions.caseRGBCount) % (buttonLedCount);
+    } else {
+        multipleOfButtonLedsCount = 0;
+        remainderOfButtonLedsCount = 0;
+    }
 
     alLinkageStartIndex = ledOptions.caseRGBIndex;
 }

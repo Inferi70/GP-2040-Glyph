@@ -249,7 +249,7 @@ bool parsePackedBackends(const uint8_t* data, size_t length, uint16_t& backends)
     return true;
 }
 
-bool parseSocdPair(const uint8_t* data, size_t length, uint8_t profileNumber, SOCDMode& socdMode)
+bool parseSocdPair(const uint8_t* data, size_t length, GlyphProfiles::SocdPair& pair, SOCDMode& socdMode)
 {
     const uint8_t* cursor = data;
     const uint8_t* end = data + length;
@@ -274,14 +274,15 @@ bool parseSocdPair(const uint8_t* data, size_t length, uint8_t profileNumber, SO
             return false;
         }
     }
-    GlyphProfiles::addSocdPair(profileNumber,
-                               static_cast<uint8_t>(buttonDir1),
-                               static_cast<uint8_t>(buttonDir2),
-                               static_cast<uint8_t>(socdType));
-    return true;
+    pair = {
+        static_cast<uint8_t>(buttonDir1),
+        static_cast<uint8_t>(buttonDir2),
+        static_cast<uint8_t>(socdType),
+    };
+    return pair.buttonDir1 != 0 && pair.buttonDir2 != 0 && pair.socdType != 0;
 }
 
-bool parseButtonRemap(const uint8_t* data, size_t length, uint8_t profileNumber)
+bool parseButtonRemap(const uint8_t* data, size_t length, GlyphProfiles::ButtonRemap& remap)
 {
     const uint8_t* cursor = data;
     const uint8_t* end = data + length;
@@ -302,10 +303,11 @@ bool parseButtonRemap(const uint8_t* data, size_t length, uint8_t profileNumber)
             return false;
         }
     }
-    GlyphProfiles::addButtonRemap(profileNumber,
-                                  static_cast<uint8_t>(physicalButton),
-                                  static_cast<uint8_t>(activates));
-    return true;
+    remap = {
+        static_cast<uint8_t>(physicalButton),
+        static_cast<uint8_t>(activates),
+    };
+    return remap.physicalButton != 0;
 }
 
 bool parseGameMode(const uint8_t* data, size_t length, uint8_t profileNumber)
@@ -318,11 +320,15 @@ bool parseGameMode(const uint8_t* data, size_t length, uint8_t profileNumber)
     uint8_t rgbConfig = 0;
     uint16_t backends = 0;
     SOCDMode socdMode = GlyphProfiles::socdMode(profileNumber);
-
-    // SET_CONFIG carries decoded protobuf state. Missing repeated fields mean
-    // zero entries, so clear first instead of retaining firmware defaults.
-    GlyphProfiles::clearSocdPairs(profileNumber);
-    GlyphProfiles::clearButtonRemaps(profileNumber);
+    GlyphProfiles::SocdPair socdPairs[GlyphProfiles::MaxSocdPairs] = {};
+    GlyphProfiles::ButtonRemap buttonRemaps[GlyphProfiles::MaxButtonRemaps] = {};
+    uint8_t socdPairCount = 0;
+    uint8_t buttonRemapCount = 0;
+    bool hasMode = false;
+    bool hasLayout = false;
+    bool hasName = false;
+    bool hasRgbConfig = false;
+    bool hasBackends = false;
 
     while (cursor < end) {
         uint32_t tag = 0;
@@ -334,49 +340,78 @@ bool parseGameMode(const uint8_t* data, size_t length, uint8_t profileNumber)
 
         if (field == 1 && wireType == 0) {
             if (!readVarint(cursor, end, mode)) return false;
+            hasMode = true;
         } else if (field == 2 && wireType == 2) {
             uint32_t stringLength = 0;
             if (!readVarint(cursor, end, stringLength) || static_cast<size_t>(end - cursor) < stringLength) return false;
             decodeString(cursor, stringLength, name, sizeof(name));
             cursor += stringLength;
+            hasName = true;
         } else if (field == 3 && wireType == 2) {
             uint32_t messageLength = 0;
             if (!readVarint(cursor, end, messageLength) || static_cast<size_t>(end - cursor) < messageLength) return false;
-            parseSocdPair(cursor, messageLength, profileNumber, socdMode);
+            GlyphProfiles::SocdPair pair = {};
+            if (parseSocdPair(cursor, messageLength, pair, socdMode) && socdPairCount < GlyphProfiles::MaxSocdPairs) {
+                socdPairs[socdPairCount++] = pair;
+            }
             cursor += messageLength;
         } else if (field == 4 && wireType == 2) {
             uint32_t messageLength = 0;
             if (!readVarint(cursor, end, messageLength) || static_cast<size_t>(end - cursor) < messageLength) return false;
-            parseButtonRemap(cursor, messageLength, profileNumber);
+            GlyphProfiles::ButtonRemap remap = {};
+            if (parseButtonRemap(cursor, messageLength, remap) && buttonRemapCount < GlyphProfiles::MaxButtonRemaps) {
+                buttonRemaps[buttonRemapCount++] = remap;
+            }
             cursor += messageLength;
         } else if (field == 8 && wireType == 0) {
             uint32_t value = 0;
             if (!readVarint(cursor, end, value)) return false;
             rgbConfig = static_cast<uint8_t>(value);
+            hasRgbConfig = true;
         } else if (field == 200 && wireType == 0) {
             if (!readVarint(cursor, end, layout)) return false;
+            hasLayout = true;
         } else if (field == 201 && wireType == 0) {
             uint32_t backend = 0;
             if (!readVarint(cursor, end, backend)) return false;
             backends |= backendMaskFromHaybox(backend);
+            hasBackends = true;
         } else if (field == 201 && wireType == 2) {
             uint32_t packedLength = 0;
             if (!readVarint(cursor, end, packedLength) || static_cast<size_t>(end - cursor) < packedLength) return false;
-            parsePackedBackends(cursor, packedLength, backends);
+            if (!parsePackedBackends(cursor, packedLength, backends)) return false;
+            hasBackends = true;
             cursor += packedLength;
         } else if (!skipField(cursor, end, wireType)) {
             return false;
         }
     }
 
-    if (name[0] != '\0') {
+    if (hasName) {
         GlyphProfiles::setName(profileNumber, name);
     }
-    GlyphProfiles::setLayout(profileNumber, layoutFromHaybox(mode, layout));
+    if (hasMode || hasLayout) {
+        GlyphProfiles::setLayout(profileNumber, layoutFromHaybox(mode, layout));
+    }
     GlyphProfiles::setSOCDMode(profileNumber, socdMode);
-    GlyphProfiles::setRgbConfig(profileNumber, rgbConfig);
-    if (backends != 0) {
+    if (hasRgbConfig) {
+        GlyphProfiles::setRgbConfig(profileNumber, rgbConfig);
+    }
+    if (hasBackends) {
         GlyphProfiles::setBackends(profileNumber, backends);
+    }
+    GlyphProfiles::clearSocdPairs(profileNumber);
+    for (uint8_t index = 0; index < socdPairCount; index++) {
+        GlyphProfiles::addSocdPair(profileNumber,
+                                   socdPairs[index].buttonDir1,
+                                   socdPairs[index].buttonDir2,
+                                   socdPairs[index].socdType);
+    }
+    GlyphProfiles::clearButtonRemaps(profileNumber);
+    for (uint8_t index = 0; index < buttonRemapCount; index++) {
+        GlyphProfiles::addButtonRemap(profileNumber,
+                                      buttonRemaps[index].physicalButton,
+                                      buttonRemaps[index].activates);
     }
     return true;
 }
@@ -399,7 +434,8 @@ bool parseConfig(const uint8_t* data, size_t length)
             uint32_t messageLength = 0;
             if (!readVarint(cursor, end, messageLength) || static_cast<size_t>(end - cursor) < messageLength) return false;
             if (profileNumber <= GlyphProfiles::count()) {
-                parseGameMode(cursor, messageLength, profileNumber++);
+                if (!parseGameMode(cursor, messageLength, profileNumber)) return false;
+                profileNumber++;
             }
             cursor += messageLength;
         } else if (!skipField(cursor, end, wireType)) {
