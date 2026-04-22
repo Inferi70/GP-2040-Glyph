@@ -206,6 +206,9 @@ uint8_t glyphButtonIdFromLabel(const char* label)
 
 const unsigned char* activeInputIcon(const GamepadState& state, InputMode mode)
 {
+    if (GlyphMatrixInput::glyphModXPressed()) return Bitmap_ModX_16;
+    if (GlyphMatrixInput::glyphModYPressed()) return Bitmap_ModY_16;
+
     if (state.buttons & GAMEPAD_MASK_B1) return Bitmap_A_16;
     if (state.buttons & GAMEPAD_MASK_B2) return Bitmap_B_16;
     if (state.buttons & GAMEPAD_MASK_B3) return Bitmap_X_16;

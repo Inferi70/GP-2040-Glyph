@@ -33,6 +33,8 @@ public:
     virtual std::string name();
 
     static bool glyphButtonPressed(uint8_t buttonId);
+    static bool glyphModXPressed();
+    static bool glyphModYPressed();
 
 private:
     void ensureProfiles();

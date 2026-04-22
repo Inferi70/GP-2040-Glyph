@@ -24,6 +24,13 @@ constexpr uint8_t kMenuBackCol = 0;   // MB1
 constexpr uint8_t kMenuUpCol = 1;     // MB2
 constexpr uint8_t kMenuDownCol = 2;   // MB3
 constexpr uint8_t kMenuSelectCol = 3; // MB4
+constexpr uint8_t kGlyphButtonLT1 = 33;
+constexpr uint8_t kGlyphButtonLT2 = 34;
+constexpr uint8_t kFullAnalogMagnitude = 127;
+constexpr uint8_t kModXHorizontalMagnitude = 53;
+constexpr uint8_t kModXVerticalMagnitude = 43;
+constexpr uint8_t kModYHorizontalMagnitude = 27;
+constexpr uint8_t kModYVerticalMagnitude = 59;
 
 void setProfileLabel(char* dest, size_t len, const char* label)
 {
@@ -31,27 +38,49 @@ void setProfileLabel(char* dest, size_t len, const char* label)
     dest[len - 1] = '\0';
 }
 
-void applyAnalogOutput(GamepadState& state, uint8_t mask, bool rightStick)
+uint16_t analogValue(bool positive, uint8_t magnitude)
+{
+    if (positive) {
+        return static_cast<uint16_t>(GAMEPAD_JOYSTICK_MID +
+            (((GAMEPAD_JOYSTICK_MAX - GAMEPAD_JOYSTICK_MID) * magnitude) / kFullAnalogMagnitude));
+    }
+
+    return static_cast<uint16_t>(GAMEPAD_JOYSTICK_MID -
+        (((GAMEPAD_JOYSTICK_MID - GAMEPAD_JOYSTICK_MIN) * magnitude) / kFullAnalogMagnitude));
+}
+
+void applyAnalogOutput(GamepadState& state, uint8_t mask, bool rightStick, bool modX = false, bool modY = false)
 {
     uint16_t& x = rightStick ? state.rx : state.lx;
     uint16_t& y = rightStick ? state.ry : state.ly;
+    uint8_t xMagnitude = kFullAnalogMagnitude;
+    uint8_t yMagnitude = kFullAnalogMagnitude;
 
-    if (mask & GAMEPAD_MASK_LEFT) x = GAMEPAD_JOYSTICK_MIN;
-    if (mask & GAMEPAD_MASK_RIGHT) x = GAMEPAD_JOYSTICK_MAX;
-    if (mask & GAMEPAD_MASK_UP) y = GAMEPAD_JOYSTICK_MIN;
-    if (mask & GAMEPAD_MASK_DOWN) y = GAMEPAD_JOYSTICK_MAX;
+    if (modX) {
+        xMagnitude = kModXHorizontalMagnitude;
+        yMagnitude = kModXVerticalMagnitude;
+    }
+    if (modY) {
+        xMagnitude = kModYHorizontalMagnitude;
+        yMagnitude = kModYVerticalMagnitude;
+    }
+
+    if (mask & GAMEPAD_MASK_LEFT) x = analogValue(false, xMagnitude);
+    if (mask & GAMEPAD_MASK_RIGHT) x = analogValue(true, xMagnitude);
+    if (mask & GAMEPAD_MASK_UP) y = analogValue(false, yMagnitude);
+    if (mask & GAMEPAD_MASK_DOWN) y = analogValue(true, yMagnitude);
 }
 
-void applyDirectionalOutput(GamepadState& state, uint8_t dpadMask, DpadMode dpadMode)
+void applyDirectionalOutput(GamepadState& state, uint8_t dpadMask, DpadMode dpadMode, bool modX, bool modY)
 {
     // GP2040 stick mode only redirects the main dpad target. Dedicated LS/RS
     // targets are handled separately and always write that stick directly.
     switch (dpadMode) {
         case DpadMode::DPAD_MODE_LEFT_ANALOG:
-            applyAnalogOutput(state, dpadMask, false);
+            applyAnalogOutput(state, dpadMask, false, modX, modY);
             break;
         case DpadMode::DPAD_MODE_RIGHT_ANALOG:
-            applyAnalogOutput(state, dpadMask, true);
+            applyAnalogOutput(state, dpadMask, true, modX, modY);
             break;
         case DpadMode::DPAD_MODE_DIGITAL:
         default:
@@ -67,6 +96,8 @@ static bool menuControlHeld[4] = {};
 static uint32_t menuControlLastSent[4] = {};
 static uint32_t glyphButtonPressedAt[61] = {};
 static bool glyphButtonPressedState[61] = {};
+static bool glyphModXPressedState = false;
+static bool glyphModYPressedState = false;
 
 bool GlyphMatrixInput::available()
 {
@@ -161,6 +192,16 @@ bool GlyphMatrixInput::glyphButtonPressed(uint8_t buttonId)
     return buttonId < sizeof(glyphButtonPressedState) && glyphButtonPressedState[buttonId];
 }
 
+bool GlyphMatrixInput::glyphModXPressed()
+{
+    return glyphModXPressedState;
+}
+
+bool GlyphMatrixInput::glyphModYPressed()
+{
+    return glyphModYPressedState;
+}
+
 void GlyphMatrixInput::scan()
 {
     clearPressed();
@@ -191,6 +232,8 @@ void GlyphMatrixInput::apply(GamepadState& state)
     uint8_t dpadOutput = 0;
     uint8_t leftAnalogOutput = 0;
     uint8_t rightAnalogOutput = 0;
+    bool modXPressed = false;
+    bool modYPressed = false;
 
     for (uint8_t row = 0; row < kRows; row++) {
         for (uint8_t col = 0; col < kCols; col++) {
@@ -266,6 +309,19 @@ void GlyphMatrixInput::apply(GamepadState& state)
             continue;
         }
 
+        // FW-Glyph treats LT1/LT2 as internal analog modifiers in platform
+        // layouts; they are not emitted as controller buttons.
+        if (GlyphProfiles::layout(profile) == GlyphProfiles::Layout::Platform) {
+            if (buttonId == kGlyphButtonLT1) {
+                modXPressed = true;
+                continue;
+            }
+            if (buttonId == kGlyphButtonLT2) {
+                modYPressed = true;
+                continue;
+            }
+        }
+
         const GlyphProfiles::Action action = GlyphProfiles::buttonAction(profile, buttonId);
         switch (action.target) {
             case GlyphProfiles::Target::Dpad:
@@ -288,8 +344,11 @@ void GlyphMatrixInput::apply(GamepadState& state)
         }
     }
 
+    glyphModXPressedState = modXPressed;
+    glyphModYPressedState = modYPressed;
+
     if (gamepad != nullptr) {
-        applyDirectionalOutput(state, dpadOutput, gamepad->getOptions().dpadMode);
+        applyDirectionalOutput(state, dpadOutput, gamepad->getOptions().dpadMode, modXPressed, modYPressed);
     }
     applyAnalogOutput(state, leftAnalogOutput, false);
     applyAnalogOutput(state, rightAnalogOutput, true);
