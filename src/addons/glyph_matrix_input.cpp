@@ -30,6 +30,28 @@ void setProfileLabel(char* dest, size_t len, const char* label)
     strncpy(dest, label, len - 1);
     dest[len - 1] = '\0';
 }
+
+void applyDirectionalOutput(GamepadState& state, uint8_t dpadMask, DpadMode dpadMode)
+{
+    switch (dpadMode) {
+        case DpadMode::DPAD_MODE_LEFT_ANALOG:
+            if (dpadMask & GAMEPAD_MASK_LEFT) state.lx = GAMEPAD_JOYSTICK_MIN;
+            if (dpadMask & GAMEPAD_MASK_RIGHT) state.lx = GAMEPAD_JOYSTICK_MAX;
+            if (dpadMask & GAMEPAD_MASK_UP) state.ly = GAMEPAD_JOYSTICK_MIN;
+            if (dpadMask & GAMEPAD_MASK_DOWN) state.ly = GAMEPAD_JOYSTICK_MAX;
+            break;
+        case DpadMode::DPAD_MODE_RIGHT_ANALOG:
+            if (dpadMask & GAMEPAD_MASK_LEFT) state.rx = GAMEPAD_JOYSTICK_MIN;
+            if (dpadMask & GAMEPAD_MASK_RIGHT) state.rx = GAMEPAD_JOYSTICK_MAX;
+            if (dpadMask & GAMEPAD_MASK_UP) state.ry = GAMEPAD_JOYSTICK_MIN;
+            if (dpadMask & GAMEPAD_MASK_DOWN) state.ry = GAMEPAD_JOYSTICK_MAX;
+            break;
+        case DpadMode::DPAD_MODE_DIGITAL:
+        default:
+            state.dpad |= dpadMask;
+            break;
+    }
+}
 }
 
 static GlyphMatrixInput::DebounceState debounce[kRows][kCols] = {};
@@ -37,6 +59,7 @@ static bool pressed[kRows][kCols] = {};
 static bool menuControlHeld[4] = {};
 static uint32_t menuControlLastSent[4] = {};
 static uint32_t glyphButtonPressedAt[61] = {};
+static bool glyphButtonPressedState[61] = {};
 
 bool GlyphMatrixInput::available()
 {
@@ -86,11 +109,7 @@ void GlyphMatrixInput::preprocess()
     scan();
     handleMenuControls();
 
-    Gamepad* gamepad = Storage::getInstance().GetGamepad();
-    if (gamepad != nullptr) {
-        applyProfileOptions();
-        apply(gamepad->state);
-    }
+    applyProfileOptions();
 }
 
 void GlyphMatrixInput::applyProfileOptions()
@@ -105,6 +124,10 @@ void GlyphMatrixInput::applyProfileOptions()
 
 void GlyphMatrixInput::process()
 {
+    Gamepad* gamepad = Storage::getInstance().GetGamepad();
+    if (gamepad != nullptr) {
+        apply(gamepad->state);
+    }
 }
 
 void GlyphMatrixInput::postprocess(bool sent)
@@ -120,6 +143,11 @@ void GlyphMatrixInput::reinit()
 std::string GlyphMatrixInput::name()
 {
     return "GlyphMatrixInput";
+}
+
+bool GlyphMatrixInput::glyphButtonPressed(uint8_t buttonId)
+{
+    return buttonId < sizeof(glyphButtonPressedState) && glyphButtonPressedState[buttonId];
 }
 
 void GlyphMatrixInput::scan()
@@ -146,8 +174,10 @@ void GlyphMatrixInput::apply(GamepadState& state)
     Gamepad* gamepad = Storage::getInstance().GetGamepad();
     const uint8_t profile = gamepad != nullptr ? gamepad->getOptions().profileNumber : 1;
     bool originalGlyphPressed[61] = {};
+    bool remappedGlyphPressed[61] = {};
     bool glyphPressed[61] = {};
     bool remappedPhysical[61] = {};
+    uint8_t dpadOutput = 0;
 
     for (uint8_t row = 0; row < kRows; row++) {
         for (uint8_t col = 0; col < kCols; col++) {
@@ -169,15 +199,19 @@ void GlyphMatrixInput::apply(GamepadState& state)
             continue;
         }
         const bool shouldPress = originalGlyphPressed[remap.physicalButton] ||
-                                 (remap.activates < sizeof(glyphPressed) && glyphPressed[remap.activates]);
-        glyphPressed[remap.physicalButton] = false;
+                                 (remap.activates < sizeof(remappedGlyphPressed) && remappedGlyphPressed[remap.activates]);
         remappedPhysical[remap.physicalButton] = true;
-        if (shouldPress && remap.activates > 0 && remap.activates < sizeof(glyphPressed)) {
-            glyphPressed[remap.activates] = shouldPress;
+        if (remap.activates > 0 && remap.activates < sizeof(remappedGlyphPressed)) {
+            remappedGlyphPressed[remap.activates] = shouldPress;
             if (glyphButtonPressedAt[remap.activates] == 0) {
                 glyphButtonPressedAt[remap.activates] = glyphButtonPressedAt[remap.physicalButton];
             }
         }
+    }
+
+    for (uint8_t buttonId = 1; buttonId < sizeof(glyphPressed); buttonId++) {
+        glyphPressed[buttonId] = remappedGlyphPressed[buttonId] ||
+                                 (originalGlyphPressed[buttonId] && !remappedPhysical[buttonId]);
     }
 
     for (uint8_t pairIndex = 0; pairIndex < GlyphProfiles::socdPairCount(profile); pairIndex++) {
@@ -212,6 +246,8 @@ void GlyphMatrixInput::apply(GamepadState& state)
         }
     }
 
+    memcpy(glyphButtonPressedState, glyphPressed, sizeof(glyphButtonPressedState));
+
     for (uint8_t buttonId = 1; buttonId < sizeof(glyphPressed); buttonId++) {
         if (!glyphPressed[buttonId]) {
             continue;
@@ -220,7 +256,7 @@ void GlyphMatrixInput::apply(GamepadState& state)
         const GlyphProfiles::Action action = GlyphProfiles::buttonAction(profile, buttonId);
         switch (action.target) {
             case GlyphProfiles::Target::Dpad:
-                state.dpad |= action.mask;
+                dpadOutput |= static_cast<uint8_t>(action.mask);
                 break;
             case GlyphProfiles::Target::Button:
                 state.buttons |= action.mask;
@@ -231,6 +267,10 @@ void GlyphMatrixInput::apply(GamepadState& state)
             case GlyphProfiles::Target::None:
                 break;
         }
+    }
+
+    if (gamepad != nullptr) {
+        applyDirectionalOutput(state, dpadOutput, gamepad->getOptions().dpadMode);
     }
 }
 

@@ -32,6 +32,8 @@ public:
     virtual void reinit();
     virtual std::string name();
 
+    static bool glyphButtonPressed(uint8_t buttonId);
+
 private:
     void ensureProfiles();
     void applyProfileOptions();

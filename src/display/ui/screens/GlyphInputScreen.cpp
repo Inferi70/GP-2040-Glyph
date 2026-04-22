@@ -1,6 +1,7 @@
 #include "display/ui/screens/GlyphInputScreen.h"
 
 #include "display/GPGFX_core.h"
+#include "addons/glyph_matrix_input.h"
 #include "drivermanager.h"
 #include "gamepad.h"
 #include "glyph/assets/GlyphButtonBitmaps.h"
@@ -175,6 +176,28 @@ bool menuHintPressed(uint8_t menuButtonIndex, const GamepadState& state)
     }
 }
 
+uint8_t glyphButtonIdFromLabel(const char* label)
+{
+    if (label == nullptr || label[0] == '\0' || label[1] == '\0') {
+        return 0;
+    }
+
+    const char hand = label[0];
+    const char group = label[1];
+    uint8_t value = 0;
+    for (const char* cursor = label + 2; *cursor >= '0' && *cursor <= '9'; cursor++) {
+        value = static_cast<uint8_t>((value * 10) + (*cursor - '0'));
+    }
+
+    if (hand == 'L' && group == 'F' && value >= 1 && value <= 16) return value;
+    if (hand == 'R' && group == 'F' && value >= 1 && value <= 16) return static_cast<uint8_t>(16 + value);
+    if (hand == 'L' && group == 'T' && value >= 1 && value <= 8) return static_cast<uint8_t>(32 + value);
+    if (hand == 'R' && group == 'T' && value >= 1 && value <= 8) return static_cast<uint8_t>(40 + value);
+    if (hand == 'M' && group == 'B' && value >= 1 && value <= 12) return static_cast<uint8_t>(48 + value);
+
+    return 0;
+}
+
 const unsigned char* activeInputIcon(const GamepadState& state, InputMode mode)
 {
     if (state.buttons & GAMEPAD_MASK_B1) return Bitmap_A_16;
@@ -255,6 +278,12 @@ void GlyphInputScreen::drawScreen()
         drawGlyphBitmap(getRenderer(), currentInput, 16, 16, 109, 3);
     }
 
+    size_t dotCount = 0;
+    const ButtonDot* dots = activeDots(dotCount);
+    for (size_t i = 0; i < dotCount; i++) {
+        drawDot(dots[i], state);
+    }
+
     constexpr uint16_t kHintX[] = {4, 22, 40, 58, 76, 94, 112};
     for (uint8_t i = 1; i < 7; i++) {
         drawHintIcon(getRenderer(), menuHintIcon(GlyphProfiles::menuIcon(profileNumber, i)), kHintX[i], menuHintPressed(i, state));
@@ -269,6 +298,11 @@ void GlyphInputScreen::drawDot(const ButtonDot& dot, const GamepadState& state)
 
 bool GlyphInputScreen::dotPressed(const ButtonDot& dot, const GamepadState& state) const
 {
+    const uint8_t glyphButtonId = glyphButtonIdFromLabel(dot.label);
+    if (glyphButtonId != 0) {
+        return GlyphMatrixInput::glyphButtonPressed(glyphButtonId);
+    }
+
     return ((dot.buttonMask != 0 && (state.buttons & dot.buttonMask) != 0) ||
             (dot.dpadMask != 0 && (state.dpad & dot.dpadMask) != 0) ||
             (dot.auxMask != 0 && (state.aux & dot.auxMask) != 0));
