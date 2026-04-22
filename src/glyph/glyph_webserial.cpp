@@ -55,10 +55,18 @@ enum HayboxSocd : uint32_t {
     SOCD_DIR2_PRIORITY = 5,
 };
 
-constexpr size_t kPacketMax = 4096;
+constexpr size_t kPacketMax = 16384;
+constexpr uint8_t kMaxWebRgbConfigs = 30;
 uint8_t encodedPacket[kPacketMax] = {};
 uint8_t decodedPacket[kPacketMax] = {};
 size_t encodedLength = 0;
+
+struct WebRgbConfig {
+    uint8_t colorCount;
+    GlyphProfiles::RgbColor colors[GlyphProfiles::MaxRgbColors];
+};
+
+WebRgbConfig parsedRgbConfigs[kMaxWebRgbConfigs] = {};
 
 void writeVarint(std::vector<uint8_t>& output, uint32_t value)
 {
@@ -310,6 +318,61 @@ bool parseButtonRemap(const uint8_t* data, size_t length, GlyphProfiles::ButtonR
     return remap.physicalButton != 0;
 }
 
+bool parseButtonColor(const uint8_t* data, size_t length, GlyphProfiles::RgbColor& color)
+{
+    const uint8_t* cursor = data;
+    const uint8_t* end = data + length;
+    uint32_t button = 0;
+    uint32_t rgb = 0;
+    while (cursor < end) {
+        uint32_t tag = 0;
+        if (!readVarint(cursor, end, tag)) {
+            return false;
+        }
+        const uint32_t field = tag >> 3;
+        const uint8_t wireType = tag & 0x07;
+        if (field == 1 && wireType == 0) {
+            if (!readVarint(cursor, end, button)) return false;
+        } else if (field == 2 && wireType == 0) {
+            if (!readVarint(cursor, end, rgb)) return false;
+        } else if (!skipField(cursor, end, wireType)) {
+            return false;
+        }
+    }
+    color = {
+        static_cast<uint8_t>(button),
+        rgb & 0x00ffffff,
+    };
+    return color.button != 0;
+}
+
+bool parseRgbConfig(const uint8_t* data, size_t length, WebRgbConfig& config)
+{
+    const uint8_t* cursor = data;
+    const uint8_t* end = data + length;
+    config.colorCount = 0;
+    while (cursor < end) {
+        uint32_t tag = 0;
+        if (!readVarint(cursor, end, tag)) {
+            return false;
+        }
+        const uint32_t field = tag >> 3;
+        const uint8_t wireType = tag & 0x07;
+        if (field == 1 && wireType == 2) {
+            uint32_t messageLength = 0;
+            if (!readVarint(cursor, end, messageLength) || static_cast<size_t>(end - cursor) < messageLength) return false;
+            GlyphProfiles::RgbColor color = {};
+            if (parseButtonColor(cursor, messageLength, color) && config.colorCount < GlyphProfiles::MaxRgbColors) {
+                config.colors[config.colorCount++] = color;
+            }
+            cursor += messageLength;
+        } else if (!skipField(cursor, end, wireType)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool parseGameMode(const uint8_t* data, size_t length, uint8_t profileNumber)
 {
     const uint8_t* cursor = data;
@@ -421,6 +484,8 @@ bool parseConfig(const uint8_t* data, size_t length)
     const uint8_t* cursor = data;
     const uint8_t* end = data + length;
     uint8_t profileNumber = 1;
+    uint8_t rgbConfigCount = 0;
+    memset(parsedRgbConfigs, 0, sizeof(parsedRgbConfigs));
 
     while (cursor < end) {
         uint32_t tag = 0;
@@ -438,8 +503,29 @@ bool parseConfig(const uint8_t* data, size_t length)
                 profileNumber++;
             }
             cursor += messageLength;
+        } else if (field == 5 && wireType == 2) {
+            uint32_t messageLength = 0;
+            if (!readVarint(cursor, end, messageLength) || static_cast<size_t>(end - cursor) < messageLength) return false;
+            if (rgbConfigCount < kMaxWebRgbConfigs) {
+                if (!parseRgbConfig(cursor, messageLength, parsedRgbConfigs[rgbConfigCount])) return false;
+                rgbConfigCount++;
+            }
+            cursor += messageLength;
         } else if (!skipField(cursor, end, wireType)) {
             return false;
+        }
+    }
+    if (rgbConfigCount > 0) {
+        for (uint8_t profile = 1; profile <= GlyphProfiles::count(); profile++) {
+            const uint8_t rgbConfig = GlyphProfiles::rgbConfig(profile);
+            if (rgbConfig == 0 || rgbConfig > rgbConfigCount) {
+                continue;
+            }
+            const WebRgbConfig& source = parsedRgbConfigs[rgbConfig - 1];
+            GlyphProfiles::clearRgbColors(profile);
+            for (uint8_t color = 0; color < source.colorCount; color++) {
+                GlyphProfiles::addRgbColor(profile, source.colors[color].button, source.colors[color].color);
+            }
         }
     }
     return true;
@@ -469,6 +555,25 @@ std::vector<uint8_t> encodeButtonRemap(const GlyphProfiles::ButtonRemap& source)
     writeUInt(remap, 1, source.physicalButton);
     writeUInt(remap, 2, source.activates);
     return remap;
+}
+
+std::vector<uint8_t> encodeButtonColor(const GlyphProfiles::RgbColor& source)
+{
+    std::vector<uint8_t> color;
+    writeUInt(color, 1, source.button);
+    writeUInt(color, 2, source.color);
+    return color;
+}
+
+std::vector<uint8_t> encodeRgbConfig(uint8_t profileNumber)
+{
+    std::vector<uint8_t> config;
+    const GlyphProfiles::ProfileState& profile = GlyphProfiles::state(profileNumber);
+    for (uint8_t colorIndex = 0; colorIndex < profile.rgbColorCount; colorIndex++) {
+        writeMessage(config, 1, encodeButtonColor(profile.rgbColors[colorIndex]));
+    }
+    writeUInt(config, 3, 1);
+    return config;
 }
 
 std::vector<uint8_t> encodeGameMode(uint8_t profileNumber)
@@ -508,6 +613,9 @@ std::vector<uint8_t> encodeConfig()
     std::vector<uint8_t> config;
     for (uint8_t profileNumber = 1; profileNumber <= GlyphProfiles::count(); profileNumber++) {
         writeMessage(config, 1, encodeGameMode(profileNumber));
+    }
+    for (uint8_t profileNumber = 1; profileNumber <= GlyphProfiles::count(); profileNumber++) {
+        writeMessage(config, 5, encodeRgbConfig(profileNumber));
     }
     writeUInt(config, 6, 1);
     writeUInt(config, 7, 1);

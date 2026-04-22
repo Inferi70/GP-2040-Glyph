@@ -68,6 +68,7 @@ constexpr uint8_t BTN_MB7 = 55;
 constexpr uint8_t SOCD_NEUTRAL = 1;
 constexpr uint8_t SOCD_2IP = 2;
 constexpr uint8_t SOCD_2IP_NO_REAC = 3;
+constexpr uint32_t GLYPH_DEFAULT_RGB_COLOR = 2282478;
 
 constexpr Action none()
 {
@@ -273,6 +274,7 @@ constexpr OutputIcon kMenuButtonIcons[][7] = {
 constexpr uint32_t kGlyphOptionsVersion = 1;
 constexpr uint8_t kPackedSocdPairSize = 3;
 constexpr uint8_t kPackedButtonRemapSize = 2;
+constexpr uint8_t kPackedRgbColorSize = 4;
 
 GlyphProfiles::ProfileState mutableProfiles[GlyphProfiles::MaxProfiles] = {};
 bool mutableProfilesReady = false;
@@ -317,6 +319,7 @@ void ensureMutableProfiles()
         }
         mutableProfiles[i].socdPairCount = 0;
         mutableProfiles[i].buttonRemapCount = 0;
+        mutableProfiles[i].rgbColorCount = 0;
     }
 
     for (const auto& pair : kPlatformSocdPairs) {
@@ -344,6 +347,82 @@ void ensureMutableProfiles()
     }
     for (const auto& remap : kFgcRemaps) {
         GlyphProfiles::addButtonRemap(5, remap.physicalButton, remap.activates);
+    }
+
+    for (uint8_t profile = 1; profile <= GlyphProfiles::count(); profile++) {
+        const uint8_t rgbConfig = mutableProfiles[profile - 1].rgbConfig;
+        switch (rgbConfig) {
+            case 1:
+            case 2:
+            case 3:
+            case 7:
+            case 8:
+                GlyphProfiles::addRgbColor(profile, BTN_LF1, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_LF2, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_LF3, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_LF4, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_LT1, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_LT2, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF1, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF2, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF3, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF4, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF5, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF6, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF7, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF8, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RT1, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RT2, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RT3, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RT4, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RT5, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_MB1, GLYPH_DEFAULT_RGB_COLOR);
+                break;
+            case 4:
+                GlyphProfiles::addRgbColor(profile, BTN_LF1, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_LF2, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_LF3, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_LF5, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_LT1, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF1, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF2, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF3, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF4, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF5, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF6, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF7, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF8, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF9, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RT1, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_MB1, GLYPH_DEFAULT_RGB_COLOR);
+                break;
+            case 5:
+                GlyphProfiles::addRgbColor(profile, BTN_LF8, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_LF7, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_LF6, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_LT6, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF10, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF11, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF12, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF1, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF13, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF14, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF15, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF5, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_RF16, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_MB1, GLYPH_DEFAULT_RGB_COLOR);
+                break;
+            case 13:
+                for (uint8_t button = BTN_LF1; button <= BTN_LF8; button++) GlyphProfiles::addRgbColor(profile, button, GLYPH_DEFAULT_RGB_COLOR);
+                for (uint8_t button = BTN_RF1; button <= BTN_RF16; button++) GlyphProfiles::addRgbColor(profile, button, GLYPH_DEFAULT_RGB_COLOR);
+                for (uint8_t button = BTN_LT1; button <= BTN_LT6; button++) GlyphProfiles::addRgbColor(profile, button, GLYPH_DEFAULT_RGB_COLOR);
+                for (uint8_t button = BTN_RT1; button <= BTN_RT5; button++) GlyphProfiles::addRgbColor(profile, button, GLYPH_DEFAULT_RGB_COLOR);
+                GlyphProfiles::addRgbColor(profile, BTN_MB1, GLYPH_DEFAULT_RGB_COLOR);
+                break;
+            default:
+                GlyphProfiles::addRgbColor(profile, BTN_MB1, GLYPH_DEFAULT_RGB_COLOR);
+                break;
+        }
     }
 }
 
@@ -481,6 +560,20 @@ void loadFromConfig(const GlyphOptions& options)
                                source.buttonRemaps.bytes[offset + 1]);
             }
         }
+
+        if (source.has_rgbColors && source.rgbColors.size >= kPackedRgbColorSize) {
+            clearRgbColors(i + 1);
+            const uint8_t colorCount = (source.rgbColors.size / kPackedRgbColorSize) < MaxRgbColors ?
+                                       (source.rgbColors.size / kPackedRgbColorSize) : MaxRgbColors;
+            for (uint8_t color = 0; color < colorCount; color++) {
+                const uint8_t offset = color * kPackedRgbColorSize;
+                const uint32_t rgb =
+                    (static_cast<uint32_t>(source.rgbColors.bytes[offset + 1]) << 16) |
+                    (static_cast<uint32_t>(source.rgbColors.bytes[offset + 2]) << 8) |
+                    static_cast<uint32_t>(source.rgbColors.bytes[offset + 3]);
+                addRgbColor(i + 1, source.rgbColors.bytes[offset], rgb);
+            }
+        }
     }
 }
 
@@ -521,6 +614,19 @@ void writeToConfig(GlyphOptions& options)
             destinationRemap[0] = source.buttonRemaps[remap].physicalButton;
             destinationRemap[1] = source.buttonRemaps[remap].activates;
             destination.buttonRemaps.size += kPackedButtonRemapSize;
+        }
+        destination.has_rgbColors = true;
+        destination.rgbColors.size = 0;
+        for (uint8_t color = 0; color < source.rgbColorCount; color++) {
+            if (static_cast<size_t>(destination.rgbColors.size) + kPackedRgbColorSize > sizeof(destination.rgbColors.bytes)) {
+                break;
+            }
+            uint8_t* destinationColor = &destination.rgbColors.bytes[destination.rgbColors.size];
+            destinationColor[0] = source.rgbColors[color].button;
+            destinationColor[1] = static_cast<uint8_t>((source.rgbColors[color].color >> 16) & 0xff);
+            destinationColor[2] = static_cast<uint8_t>((source.rgbColors[color].color >> 8) & 0xff);
+            destinationColor[3] = static_cast<uint8_t>(source.rgbColors[color].color & 0xff);
+            destination.rgbColors.size += kPackedRgbColorSize;
         }
     }
 }
@@ -579,6 +685,31 @@ const ButtonRemap& buttonRemap(uint8_t profileNumber, uint8_t index)
     return profile.buttonRemaps[safeIndex];
 }
 
+uint8_t rgbColorCount(uint8_t profileNumber)
+{
+    return state(profileNumber).rgbColorCount;
+}
+
+const RgbColor& rgbColor(uint8_t profileNumber, uint8_t index)
+{
+    const ProfileState& profile = state(profileNumber);
+    const uint8_t safeIndex = index < profile.rgbColorCount ? index : 0;
+    return profile.rgbColors[safeIndex];
+}
+
+bool rgbColorForButton(uint8_t profileNumber, uint8_t button, uint32_t& color)
+{
+    const ProfileState& profile = state(profileNumber);
+    for (uint8_t index = 0; index < profile.rgbColorCount; index++) {
+        if (profile.rgbColors[index].button == button) {
+            color = profile.rgbColors[index].color;
+            return true;
+        }
+    }
+    color = 0;
+    return false;
+}
+
 void clearSocdPairs(uint8_t profileNumber)
 {
     ensureMutableProfiles();
@@ -609,6 +740,28 @@ void addButtonRemap(uint8_t profileNumber, uint8_t physicalButton, uint8_t activ
         return;
     }
     profile.buttonRemaps[profile.buttonRemapCount++] = {physicalButton, activates};
+}
+
+void clearRgbColors(uint8_t profileNumber)
+{
+    ensureMutableProfiles();
+    mutableProfiles[clampProfile(profileNumber) - 1].rgbColorCount = 0;
+}
+
+void addRgbColor(uint8_t profileNumber, uint8_t button, uint32_t color)
+{
+    ensureMutableProfiles();
+    ProfileState& profile = mutableProfiles[clampProfile(profileNumber) - 1];
+    if (profile.rgbColorCount >= MaxRgbColors || button == 0) {
+        return;
+    }
+    for (uint8_t index = 0; index < profile.rgbColorCount; index++) {
+        if (profile.rgbColors[index].button == button) {
+            profile.rgbColors[index].color = color & 0x00ffffff;
+            return;
+        }
+    }
+    profile.rgbColors[profile.rgbColorCount++] = {button, color & 0x00ffffff};
 }
 
 bool backendEnabled(uint8_t profileNumber, uint16_t backendMask)

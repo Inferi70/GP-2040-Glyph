@@ -14,6 +14,7 @@ constexpr uint8_t MaxProfiles = 20;
 constexpr uint8_t ProfileNameLength = 16;
 constexpr uint8_t MaxSocdPairs = 10;
 constexpr uint8_t MaxButtonRemaps = 60;
+constexpr uint8_t MaxRgbColors = 60;
 
 enum class Layout : uint8_t {
     Platform,
@@ -72,6 +73,11 @@ struct ButtonRemap {
     uint8_t activates;
 };
 
+struct RgbColor {
+    uint8_t button;
+    uint32_t color;
+};
+
 struct ProfileState {
     uint8_t number;
     char name[ProfileNameLength + 1];
@@ -83,6 +89,8 @@ struct ProfileState {
     SocdPair socdPairs[MaxSocdPairs];
     uint8_t buttonRemapCount;
     ButtonRemap buttonRemaps[MaxButtonRemaps];
+    uint8_t rgbColorCount;
+    RgbColor rgbColors[MaxRgbColors];
 };
 
 uint8_t count();
@@ -97,6 +105,9 @@ uint8_t socdPairCount(uint8_t profileNumber);
 const SocdPair& socdPair(uint8_t profileNumber, uint8_t index);
 uint8_t buttonRemapCount(uint8_t profileNumber);
 const ButtonRemap& buttonRemap(uint8_t profileNumber, uint8_t index);
+uint8_t rgbColorCount(uint8_t profileNumber);
+const RgbColor& rgbColor(uint8_t profileNumber, uint8_t index);
+bool rgbColorForButton(uint8_t profileNumber, uint8_t button, uint32_t& color);
 void resetToDefaults();
 void loadFromConfig(const GlyphOptions& options);
 void writeToConfig(GlyphOptions& options);
@@ -109,6 +120,8 @@ void clearSocdPairs(uint8_t profileNumber);
 void addSocdPair(uint8_t profileNumber, uint8_t buttonDir1, uint8_t buttonDir2, uint8_t socdType);
 void clearButtonRemaps(uint8_t profileNumber);
 void addButtonRemap(uint8_t profileNumber, uint8_t physicalButton, uint8_t activates);
+void clearRgbColors(uint8_t profileNumber);
+void addRgbColor(uint8_t profileNumber, uint8_t button, uint32_t color);
 bool backendEnabled(uint8_t profileNumber, uint16_t backendMask);
 void setBackendEnabled(uint8_t profileNumber, uint16_t backendMask, bool enabled);
 bool allowsInputMode(uint8_t profileNumber, InputMode mode);

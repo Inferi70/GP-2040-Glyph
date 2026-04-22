@@ -907,6 +907,12 @@ message GlyphButtonRemap
     optional uint32 activates = 2;
 }
 
+message GlyphRgbColor
+{
+    optional uint32 button = 1;
+    optional uint32 color = 2;
+}
+
 message GlyphProfileEntry
 {
     optional string name = 1 [(nanopb).max_length = 16];
@@ -916,6 +922,7 @@ message GlyphProfileEntry
     optional uint32 backends = 5;
     optional bytes socdPairs = 6 [(nanopb).max_size = 30];
     optional bytes buttonRemaps = 7 [(nanopb).max_size = 120];
+    optional bytes rgbColors = 8 [(nanopb).max_size = 240];
 }
 
 message GlyphOptions

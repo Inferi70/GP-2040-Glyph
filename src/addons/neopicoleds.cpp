@@ -25,8 +25,6 @@
 #define CHASE_LIGHTS_TURN_ON 4
 
 namespace {
-constexpr uint32_t GLYPH_PROFILE_RGB_COLOR = 2282478;
-
 constexpr uint8_t BTN_LF1 = 1;
 constexpr uint8_t BTN_LF2 = 2;
 constexpr uint8_t BTN_LF3 = 3;
@@ -63,31 +61,6 @@ constexpr uint8_t BTN_RT3 = 43;
 constexpr uint8_t BTN_RT4 = 44;
 constexpr uint8_t BTN_RT5 = 45;
 constexpr uint8_t BTN_MB1 = 49;
-
-constexpr uint64_t glyphButton(uint8_t button)
-{
-	return 1ULL << button;
-}
-
-constexpr uint64_t GLYPH_RGB_BASE_20 =
-	glyphButton(BTN_LF1) | glyphButton(BTN_LF2) | glyphButton(BTN_LF3) | glyphButton(BTN_LF4) |
-	glyphButton(BTN_LT1) | glyphButton(BTN_LT2) |
-	glyphButton(BTN_RF1) | glyphButton(BTN_RF2) | glyphButton(BTN_RF3) | glyphButton(BTN_RF4) |
-	glyphButton(BTN_RF5) | glyphButton(BTN_RF6) | glyphButton(BTN_RF7) | glyphButton(BTN_RF8) |
-	glyphButton(BTN_RT1) | glyphButton(BTN_RT2) | glyphButton(BTN_RT3) | glyphButton(BTN_RT4) |
-	glyphButton(BTN_RT5) | glyphButton(BTN_MB1);
-
-constexpr uint64_t GLYPH_RGB_ALL_36 =
-	glyphButton(BTN_LF1) | glyphButton(BTN_LF2) | glyphButton(BTN_LF3) | glyphButton(BTN_LF4) |
-	glyphButton(BTN_LF5) | glyphButton(BTN_LF6) | glyphButton(BTN_LF7) | glyphButton(BTN_LF8) |
-	glyphButton(BTN_LT1) | glyphButton(BTN_LT2) | glyphButton(BTN_LT3) | glyphButton(BTN_LT4) |
-	glyphButton(BTN_LT5) | glyphButton(BTN_LT6) |
-	glyphButton(BTN_RF1) | glyphButton(BTN_RF2) | glyphButton(BTN_RF3) | glyphButton(BTN_RF4) |
-	glyphButton(BTN_RF5) | glyphButton(BTN_RF6) | glyphButton(BTN_RF7) | glyphButton(BTN_RF8) |
-	glyphButton(BTN_RF9) | glyphButton(BTN_RF10) | glyphButton(BTN_RF11) | glyphButton(BTN_RF12) |
-	glyphButton(BTN_RF13) | glyphButton(BTN_RF14) | glyphButton(BTN_RF15) | glyphButton(BTN_RF16) |
-	glyphButton(BTN_RT1) | glyphButton(BTN_RT2) | glyphButton(BTN_RT3) | glyphButton(BTN_RT4) |
-	glyphButton(BTN_RT5) | glyphButton(BTN_MB1);
 
 constexpr uint8_t glyphPixelButtons[76] = {
 	BTN_MB1, BTN_MB1,
@@ -129,59 +102,6 @@ constexpr uint8_t glyphPixelButtons[76] = {
 	BTN_LT1, BTN_LT1,
 	BTN_LT2, BTN_LT2,
 };
-
-uint64_t glyphRgbMask(uint8_t rgbConfig)
-{
-	switch (rgbConfig) {
-		case 1:
-		case 2:
-		case 3:
-		case 7:
-		case 8:
-			return GLYPH_RGB_BASE_20;
-		case 4:
-			return glyphButton(BTN_LF1) | glyphButton(BTN_LF2) | glyphButton(BTN_LF3) | glyphButton(BTN_LF5) |
-				glyphButton(BTN_LT1) |
-				glyphButton(BTN_RF1) | glyphButton(BTN_RF2) | glyphButton(BTN_RF3) | glyphButton(BTN_RF4) |
-				glyphButton(BTN_RF5) | glyphButton(BTN_RF6) | glyphButton(BTN_RF7) | glyphButton(BTN_RF8) |
-				glyphButton(BTN_RF9) | glyphButton(BTN_RT1) | glyphButton(BTN_MB1);
-		case 5:
-			return glyphButton(BTN_LF6) | glyphButton(BTN_LF7) | glyphButton(BTN_LF8) | glyphButton(BTN_LT6) |
-				glyphButton(BTN_RF1) | glyphButton(BTN_RF5) | glyphButton(BTN_RF10) | glyphButton(BTN_RF11) |
-				glyphButton(BTN_RF12) | glyphButton(BTN_RF13) | glyphButton(BTN_RF14) | glyphButton(BTN_RF15) |
-				glyphButton(BTN_RF16) | glyphButton(BTN_MB1);
-		case 6:
-			return glyphButton(BTN_LF1) | glyphButton(BTN_LF2) | glyphButton(BTN_LF3) | glyphButton(BTN_LF4) |
-				glyphButton(BTN_LT1) | glyphButton(BTN_LT2) |
-				glyphButton(BTN_RF1) | glyphButton(BTN_RF2) | glyphButton(BTN_RF3) | glyphButton(BTN_RF4) |
-				glyphButton(BTN_RF5) | glyphButton(BTN_RF6) | glyphButton(BTN_RF7) | glyphButton(BTN_RF8) |
-				glyphButton(BTN_RT1) | glyphButton(BTN_MB1);
-		case 9:
-			return (GLYPH_RGB_BASE_20 & ~glyphButton(BTN_RF4)) |
-				glyphButton(BTN_LF5) | glyphButton(BTN_LF6) |
-				glyphButton(BTN_RF10) | glyphButton(BTN_RF11) | glyphButton(BTN_RF13);
-		case 10:
-			return glyphButton(BTN_LF1) | glyphButton(BTN_LF2) | glyphButton(BTN_LF3) | glyphButton(BTN_LF4) |
-				glyphButton(BTN_LF5) | glyphButton(BTN_LF6) |
-				glyphButton(BTN_LT1) | glyphButton(BTN_LT2) |
-				glyphButton(BTN_RF1) | glyphButton(BTN_RF2) | glyphButton(BTN_RF3) |
-				glyphButton(BTN_RF10) | glyphButton(BTN_RF11) | glyphButton(BTN_RF13) |
-				glyphButton(BTN_RT1) | glyphButton(BTN_RT2) | glyphButton(BTN_RT3) | glyphButton(BTN_RT4) |
-				glyphButton(BTN_RT5) | glyphButton(BTN_MB1);
-		case 11:
-			return glyphButton(BTN_LF1) | glyphButton(BTN_LF2) | glyphButton(BTN_LF3) | glyphButton(BTN_LF5) |
-				glyphButton(BTN_LT1) |
-				glyphButton(BTN_RF1) | glyphButton(BTN_RF2) | glyphButton(BTN_RF5) | glyphButton(BTN_RF6) |
-				glyphButton(BTN_RT1) | glyphButton(BTN_MB1);
-		case 12:
-			return glyphButton(BTN_LF1) | glyphButton(BTN_LF2) | glyphButton(BTN_LF3) | glyphButton(BTN_LF5) |
-				glyphButton(BTN_RF1) | glyphButton(BTN_RF2) | glyphButton(BTN_MB1);
-		case 13:
-			return GLYPH_RGB_ALL_36;
-		default:
-			return GLYPH_RGB_BASE_20;
-	}
-}
 
 float clampedBrightness(float brightness)
 {
@@ -543,11 +463,12 @@ void NeoPicoLEDAddon::ambientLightCustom() {
 	if (ledOptions.dataPin == 11 && ledOptions.caseRGBCount == 76) {
 		const GamepadOptions& gamepadOptions = Storage::getInstance().getGamepadOptions();
 		const uint8_t profileNumber = gamepadOptions.profileNumber >= 1 ? gamepadOptions.profileNumber : 1;
-		const uint64_t activeButtons = glyphRgbMask(GlyphProfiles::rgbConfig(profileNumber));
-		const uint32_t activeColor = RGB(GLYPH_PROFILE_RGB_COLOR).value(Animation::format, globalBrightness);
 		const int glyphFrameCount = maxFrame < 76 ? maxFrame : 76;
 		for (int i = 0; i < glyphFrameCount; i++) {
-			frame[alStartIndex + i] = (activeButtons & glyphButton(glyphPixelButtons[i])) ? activeColor : 0x0;
+			uint32_t color = 0;
+			frame[alStartIndex + i] = GlyphProfiles::rgbColorForButton(profileNumber, glyphPixelButtons[i], color)
+				? RGB(color).value(Animation::format, globalBrightness)
+				: 0x0;
 		}
 		return;
 	}
