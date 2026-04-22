@@ -138,6 +138,13 @@ void drawGlyphBitmap(GPGFX* renderer, const unsigned char* bitmap, uint16_t widt
     renderer->drawSprite((uint8_t*)bitmap, width, height, 0, x, y, 1);
 }
 
+void drawInputViewerBase(GPGFX* renderer)
+{
+    renderer->drawRectangle(0, 0, 128, 64, 0, true);
+    renderer->drawText(2, 0, "Input Viewer");
+    renderer->drawLine(0, 9, 127, 9, 1, true);
+}
+
 void drawRightAlignedText(GPGFX* renderer, uint8_t rightColumn, uint8_t row, const std::string& text)
 {
     const uint8_t startColumn = text.length() >= rightColumn ? 0 : rightColumn - text.length() + 1;
@@ -148,10 +155,6 @@ void drawHintIcon(GPGFX* renderer, const unsigned char* bitmap, uint16_t x, bool
 {
     if (bitmap == nullptr) {
         return;
-    }
-
-    if (pressed) {
-        renderer->drawRectangle(x - 1, 47, 14, 14, 1, false);
     }
 
     drawGlyphBitmap(renderer, bitmap, 12, 12, x, 48);
@@ -275,7 +278,20 @@ void GlyphInputScreen::drawScreen()
     const std::string layout = truncateText(GlyphProfiles::layoutName(GlyphProfiles::layout(profileNumber)), 10);
     const std::string backend = truncateText(inputModeName(mode), 10);
 
-    drawGlyphBitmap(getRenderer(), Bitmap_Dashboard_Base_V3, 128, 64, 0, 0);
+    if (inputViewerMode) {
+        drawInputViewerBase(getRenderer());
+    } else {
+        drawGlyphBitmap(getRenderer(), Bitmap_Dashboard_Base_V3, 128, 64, 0, 0);
+    }
+
+    if (inputViewerMode) {
+        const ButtonDot* dots = kFullLayoutDots;
+        const size_t dotCount = sizeof(kFullLayoutDots) / sizeof(kFullLayoutDots[0]);
+        for (size_t i = 0; i < dotCount; i++) {
+            drawDot(dots[i], state);
+        }
+        return;
+    }
 
     getRenderer()->drawText(2, 1, "Glyph");
     getRenderer()->drawText(2, 2, profile);
@@ -294,14 +310,6 @@ void GlyphInputScreen::drawScreen()
         drawGlyphBitmap(getRenderer(), currentInput, 16, 16, 109, 3);
     }
 
-    if (inputViewerMode) {
-        const ButtonDot* dots = kFullLayoutDots;
-        const size_t dotCount = sizeof(kFullLayoutDots) / sizeof(kFullLayoutDots[0]);
-        for (size_t i = 0; i < dotCount; i++) {
-            drawDot(dots[i], state);
-        }
-    }
-
     constexpr uint16_t kHintX[] = {4, 22, 40, 58, 76, 94, 112};
     for (uint8_t i = 1; i < 7; i++) {
         drawHintIcon(getRenderer(), menuHintIcon(GlyphProfiles::menuIcon(profileNumber, i)), kHintX[i], menuHintPressed(i, state));
@@ -318,7 +326,8 @@ bool GlyphInputScreen::dotPressed(const ButtonDot& dot, const GamepadState& stat
 {
     const uint8_t glyphButtonId = glyphButtonIdFromLabel(dot.label);
     if (glyphButtonId != 0) {
-        return GlyphMatrixInput::glyphButtonPressed(glyphButtonId);
+        return inputViewerMode ? GlyphMatrixInput::glyphPhysicalButtonPressed(glyphButtonId)
+                               : GlyphMatrixInput::glyphButtonPressed(glyphButtonId);
     }
 
     return ((dot.buttonMask != 0 && (state.buttons & dot.buttonMask) != 0) ||

@@ -96,6 +96,7 @@ static bool menuControlHeld[4] = {};
 static uint32_t menuControlLastSent[4] = {};
 static uint32_t glyphButtonPressedAt[61] = {};
 static bool glyphButtonPressedState[61] = {};
+static bool glyphPhysicalButtonPressedState[61] = {};
 static bool glyphModXPressedState = false;
 static bool glyphModYPressedState = false;
 
@@ -190,6 +191,11 @@ std::string GlyphMatrixInput::name()
 bool GlyphMatrixInput::glyphButtonPressed(uint8_t buttonId)
 {
     return buttonId < sizeof(glyphButtonPressedState) && glyphButtonPressedState[buttonId];
+}
+
+bool GlyphMatrixInput::glyphPhysicalButtonPressed(uint8_t buttonId)
+{
+    return buttonId < sizeof(glyphPhysicalButtonPressedState) && glyphPhysicalButtonPressedState[buttonId];
 }
 
 bool GlyphMatrixInput::glyphModXPressed()
@@ -303,6 +309,7 @@ void GlyphMatrixInput::apply(GamepadState& state)
     }
 
     memcpy(glyphButtonPressedState, glyphPressed, sizeof(glyphButtonPressedState));
+    memcpy(glyphPhysicalButtonPressedState, originalGlyphPressed, sizeof(glyphPhysicalButtonPressedState));
 
     for (uint8_t buttonId = 1; buttonId < sizeof(glyphPressed); buttonId++) {
         if (!glyphPressed[buttonId]) {
