@@ -158,19 +158,9 @@ void GlyphMatrixInput::applyProfileOptions()
 {
     Storage& storage = Storage::getInstance();
     GamepadOptions& options = storage.getGamepadOptions();
-    AnimationOptions& animationOptions = storage.getAnimationOptions();
 
     if (options.socdMode != SOCD_MODE_BYPASS) {
         options.socdMode = SOCD_MODE_BYPASS;
-    }
-
-    const uint8_t profile = options.profileNumber >= 1 ? options.profileNumber : 1;
-    const uint8_t animationMode = GlyphProfiles::rgbConfig(profile) % 5;
-    if (animationOptions.baseAnimationIndex != animationMode) {
-        animationOptions.baseAnimationIndex = animationMode;
-    }
-    if (animationOptions.ambientLightEffectsCountIndex != animationMode) {
-        animationOptions.ambientLightEffectsCountIndex = animationMode;
     }
 }
 

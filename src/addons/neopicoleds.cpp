@@ -12,6 +12,7 @@
 #include "gp2040.h"
 #include "addons/neopicoleds.h"
 #include "addons/pleds.h"
+#include "glyph/glyph_profiles.h"
 #include "usbdriver.h"
 #include "enums.h"
 #include "helper.h"
@@ -22,6 +23,177 @@
 #define AL_STATIC_COLOR_COUNT	14
 #define AL_EFFECT_MODE_MAX 5
 #define CHASE_LIGHTS_TURN_ON 4
+
+namespace {
+constexpr uint32_t GLYPH_PROFILE_RGB_COLOR = 2282478;
+
+constexpr uint8_t BTN_LF1 = 1;
+constexpr uint8_t BTN_LF2 = 2;
+constexpr uint8_t BTN_LF3 = 3;
+constexpr uint8_t BTN_LF4 = 4;
+constexpr uint8_t BTN_LF5 = 5;
+constexpr uint8_t BTN_LF6 = 6;
+constexpr uint8_t BTN_LF7 = 7;
+constexpr uint8_t BTN_LF8 = 8;
+constexpr uint8_t BTN_RF1 = 17;
+constexpr uint8_t BTN_RF2 = 18;
+constexpr uint8_t BTN_RF3 = 19;
+constexpr uint8_t BTN_RF4 = 20;
+constexpr uint8_t BTN_RF5 = 21;
+constexpr uint8_t BTN_RF6 = 22;
+constexpr uint8_t BTN_RF7 = 23;
+constexpr uint8_t BTN_RF8 = 24;
+constexpr uint8_t BTN_RF9 = 25;
+constexpr uint8_t BTN_RF10 = 26;
+constexpr uint8_t BTN_RF11 = 27;
+constexpr uint8_t BTN_RF12 = 28;
+constexpr uint8_t BTN_RF13 = 29;
+constexpr uint8_t BTN_RF14 = 30;
+constexpr uint8_t BTN_RF15 = 31;
+constexpr uint8_t BTN_RF16 = 32;
+constexpr uint8_t BTN_LT1 = 33;
+constexpr uint8_t BTN_LT2 = 34;
+constexpr uint8_t BTN_LT3 = 35;
+constexpr uint8_t BTN_LT4 = 36;
+constexpr uint8_t BTN_LT5 = 37;
+constexpr uint8_t BTN_LT6 = 38;
+constexpr uint8_t BTN_RT1 = 41;
+constexpr uint8_t BTN_RT2 = 42;
+constexpr uint8_t BTN_RT3 = 43;
+constexpr uint8_t BTN_RT4 = 44;
+constexpr uint8_t BTN_RT5 = 45;
+constexpr uint8_t BTN_MB1 = 49;
+
+constexpr uint64_t glyphButton(uint8_t button)
+{
+	return 1ULL << button;
+}
+
+constexpr uint64_t GLYPH_RGB_BASE_20 =
+	glyphButton(BTN_LF1) | glyphButton(BTN_LF2) | glyphButton(BTN_LF3) | glyphButton(BTN_LF4) |
+	glyphButton(BTN_LT1) | glyphButton(BTN_LT2) |
+	glyphButton(BTN_RF1) | glyphButton(BTN_RF2) | glyphButton(BTN_RF3) | glyphButton(BTN_RF4) |
+	glyphButton(BTN_RF5) | glyphButton(BTN_RF6) | glyphButton(BTN_RF7) | glyphButton(BTN_RF8) |
+	glyphButton(BTN_RT1) | glyphButton(BTN_RT2) | glyphButton(BTN_RT3) | glyphButton(BTN_RT4) |
+	glyphButton(BTN_RT5) | glyphButton(BTN_MB1);
+
+constexpr uint64_t GLYPH_RGB_ALL_36 =
+	glyphButton(BTN_LF1) | glyphButton(BTN_LF2) | glyphButton(BTN_LF3) | glyphButton(BTN_LF4) |
+	glyphButton(BTN_LF5) | glyphButton(BTN_LF6) | glyphButton(BTN_LF7) | glyphButton(BTN_LF8) |
+	glyphButton(BTN_LT1) | glyphButton(BTN_LT2) | glyphButton(BTN_LT3) | glyphButton(BTN_LT4) |
+	glyphButton(BTN_LT5) | glyphButton(BTN_LT6) |
+	glyphButton(BTN_RF1) | glyphButton(BTN_RF2) | glyphButton(BTN_RF3) | glyphButton(BTN_RF4) |
+	glyphButton(BTN_RF5) | glyphButton(BTN_RF6) | glyphButton(BTN_RF7) | glyphButton(BTN_RF8) |
+	glyphButton(BTN_RF9) | glyphButton(BTN_RF10) | glyphButton(BTN_RF11) | glyphButton(BTN_RF12) |
+	glyphButton(BTN_RF13) | glyphButton(BTN_RF14) | glyphButton(BTN_RF15) | glyphButton(BTN_RF16) |
+	glyphButton(BTN_RT1) | glyphButton(BTN_RT2) | glyphButton(BTN_RT3) | glyphButton(BTN_RT4) |
+	glyphButton(BTN_RT5) | glyphButton(BTN_MB1);
+
+constexpr uint8_t glyphPixelButtons[76] = {
+	BTN_MB1, BTN_MB1,
+	BTN_LF4, BTN_LF4,
+	BTN_LF3, BTN_LF3,
+	BTN_LF5, BTN_LF5,
+	BTN_LF2, BTN_LF2,
+	BTN_LF1, BTN_LF1,
+	BTN_LF8, BTN_LF8,
+	BTN_LF7, BTN_LF7,
+	BTN_LF6, BTN_LF6,
+	BTN_RF13, BTN_RF13,
+	BTN_RF14, BTN_RF14,
+	BTN_RF15, BTN_RF15,
+	BTN_RF5, BTN_RF5,
+	BTN_RF6, BTN_RF6,
+	BTN_RF7, BTN_RF7,
+	BTN_RF8, BTN_RF8,
+	BTN_RF4, BTN_RF4,
+	BTN_RF3, BTN_RF3,
+	BTN_RF2, BTN_RF2,
+	BTN_RF9, BTN_RF9,
+	BTN_RF1, BTN_RF1,
+	BTN_RF12, BTN_RF12,
+	BTN_RF11, BTN_RF11,
+	BTN_RF16, BTN_RF16,
+	BTN_RF10, BTN_RF10,
+	BTN_RT3, BTN_RT3,
+	BTN_RT4, BTN_RT4,
+	BTN_RT5, BTN_RT5,
+	BTN_RT1, BTN_RT1,
+	BTN_RT1, BTN_RT1,
+	BTN_RT2, BTN_RT2,
+	BTN_LT6, BTN_LT6,
+	BTN_LT3, BTN_LT3,
+	BTN_LT4, BTN_LT4,
+	BTN_LT5, BTN_LT5,
+	BTN_LT1, BTN_LT1,
+	BTN_LT1, BTN_LT1,
+	BTN_LT2, BTN_LT2,
+};
+
+uint64_t glyphRgbMask(uint8_t rgbConfig)
+{
+	switch (rgbConfig) {
+		case 1:
+		case 2:
+		case 3:
+		case 7:
+		case 8:
+			return GLYPH_RGB_BASE_20;
+		case 4:
+			return glyphButton(BTN_LF1) | glyphButton(BTN_LF2) | glyphButton(BTN_LF3) | glyphButton(BTN_LF5) |
+				glyphButton(BTN_LT1) |
+				glyphButton(BTN_RF1) | glyphButton(BTN_RF2) | glyphButton(BTN_RF3) | glyphButton(BTN_RF4) |
+				glyphButton(BTN_RF5) | glyphButton(BTN_RF6) | glyphButton(BTN_RF7) | glyphButton(BTN_RF8) |
+				glyphButton(BTN_RF9) | glyphButton(BTN_RT1) | glyphButton(BTN_MB1);
+		case 5:
+			return glyphButton(BTN_LF6) | glyphButton(BTN_LF7) | glyphButton(BTN_LF8) | glyphButton(BTN_LT6) |
+				glyphButton(BTN_RF1) | glyphButton(BTN_RF5) | glyphButton(BTN_RF10) | glyphButton(BTN_RF11) |
+				glyphButton(BTN_RF12) | glyphButton(BTN_RF13) | glyphButton(BTN_RF14) | glyphButton(BTN_RF15) |
+				glyphButton(BTN_RF16) | glyphButton(BTN_MB1);
+		case 6:
+			return glyphButton(BTN_LF1) | glyphButton(BTN_LF2) | glyphButton(BTN_LF3) | glyphButton(BTN_LF4) |
+				glyphButton(BTN_LT1) | glyphButton(BTN_LT2) |
+				glyphButton(BTN_RF1) | glyphButton(BTN_RF2) | glyphButton(BTN_RF3) | glyphButton(BTN_RF4) |
+				glyphButton(BTN_RF5) | glyphButton(BTN_RF6) | glyphButton(BTN_RF7) | glyphButton(BTN_RF8) |
+				glyphButton(BTN_RT1) | glyphButton(BTN_MB1);
+		case 9:
+			return (GLYPH_RGB_BASE_20 & ~glyphButton(BTN_RF4)) |
+				glyphButton(BTN_LF5) | glyphButton(BTN_LF6) |
+				glyphButton(BTN_RF10) | glyphButton(BTN_RF11) | glyphButton(BTN_RF13);
+		case 10:
+			return glyphButton(BTN_LF1) | glyphButton(BTN_LF2) | glyphButton(BTN_LF3) | glyphButton(BTN_LF4) |
+				glyphButton(BTN_LF5) | glyphButton(BTN_LF6) |
+				glyphButton(BTN_LT1) | glyphButton(BTN_LT2) |
+				glyphButton(BTN_RF1) | glyphButton(BTN_RF2) | glyphButton(BTN_RF3) |
+				glyphButton(BTN_RF10) | glyphButton(BTN_RF11) | glyphButton(BTN_RF13) |
+				glyphButton(BTN_RT1) | glyphButton(BTN_RT2) | glyphButton(BTN_RT3) | glyphButton(BTN_RT4) |
+				glyphButton(BTN_RT5) | glyphButton(BTN_MB1);
+		case 11:
+			return glyphButton(BTN_LF1) | glyphButton(BTN_LF2) | glyphButton(BTN_LF3) | glyphButton(BTN_LF5) |
+				glyphButton(BTN_LT1) |
+				glyphButton(BTN_RF1) | glyphButton(BTN_RF2) | glyphButton(BTN_RF5) | glyphButton(BTN_RF6) |
+				glyphButton(BTN_RT1) | glyphButton(BTN_MB1);
+		case 12:
+			return glyphButton(BTN_LF1) | glyphButton(BTN_LF2) | glyphButton(BTN_LF3) | glyphButton(BTN_LF5) |
+				glyphButton(BTN_RF1) | glyphButton(BTN_RF2) | glyphButton(BTN_MB1);
+		case 13:
+			return GLYPH_RGB_ALL_36;
+		default:
+			return GLYPH_RGB_BASE_20;
+	}
+}
+
+float clampedBrightness(float brightness)
+{
+	if (brightness < 0.0f) {
+		return 0.0f;
+	}
+	if (brightness > 1.0f) {
+		return 1.0f;
+	}
+	return brightness;
+}
+}
 
 const RGB alCustomStaticTheme[AL_ROW][AL_COL] = 
 									  {{ColorRed, ColorOrange, ColorYellow, ColorGreen, ColorBlue, ColorIndigo, ColorViolet, ColorWhite},
@@ -363,11 +535,28 @@ void NeoPicoLEDAddon::ambientLightCustom() {
 	if ( maxFrame > FRAME_MAX - alStartIndex )
 		maxFrame = FRAME_MAX - alStartIndex; // make sure we don't go over 100 and overflow frame[]
 
+	const float globalBrightness = clampedBrightness(as.GetBrightnessX());
+	auto scaledBrightness = [globalBrightness](float value) {
+		return clampedBrightness(value * globalBrightness);
+	};
+
+	if (ledOptions.dataPin == 11 && ledOptions.caseRGBCount == 76) {
+		const GamepadOptions& gamepadOptions = Storage::getInstance().getGamepadOptions();
+		const uint8_t profileNumber = gamepadOptions.profileNumber >= 1 ? gamepadOptions.profileNumber : 1;
+		const uint64_t activeButtons = glyphRgbMask(GlyphProfiles::rgbConfig(profileNumber));
+		const uint32_t activeColor = RGB(GLYPH_PROFILE_RGB_COLOR).value(Animation::format, globalBrightness);
+		const int glyphFrameCount = maxFrame < 76 ? maxFrame : 76;
+		for (int i = 0; i < glyphFrameCount; i++) {
+			frame[alStartIndex + i] = (activeButtons & glyphButton(glyphPixelButtons[i])) ? activeColor : 0x0;
+		}
+		return;
+	}
+
 	// Start-up Animations in Haute were here
 	switch(options.ambientLightEffectsCountIndex) {
 		case AL_CUSTOM_EFFECT_STATIC_COLOR: 
 			for(int i = 0; i < maxFrame; i++) {
-				frame[alStartIndex + i] = alCustomStaticColors[options.alCustomStaticColorIndex].value(Animation::format, options.alStaticColorBrightnessCustomX);
+				frame[alStartIndex + i] = alCustomStaticColors[options.alCustomStaticColorIndex].value(Animation::format, scaledBrightness(options.alStaticColorBrightnessCustomX));
 			}
 			break;
 
@@ -404,7 +593,7 @@ void NeoPicoLEDAddon::ambientLightCustom() {
 			}
 			// Fill Frame
 			for(int i = 0; i < maxFrame; i++){
-				frame[alStartIndex + i] = ambientLight.value(Animation::format, options.alGradientBrightnessCustomX);
+				frame[alStartIndex + i] = ambientLight.value(Animation::format, scaledBrightness(options.alGradientBrightnessCustomX));
 			}
 			break;
 		case AL_CUSTOM_EFFECT_CHASE: 
@@ -450,12 +639,12 @@ void NeoPicoLEDAddon::ambientLightCustom() {
 			}
 			// Fill up to four pixels forward
 			for(int i = 0; i < CHASE_LIGHTS_TURN_ON && chaseLightIndex + i < chaseLightMaxIndexPos; i++) {
-				frame[chaseLightIndex + i] = ambientLight.value(Animation::format, options.alChaseBrightnessCustomX);
+				frame[chaseLightIndex + i] = ambientLight.value(Animation::format, scaledBrightness(options.alChaseBrightnessCustomX));
 			}
 			// Fill up to 3 pixels in the beginning of our casergb (wrap-around)
 			if ( chaseLightIndex + CHASE_LIGHTS_TURN_ON > chaseLightMaxIndexPos ) {
 				for(int i = 0; i < (chaseLightIndex + CHASE_LIGHTS_TURN_ON) - chaseLightMaxIndexPos; i++) {
-					frame[alStartIndex + i] = ambientLight.value(Animation::format, options.alChaseBrightnessCustomX);
+					frame[alStartIndex + i] = ambientLight.value(Animation::format, scaledBrightness(options.alChaseBrightnessCustomX));
 				}
 			}
 			break;
@@ -497,7 +686,7 @@ void NeoPicoLEDAddon::ambientLightCustom() {
 			}
 			// Fill Frame
 			for(int i = 0; i < maxFrame; i++) {
-				frame[alStartIndex + i] = ambientLight.value(Animation::format, alBrightnessBreathX);
+				frame[alStartIndex + i] = ambientLight.value(Animation::format, scaledBrightness(alBrightnessBreathX));
 			}
 			break;
 		case AL_CUSTOM_EFFECT_STATIC_THEME:
@@ -506,12 +695,12 @@ void NeoPicoLEDAddon::ambientLightCustom() {
 			// Fill frame with extras on remainder
 			for(int i = 0; i < multipleOfCustomStaticThemeCount; i++){
 				for(int j = 0; j < AL_COL; j++){
-					frame[alStartIndex + i*AL_COL + j] = alCustomStaticTheme[options.alCustomStaticThemeIndex][j].value(Animation::format, options.alStaticBrightnessCustomThemeX);
+					frame[alStartIndex + i*AL_COL + j] = alCustomStaticTheme[options.alCustomStaticThemeIndex][j].value(Animation::format, scaledBrightness(options.alStaticBrightnessCustomThemeX));
 				}
 			}
 			if(remainderOfCustomStaticThemeCount != 0){
 				for(int k = 0; k < remainderOfCustomStaticThemeCount; k++){
-					frame[alStartIndex + multipleOfCustomStaticThemeCount * AL_COL + k] = alCustomStaticTheme[options.alCustomStaticThemeIndex][k].value(Animation::format, options.alStaticBrightnessCustomThemeX);
+					frame[alStartIndex + multipleOfCustomStaticThemeCount * AL_COL + k] = alCustomStaticTheme[options.alCustomStaticThemeIndex][k].value(Animation::format, scaledBrightness(options.alStaticBrightnessCustomThemeX));
 				}
 			}
 			break;
