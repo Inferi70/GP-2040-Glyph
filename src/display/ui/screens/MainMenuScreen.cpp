@@ -311,6 +311,7 @@ void MainMenuScreen::toggleGlyphUsbHostOption()
     const int32_t option = currentMenu->at(gpMenu->getIndex()).optionValue;
     AddonOptions& addonOptions = Storage::getInstance().getAddonOptions();
     GamepadOptions& gamepadOptions = Storage::getInstance().getGamepadOptions();
+    PeripheralOptions& peripheralOptions = Storage::getInstance().getPeripheralOptions();
     bool changed = false;
 
     switch (option) {
@@ -337,6 +338,10 @@ void MainMenuScreen::toggleGlyphUsbHostOption()
                 INPUT_MODE_AUTH_TYPE_NONE : INPUT_MODE_AUTH_TYPE_USB;
             changed = true;
             break;
+        case 32:
+            peripheralOptions.blockUSB0.enabled = !peripheralOptions.blockUSB0.enabled;
+            changed = true;
+            break;
         default:
             break;
     }
@@ -357,6 +362,7 @@ int32_t MainMenuScreen::currentGlyphUsbHostOption()
     const int32_t option = currentMenu->at(gpMenu->getIndex()).optionValue;
     const AddonOptions& addonOptions = Storage::getInstance().getAddonOptions();
     const GamepadOptions& gamepadOptions = Storage::getInstance().getGamepadOptions();
+    const PeripheralOptions& peripheralOptions = Storage::getInstance().getPeripheralOptions();
 
     switch (option) {
         case 1:
@@ -369,6 +375,8 @@ int32_t MainMenuScreen::currentGlyphUsbHostOption()
             return gamepadOptions.ps5AuthType == INPUT_MODE_AUTH_TYPE_USB ? option : 0;
         case 16:
             return gamepadOptions.xinputAuthType == INPUT_MODE_AUTH_TYPE_USB ? option : 0;
+        case 32:
+            return peripheralOptions.blockUSB0.enabled ? option : 0;
         default:
             return 0;
     }
