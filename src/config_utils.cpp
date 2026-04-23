@@ -1738,6 +1738,23 @@ void migrateAuthenticationMethods(Config& config) {
     }
 }
 
+void migrateGlyphUsbHostSafety(Config& config) {
+#ifdef GLYPH_DISPLAY_SCREEN
+    constexpr uint32_t kGlyphUsbHostSafeVersion = 2;
+    if (config.glyphOptions.version >= kGlyphUsbHostSafeVersion) {
+        return;
+    }
+
+    config.peripheralOptions.blockUSB0.enabled = false;
+    config.addonOptions.gamepadUSBHostOptions.enabled = false;
+    config.addonOptions.keyboardHostOptions.enabled = false;
+    config.gamepadOptions.xinputAuthType = InputModeAuthType::INPUT_MODE_AUTH_TYPE_NONE;
+    config.gamepadOptions.ps4AuthType = InputModeAuthType::INPUT_MODE_AUTH_TYPE_NONE;
+    config.gamepadOptions.ps5AuthType = InputModeAuthType::INPUT_MODE_AUTH_TYPE_NONE;
+    config.glyphOptions.version = kGlyphUsbHostSafeVersion;
+#endif
+}
+
 // enable profiles that have real data in them (profile 1 is always enabled)
 // note that profiles 2-4 are no longer populated with profile 1's data on a fresh
 // config, and this is checking previous configs with non-copy mappings to enable them
@@ -1953,6 +1970,8 @@ void ConfigUtils::load(Config& config)
     migrateTurboPinToGpio(config);
     // Migrate PS4/PS5/XBone authentication methods to new organization
     migrateAuthenticationMethods(config);
+    // Keep Glyph boards recoverable if an earlier build saved USB host on.
+    migrateGlyphUsbHostSafety(config);
     // Macro pins to gpio
     migrateMacroPinsToGpio(config);
     // Migrate old JS slider add-on to core
