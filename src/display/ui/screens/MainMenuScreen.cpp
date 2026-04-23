@@ -307,21 +307,13 @@ void MainMenuScreen::refreshGlyphUsbHostMenuLabels()
     const bool storedPortEnabled = Storage::getInstance().getPeripheralOptions().blockUSB0.enabled;
 
     usbHostMenu.clear();
-    usbHostMenu.push_back({
-        storedPortEnabled ? "Port Disable" : "Port Enable",
-        NULL,
-        nullptr,
-        std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this),
-        std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this),
-        32
-    });
-
     if (storedPortEnabled) {
-        usbHostMenu.push_back({"XInput Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 16});
-        usbHostMenu.push_back({"PS4 Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 4});
-        usbHostMenu.push_back({"PS5 Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 8});
-        usbHostMenu.push_back({"Gamepad Input", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 1});
+        usbHostMenu.push_back({"Port Disable", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 32});
     }
+    usbHostMenu.push_back({"XInput Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 16});
+    usbHostMenu.push_back({"PS4 Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 4});
+    usbHostMenu.push_back({"PS5 Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 8});
+    usbHostMenu.push_back({"Gamepad Input", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 1});
 
     if (gpMenu != nullptr && currentMenu == &usbHostMenu && gpMenu->getIndex() >= usbHostMenu.size()) {
         gpMenu->setIndex(0);
@@ -339,6 +331,13 @@ void MainMenuScreen::toggleGlyphUsbHostOption()
     GamepadOptions& gamepadOptions = Storage::getInstance().getGamepadOptions();
     PeripheralOptions& peripheralOptions = Storage::getInstance().getPeripheralOptions();
     bool changed = false;
+    auto hasUsbHostConsumer = [&]() {
+        return addonOptions.gamepadUSBHostOptions.enabled ||
+               addonOptions.keyboardHostOptions.enabled ||
+               gamepadOptions.xinputAuthType == INPUT_MODE_AUTH_TYPE_USB ||
+               gamepadOptions.ps4AuthType == INPUT_MODE_AUTH_TYPE_USB ||
+               gamepadOptions.ps5AuthType == INPUT_MODE_AUTH_TYPE_USB;
+    };
 
     switch (option) {
         case 1:
@@ -377,14 +376,12 @@ void MainMenuScreen::toggleGlyphUsbHostOption()
             changed = true;
             break;
         case 32:
-            peripheralOptions.blockUSB0.enabled = !peripheralOptions.blockUSB0.enabled;
-            if (!peripheralOptions.blockUSB0.enabled) {
-                addonOptions.gamepadUSBHostOptions.enabled = false;
-                addonOptions.keyboardHostOptions.enabled = false;
-                gamepadOptions.xinputAuthType = INPUT_MODE_AUTH_TYPE_NONE;
-                gamepadOptions.ps4AuthType = INPUT_MODE_AUTH_TYPE_NONE;
-                gamepadOptions.ps5AuthType = INPUT_MODE_AUTH_TYPE_NONE;
-            }
+            peripheralOptions.blockUSB0.enabled = false;
+            addonOptions.gamepadUSBHostOptions.enabled = false;
+            addonOptions.keyboardHostOptions.enabled = false;
+            gamepadOptions.xinputAuthType = INPUT_MODE_AUTH_TYPE_NONE;
+            gamepadOptions.ps4AuthType = INPUT_MODE_AUTH_TYPE_NONE;
+            gamepadOptions.ps5AuthType = INPUT_MODE_AUTH_TYPE_NONE;
             changed = true;
             break;
         default:
@@ -392,6 +389,9 @@ void MainMenuScreen::toggleGlyphUsbHostOption()
     }
 
     if (changed) {
+        if (!hasUsbHostConsumer()) {
+            peripheralOptions.blockUSB0.enabled = false;
+        }
         EventManager::getInstance().triggerEvent(new GPStorageSaveEvent(true, true));
         exitToScreen = DisplayMode::RESTART;
         exitToScreenBeforePrompt = DisplayMode::RESTART;

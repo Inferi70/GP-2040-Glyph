@@ -1740,17 +1740,18 @@ void migrateAuthenticationMethods(Config& config) {
 
 void migrateGlyphUsbHostSafety(Config& config) {
 #ifdef GLYPH_DISPLAY_SCREEN
-    constexpr uint32_t kGlyphUsbHostSafeVersion = 4;
+    constexpr uint32_t kGlyphUsbHostSafeVersion = 5;
     if (config.glyphOptions.version >= kGlyphUsbHostSafeVersion) {
         return;
     }
 
-    config.peripheralOptions.blockUSB0.enabled = false;
-    config.addonOptions.gamepadUSBHostOptions.enabled = false;
     config.addonOptions.keyboardHostOptions.enabled = false;
-    config.gamepadOptions.xinputAuthType = InputModeAuthType::INPUT_MODE_AUTH_TYPE_NONE;
-    config.gamepadOptions.ps4AuthType = InputModeAuthType::INPUT_MODE_AUTH_TYPE_NONE;
-    config.gamepadOptions.ps5AuthType = InputModeAuthType::INPUT_MODE_AUTH_TYPE_NONE;
+    if (!config.addonOptions.gamepadUSBHostOptions.enabled &&
+        config.gamepadOptions.xinputAuthType != InputModeAuthType::INPUT_MODE_AUTH_TYPE_USB &&
+        config.gamepadOptions.ps4AuthType != InputModeAuthType::INPUT_MODE_AUTH_TYPE_USB &&
+        config.gamepadOptions.ps5AuthType != InputModeAuthType::INPUT_MODE_AUTH_TYPE_USB) {
+        config.peripheralOptions.blockUSB0.enabled = false;
+    }
     config.glyphOptions.version = kGlyphUsbHostSafeVersion;
 #endif
 }
