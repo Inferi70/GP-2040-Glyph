@@ -321,7 +321,6 @@ void MainMenuScreen::refreshGlyphUsbHostMenuLabels()
         usbHostMenu.push_back({"PS4 Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 4});
         usbHostMenu.push_back({"PS5 Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 8});
         usbHostMenu.push_back({"Gamepad Input", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 1});
-        usbHostMenu.push_back({"Keyboard Input", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 2});
     }
 
     if (gpMenu != nullptr && currentMenu == &usbHostMenu && gpMenu->getIndex() >= usbHostMenu.size()) {
@@ -350,10 +349,7 @@ void MainMenuScreen::toggleGlyphUsbHostOption()
             changed = true;
             break;
         case 2:
-            if (!addonOptions.keyboardHostOptions.enabled) {
-                peripheralOptions.blockUSB0.enabled = true;
-            }
-            addonOptions.keyboardHostOptions.enabled = !addonOptions.keyboardHostOptions.enabled;
+            addonOptions.keyboardHostOptions.enabled = false;
             changed = true;
             break;
         case 4:
