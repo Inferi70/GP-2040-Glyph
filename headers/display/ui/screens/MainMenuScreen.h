@@ -148,9 +148,7 @@ class MainMenuScreen : public GPScreen {
         InputMode updateInputMode;
 
         std::vector<MenuEntry> backendSupportMenu = {};
-        std::vector<MenuEntry> usbHostMenu = {
-            {"Port Disable", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 32},
-        };
+        std::vector<MenuEntry> usbHostMenu = {};
 
         std::vector<MenuEntry> dpadModeMenu = {
             DpadMode_VALUELIST(DPAD_MODE_ENTRIES)

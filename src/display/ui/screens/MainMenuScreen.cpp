@@ -2,6 +2,7 @@
 #include "glyph/assets/GlyphButtonBitmaps.h"
 #include "glyph/assets/GlyphMenuBitmaps.h"
 #include "glyph/glyph_profiles.h"
+#include "glyph/glyph_usb_host.h"
 #include "display/ui/screens/GlyphInputScreen.h"
 #include "hardware/watchdog.h"
 #include "system.h"
@@ -263,7 +264,7 @@ void MainMenuScreen::populateGlyphBackendSupportMenu()
         const char* label;
         uint16_t mask;
     } backends[] = {
-        {"XInput", GlyphProfiles::BackendXInput},
+        {"XInput/XB1", GlyphProfiles::BackendXInput},
         {"DInput", GlyphProfiles::BackendDInput},
         {"Switch", GlyphProfiles::BackendSwitch},
         {"PS4", GlyphProfiles::BackendPS4},
@@ -306,10 +307,12 @@ void MainMenuScreen::refreshGlyphUsbHostMenuLabels()
 {
     usbHostMenu.clear();
     if (Storage::getInstance().getPeripheralOptions().blockUSB0.enabled) {
-        usbHostMenu.push_back({"Port Disable", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 32});
+        usbHostMenu.push_back({"Port Disable", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), GlyphUsbHost::OptionDisable});
     }
-    usbHostMenu.push_back({"PS4 Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 4});
-    usbHostMenu.push_back({"PS5 Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 8});
+    usbHostMenu.push_back({"XInput Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), GlyphUsbHost::OptionXInputAuth});
+    usbHostMenu.push_back({"Xbox One Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), GlyphUsbHost::OptionXBOneAuth});
+    usbHostMenu.push_back({"PS4 Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), GlyphUsbHost::OptionPS4Auth});
+    usbHostMenu.push_back({"PS5 Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), GlyphUsbHost::OptionPS5Auth});
 
     if (gpMenu != nullptr && currentMenu == &usbHostMenu && gpMenu->getIndex() >= usbHostMenu.size()) {
         gpMenu->setIndex(0);
@@ -326,43 +329,9 @@ void MainMenuScreen::toggleGlyphUsbHostOption()
     AddonOptions& addonOptions = Storage::getInstance().getAddonOptions();
     GamepadOptions& gamepadOptions = Storage::getInstance().getGamepadOptions();
     PeripheralOptions& peripheralOptions = Storage::getInstance().getPeripheralOptions();
-    bool changed = false;
-
-    switch (option) {
-        case 4:
-            peripheralOptions.blockUSB0.enabled = gamepadOptions.ps4AuthType != INPUT_MODE_AUTH_TYPE_USB;
-            gamepadOptions.ps4AuthType = gamepadOptions.ps4AuthType == INPUT_MODE_AUTH_TYPE_USB ?
-                INPUT_MODE_AUTH_TYPE_NONE : INPUT_MODE_AUTH_TYPE_USB;
-            changed = true;
-            break;
-        case 8:
-            peripheralOptions.blockUSB0.enabled = gamepadOptions.ps5AuthType != INPUT_MODE_AUTH_TYPE_USB;
-            gamepadOptions.ps5AuthType = gamepadOptions.ps5AuthType == INPUT_MODE_AUTH_TYPE_USB ?
-                INPUT_MODE_AUTH_TYPE_NONE : INPUT_MODE_AUTH_TYPE_USB;
-            changed = true;
-            break;
-        case 32:
-            peripheralOptions.blockUSB0.enabled = false;
-            addonOptions.gamepadUSBHostOptions.enabled = false;
-            addonOptions.keyboardHostOptions.enabled = false;
-            gamepadOptions.xinputAuthType = INPUT_MODE_AUTH_TYPE_NONE;
-            gamepadOptions.ps4AuthType = INPUT_MODE_AUTH_TYPE_NONE;
-            gamepadOptions.ps5AuthType = INPUT_MODE_AUTH_TYPE_NONE;
-            changed = true;
-            break;
-        default:
-            break;
-    }
+    const bool changed = GlyphUsbHost::toggleOption(addonOptions, gamepadOptions, peripheralOptions, option);
 
     if (changed) {
-        addonOptions.gamepadUSBHostOptions.enabled = false;
-        addonOptions.keyboardHostOptions.enabled = false;
-        gamepadOptions.xinputAuthType = INPUT_MODE_AUTH_TYPE_NONE;
-        if (gamepadOptions.xinputAuthType != INPUT_MODE_AUTH_TYPE_USB &&
-            gamepadOptions.ps4AuthType != INPUT_MODE_AUTH_TYPE_USB &&
-            gamepadOptions.ps5AuthType != INPUT_MODE_AUTH_TYPE_USB) {
-            peripheralOptions.blockUSB0.enabled = false;
-        }
         EventManager::getInstance().triggerEvent(new GPStorageSaveEvent(true, true));
         exitToScreen = DisplayMode::RESTART;
         exitToScreenBeforePrompt = DisplayMode::RESTART;
@@ -378,17 +347,7 @@ int32_t MainMenuScreen::currentGlyphUsbHostOption()
     const int32_t option = currentMenu->at(gpMenu->getIndex()).optionValue;
     const GamepadOptions& gamepadOptions = Storage::getInstance().getGamepadOptions();
     const PeripheralOptions& peripheralOptions = Storage::getInstance().getPeripheralOptions();
-
-    switch (option) {
-        case 4:
-            return gamepadOptions.ps4AuthType == INPUT_MODE_AUTH_TYPE_USB ? option : 0;
-        case 8:
-            return gamepadOptions.ps5AuthType == INPUT_MODE_AUTH_TYPE_USB ? option : 0;
-        case 32:
-            return peripheralOptions.blockUSB0.enabled ? option : 0;
-        default:
-            return 0;
-    }
+    return GlyphUsbHost::currentOption(gamepadOptions, peripheralOptions, option);
 }
 #endif
 

@@ -19,6 +19,7 @@
 #include "addons/focus_mode.h"
 #include "addons/i2canalog1219.h"
 #include "addons/display.h"
+#include "glyph/glyph_usb_host.h"
 #include "addons/keyboard_host.h"
 #include "addons/neopicoleds.h"
 #include "addons/pleds.h"
@@ -1740,20 +1741,7 @@ void migrateAuthenticationMethods(Config& config) {
 
 void migrateGlyphUsbHostSafety(Config& config) {
 #ifdef GLYPH_DISPLAY_SCREEN
-    constexpr uint32_t kGlyphUsbHostSafeVersion = 8;
-    if (config.glyphOptions.version >= kGlyphUsbHostSafeVersion) {
-        return;
-    }
-
-    config.peripheralOptions.blockUSB0.enabled = false;
-    config.addonOptions.gamepadUSBHostOptions.enabled = false;
-    config.addonOptions.keyboardHostOptions.enabled = false;
-    config.gamepadOptions.xinputAuthType = InputModeAuthType::INPUT_MODE_AUTH_TYPE_NONE;
-    if (config.gamepadOptions.ps4AuthType != InputModeAuthType::INPUT_MODE_AUTH_TYPE_USB &&
-        config.gamepadOptions.ps5AuthType != InputModeAuthType::INPUT_MODE_AUTH_TYPE_USB) {
-        config.peripheralOptions.blockUSB0.enabled = false;
-    }
-    config.glyphOptions.version = kGlyphUsbHostSafeVersion;
+    GlyphUsbHost::sanitizeConfig(config);
 #endif
 }
 
