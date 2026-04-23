@@ -308,7 +308,6 @@ void MainMenuScreen::refreshGlyphUsbHostMenuLabels()
     if (Storage::getInstance().getPeripheralOptions().blockUSB0.enabled) {
         usbHostMenu.push_back({"Port Disable", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 32});
     }
-    usbHostMenu.push_back({"XInput Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 16});
     usbHostMenu.push_back({"PS4 Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 4});
     usbHostMenu.push_back({"PS5 Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 8});
 
@@ -342,12 +341,6 @@ void MainMenuScreen::toggleGlyphUsbHostOption()
                 INPUT_MODE_AUTH_TYPE_NONE : INPUT_MODE_AUTH_TYPE_USB;
             changed = true;
             break;
-        case 16:
-            peripheralOptions.blockUSB0.enabled = gamepadOptions.xinputAuthType != INPUT_MODE_AUTH_TYPE_USB;
-            gamepadOptions.xinputAuthType = gamepadOptions.xinputAuthType == INPUT_MODE_AUTH_TYPE_USB ?
-                INPUT_MODE_AUTH_TYPE_NONE : INPUT_MODE_AUTH_TYPE_USB;
-            changed = true;
-            break;
         case 32:
             peripheralOptions.blockUSB0.enabled = false;
             addonOptions.gamepadUSBHostOptions.enabled = false;
@@ -364,6 +357,7 @@ void MainMenuScreen::toggleGlyphUsbHostOption()
     if (changed) {
         addonOptions.gamepadUSBHostOptions.enabled = false;
         addonOptions.keyboardHostOptions.enabled = false;
+        gamepadOptions.xinputAuthType = INPUT_MODE_AUTH_TYPE_NONE;
         if (gamepadOptions.xinputAuthType != INPUT_MODE_AUTH_TYPE_USB &&
             gamepadOptions.ps4AuthType != INPUT_MODE_AUTH_TYPE_USB &&
             gamepadOptions.ps5AuthType != INPUT_MODE_AUTH_TYPE_USB) {
@@ -390,8 +384,6 @@ int32_t MainMenuScreen::currentGlyphUsbHostOption()
             return gamepadOptions.ps4AuthType == INPUT_MODE_AUTH_TYPE_USB ? option : 0;
         case 8:
             return gamepadOptions.ps5AuthType == INPUT_MODE_AUTH_TYPE_USB ? option : 0;
-        case 16:
-            return gamepadOptions.xinputAuthType == INPUT_MODE_AUTH_TYPE_USB ? option : 0;
         case 32:
             return peripheralOptions.blockUSB0.enabled ? option : 0;
         default:

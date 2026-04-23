@@ -19,10 +19,7 @@ void XInputAuthUSBListener::setAuthData(XInputAuthData * authData ) {
     xinputAuthData->dongle_ready = false;
     memset(xinputAuthData->dongleSerial, 0, X360_AUTHLEN_DONGLE_SERIAL);
     xinputAuthData->passthruBufferLen = 0;
-    xinputAuthData->passthruBufferID = 0;
     xinputAuthData->xinputState = GPAuthState::auth_idle_state;
-    xinputAuthData->authCompleted = false;
-    xinputAuthData->hasInitAuth = false;
 }
 
 void XInputAuthUSBListener::setup() {
@@ -32,9 +29,7 @@ void XInputAuthUSBListener::setup() {
     wait_time = 0;
     wait_count = 0;
     sending = false;
-    if (xinputAuthData != nullptr) {
-        xinputAuthData->dongle_ready = false;
-    }
+    xinputAuthData->dongle_ready = false;
 }
 
 bool XInputAuthUSBListener::xinputh_vendor_report(tusb_dir_t dir, uint8_t request, uint16_t value, uint16_t length, uint8_t * buf, uintptr_t user_data){

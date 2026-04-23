@@ -271,7 +271,7 @@ constexpr OutputIcon kMenuButtonIcons[][7] = {
     {OutputIcon::None, OutputIcon::None, OutputIcon::None, OutputIcon::None, OutputIcon::Home, OutputIcon::XboxBack, OutputIcon::Start},
 };
 
-constexpr uint32_t kGlyphOptionsVersion = 7;
+constexpr uint32_t kGlyphOptionsVersion = 8;
 constexpr uint8_t kPackedSocdPairSize = 3;
 constexpr uint8_t kPackedButtonRemapSize = 2;
 constexpr uint8_t kPackedRgbColorSize = 4;
