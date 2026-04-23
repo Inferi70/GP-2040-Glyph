@@ -302,6 +302,33 @@ int32_t MainMenuScreen::currentGlyphBackendSupport()
     return GlyphProfiles::backendEnabled(profile, backendMask) ? backendMask : 0;
 }
 
+void MainMenuScreen::refreshGlyphUsbHostMenuLabels()
+{
+    const bool portEnabled = Storage::getInstance().getPeripheralOptions().blockUSB0.enabled;
+
+    usbHostMenu.clear();
+    usbHostMenu.push_back({
+        portEnabled ? "Port Disable" : "Port Enable",
+        NULL,
+        nullptr,
+        std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this),
+        std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this),
+        32
+    });
+
+    if (portEnabled) {
+        usbHostMenu.push_back({"XInput Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 16});
+        usbHostMenu.push_back({"PS4 Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 4});
+        usbHostMenu.push_back({"PS5 Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 8});
+        usbHostMenu.push_back({"Gamepad Input", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 1});
+        usbHostMenu.push_back({"Keyboard Input", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 2});
+    }
+
+    if (gpMenu != nullptr && currentMenu == &usbHostMenu && gpMenu->getIndex() >= usbHostMenu.size()) {
+        gpMenu->setIndex(0);
+    }
+}
+
 void MainMenuScreen::toggleGlyphUsbHostOption()
 {
     if (currentMenu->at(gpMenu->getIndex()).optionValue == -1) {
@@ -316,30 +343,52 @@ void MainMenuScreen::toggleGlyphUsbHostOption()
 
     switch (option) {
         case 1:
+            if (!addonOptions.gamepadUSBHostOptions.enabled) {
+                peripheralOptions.blockUSB0.enabled = true;
+            }
             addonOptions.gamepadUSBHostOptions.enabled = !addonOptions.gamepadUSBHostOptions.enabled;
             changed = true;
             break;
         case 2:
+            if (!addonOptions.keyboardHostOptions.enabled) {
+                peripheralOptions.blockUSB0.enabled = true;
+            }
             addonOptions.keyboardHostOptions.enabled = !addonOptions.keyboardHostOptions.enabled;
             changed = true;
             break;
         case 4:
+            if (gamepadOptions.ps4AuthType != INPUT_MODE_AUTH_TYPE_USB) {
+                peripheralOptions.blockUSB0.enabled = true;
+            }
             gamepadOptions.ps4AuthType = gamepadOptions.ps4AuthType == INPUT_MODE_AUTH_TYPE_USB ?
                 INPUT_MODE_AUTH_TYPE_NONE : INPUT_MODE_AUTH_TYPE_USB;
             changed = true;
             break;
         case 8:
+            if (gamepadOptions.ps5AuthType != INPUT_MODE_AUTH_TYPE_USB) {
+                peripheralOptions.blockUSB0.enabled = true;
+            }
             gamepadOptions.ps5AuthType = gamepadOptions.ps5AuthType == INPUT_MODE_AUTH_TYPE_USB ?
                 INPUT_MODE_AUTH_TYPE_NONE : INPUT_MODE_AUTH_TYPE_USB;
             changed = true;
             break;
         case 16:
+            if (gamepadOptions.xinputAuthType != INPUT_MODE_AUTH_TYPE_USB) {
+                peripheralOptions.blockUSB0.enabled = true;
+            }
             gamepadOptions.xinputAuthType = gamepadOptions.xinputAuthType == INPUT_MODE_AUTH_TYPE_USB ?
                 INPUT_MODE_AUTH_TYPE_NONE : INPUT_MODE_AUTH_TYPE_USB;
             changed = true;
             break;
         case 32:
             peripheralOptions.blockUSB0.enabled = !peripheralOptions.blockUSB0.enabled;
+            if (!peripheralOptions.blockUSB0.enabled) {
+                addonOptions.gamepadUSBHostOptions.enabled = false;
+                addonOptions.keyboardHostOptions.enabled = false;
+                gamepadOptions.xinputAuthType = INPUT_MODE_AUTH_TYPE_NONE;
+                gamepadOptions.ps4AuthType = INPUT_MODE_AUTH_TYPE_NONE;
+                gamepadOptions.ps5AuthType = INPUT_MODE_AUTH_TYPE_NONE;
+            }
             changed = true;
             break;
         default:
@@ -477,6 +526,10 @@ void MainMenuScreen::drawGlyphTopMenu()
 
 void MainMenuScreen::drawGlyphListMenu()
 {
+    if (currentMenu == &usbHostMenu) {
+        refreshGlyphUsbHostMenuLabels();
+    }
+
     drawGlyphBitmap(getRenderer(), bitmap_glyph_list_menu_base, 128, 64, 0, 0);
 
     std::string title = glyphListTitle(currentMenu, &profilesMenu, &inputModeMenu, &usbHostMenu, &backendSupportMenu, &dpadModeMenu, &socdModeMenu, &rgbBrightnessMenu, &turboModeMenu, &saveMenu);

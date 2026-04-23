@@ -68,6 +68,7 @@ class MainMenuScreen : public GPScreen {
         void populateGlyphBackendSupportMenu();
         void toggleGlyphBackendSupport();
         int32_t currentGlyphBackendSupport();
+        void refreshGlyphUsbHostMenuLabels();
         void toggleGlyphUsbHostOption();
         int32_t currentGlyphUsbHostOption();
 #endif
@@ -148,12 +149,7 @@ class MainMenuScreen : public GPScreen {
 
         std::vector<MenuEntry> backendSupportMenu = {};
         std::vector<MenuEntry> usbHostMenu = {
-            {"USB Port", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 32},
-            {"XInput Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 16},
-            {"PS4 Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 4},
-            {"PS5 Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 8},
-            {"Gamepad Input", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 1},
-            {"Keyboard Input", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 2},
+            {"Port Disable", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 32},
         };
 
         std::vector<MenuEntry> dpadModeMenu = {
