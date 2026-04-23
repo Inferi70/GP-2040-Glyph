@@ -313,7 +313,6 @@ void MainMenuScreen::refreshGlyphUsbHostMenuLabels()
     usbHostMenu.push_back({"XInput Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 16});
     usbHostMenu.push_back({"PS4 Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 4});
     usbHostMenu.push_back({"PS5 Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 8});
-    usbHostMenu.push_back({"Gamepad Input", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 1});
 
     if (gpMenu != nullptr && currentMenu == &usbHostMenu && gpMenu->getIndex() >= usbHostMenu.size()) {
         gpMenu->setIndex(0);
@@ -333,24 +332,12 @@ void MainMenuScreen::toggleGlyphUsbHostOption()
     bool changed = false;
     auto hasUsbHostConsumer = [&]() {
         return addonOptions.gamepadUSBHostOptions.enabled ||
-               addonOptions.keyboardHostOptions.enabled ||
                gamepadOptions.xinputAuthType == INPUT_MODE_AUTH_TYPE_USB ||
                gamepadOptions.ps4AuthType == INPUT_MODE_AUTH_TYPE_USB ||
                gamepadOptions.ps5AuthType == INPUT_MODE_AUTH_TYPE_USB;
     };
 
     switch (option) {
-        case 1:
-            if (!addonOptions.gamepadUSBHostOptions.enabled) {
-                peripheralOptions.blockUSB0.enabled = true;
-            }
-            addonOptions.gamepadUSBHostOptions.enabled = !addonOptions.gamepadUSBHostOptions.enabled;
-            changed = true;
-            break;
-        case 2:
-            addonOptions.keyboardHostOptions.enabled = false;
-            changed = true;
-            break;
         case 4:
             if (gamepadOptions.ps4AuthType != INPUT_MODE_AUTH_TYPE_USB) {
                 peripheralOptions.blockUSB0.enabled = true;
@@ -405,15 +392,10 @@ int32_t MainMenuScreen::currentGlyphUsbHostOption()
     }
 
     const int32_t option = currentMenu->at(gpMenu->getIndex()).optionValue;
-    const AddonOptions& addonOptions = Storage::getInstance().getAddonOptions();
     const GamepadOptions& gamepadOptions = Storage::getInstance().getGamepadOptions();
     const PeripheralOptions& peripheralOptions = Storage::getInstance().getPeripheralOptions();
 
     switch (option) {
-        case 1:
-            return addonOptions.gamepadUSBHostOptions.enabled ? option : 0;
-        case 2:
-            return addonOptions.keyboardHostOptions.enabled ? option : 0;
         case 4:
             return gamepadOptions.ps4AuthType == INPUT_MODE_AUTH_TYPE_USB ? option : 0;
         case 8:
