@@ -4,7 +4,9 @@
 #include "glyph/glyph_profiles.h"
 #include "display/ui/screens/GlyphInputScreen.h"
 #include "hardware/watchdog.h"
+#include "peripheralmanager.h"
 #include "system.h"
+#include "usbhostmanager.h"
 
 #include <utility>
 
@@ -13,6 +15,8 @@ extern uint32_t getMillis();
 #ifdef GLYPH_DISPLAY_SCREEN
 namespace
 {
+bool glyphUsbHostRuntimeTest = false;
+
 std::pair<std::string, std::string> glyphTopLabelLines(const std::string& label)
 {
     if (label == "Input Viewer") return {"Input", "Viewer"};
@@ -304,16 +308,17 @@ int32_t MainMenuScreen::currentGlyphBackendSupport()
 
 void MainMenuScreen::refreshGlyphUsbHostMenuLabels()
 {
-    const bool portEnabled = Storage::getInstance().getPeripheralOptions().blockUSB0.enabled;
+    const bool storedPortEnabled = Storage::getInstance().getPeripheralOptions().blockUSB0.enabled;
+    const bool portEnabled = storedPortEnabled || glyphUsbHostRuntimeTest;
 
     usbHostMenu.clear();
     usbHostMenu.push_back({
-        portEnabled ? "Port Disable" : "Port Enable",
+        storedPortEnabled ? "Port Disable" : "Port Test",
         NULL,
         nullptr,
         std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this),
         std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this),
-        32
+        storedPortEnabled ? 32 : 64
     });
 
     if (portEnabled) {
@@ -379,6 +384,7 @@ void MainMenuScreen::toggleGlyphUsbHostOption()
         case 32:
             peripheralOptions.blockUSB0.enabled = !peripheralOptions.blockUSB0.enabled;
             if (!peripheralOptions.blockUSB0.enabled) {
+                glyphUsbHostRuntimeTest = false;
                 addonOptions.gamepadUSBHostOptions.enabled = false;
                 addonOptions.keyboardHostOptions.enabled = false;
                 gamepadOptions.xinputAuthType = INPUT_MODE_AUTH_TYPE_NONE;
@@ -386,6 +392,14 @@ void MainMenuScreen::toggleGlyphUsbHostOption()
                 gamepadOptions.ps5AuthType = INPUT_MODE_AUTH_TYPE_NONE;
             }
             changed = true;
+            break;
+        case 64:
+            // Runtime-only solder/port test. Do not persist this, so a bad USB
+            // host bring-up cannot freeze every subsequent boot.
+            peripheralOptions.blockUSB0.enabled = true;
+            PeripheralManager::getInstance().initUSB();
+            USBHostManager::getInstance().start();
+            glyphUsbHostRuntimeTest = PeripheralManager::getInstance().isUSBEnabled(0);
             break;
         default:
             break;
@@ -422,6 +436,8 @@ int32_t MainMenuScreen::currentGlyphUsbHostOption()
             return gamepadOptions.xinputAuthType == INPUT_MODE_AUTH_TYPE_USB ? option : 0;
         case 32:
             return peripheralOptions.blockUSB0.enabled ? option : 0;
+        case 64:
+            return glyphUsbHostRuntimeTest ? option : 0;
         default:
             return 0;
     }

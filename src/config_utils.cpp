@@ -1740,7 +1740,7 @@ void migrateAuthenticationMethods(Config& config) {
 
 void migrateGlyphUsbHostSafety(Config& config) {
 #ifdef GLYPH_DISPLAY_SCREEN
-    constexpr uint32_t kGlyphUsbHostSafeVersion = 3;
+    constexpr uint32_t kGlyphUsbHostSafeVersion = 4;
     if (config.glyphOptions.version >= kGlyphUsbHostSafeVersion) {
         return;
     }
