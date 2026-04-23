@@ -4,9 +4,7 @@
 #include "glyph/glyph_profiles.h"
 #include "display/ui/screens/GlyphInputScreen.h"
 #include "hardware/watchdog.h"
-#include "peripheralmanager.h"
 #include "system.h"
-#include "usbhostmanager.h"
 
 #include <utility>
 
@@ -15,8 +13,6 @@ extern uint32_t getMillis();
 #ifdef GLYPH_DISPLAY_SCREEN
 namespace
 {
-bool glyphUsbHostRuntimeTest = false;
-
 std::pair<std::string, std::string> glyphTopLabelLines(const std::string& label)
 {
     if (label == "Input Viewer") return {"Input", "Viewer"};
@@ -309,19 +305,18 @@ int32_t MainMenuScreen::currentGlyphBackendSupport()
 void MainMenuScreen::refreshGlyphUsbHostMenuLabels()
 {
     const bool storedPortEnabled = Storage::getInstance().getPeripheralOptions().blockUSB0.enabled;
-    const bool portEnabled = storedPortEnabled || glyphUsbHostRuntimeTest;
 
     usbHostMenu.clear();
     usbHostMenu.push_back({
-        storedPortEnabled ? "Port Disable" : "Port Test",
+        storedPortEnabled ? "Port Disable" : "Port Enable",
         NULL,
         nullptr,
         std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this),
         std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this),
-        storedPortEnabled ? 32 : 64
+        32
     });
 
-    if (portEnabled) {
+    if (storedPortEnabled) {
         usbHostMenu.push_back({"XInput Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 16});
         usbHostMenu.push_back({"PS4 Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 4});
         usbHostMenu.push_back({"PS5 Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 8});
@@ -384,7 +379,6 @@ void MainMenuScreen::toggleGlyphUsbHostOption()
         case 32:
             peripheralOptions.blockUSB0.enabled = !peripheralOptions.blockUSB0.enabled;
             if (!peripheralOptions.blockUSB0.enabled) {
-                glyphUsbHostRuntimeTest = false;
                 addonOptions.gamepadUSBHostOptions.enabled = false;
                 addonOptions.keyboardHostOptions.enabled = false;
                 gamepadOptions.xinputAuthType = INPUT_MODE_AUTH_TYPE_NONE;
@@ -392,14 +386,6 @@ void MainMenuScreen::toggleGlyphUsbHostOption()
                 gamepadOptions.ps5AuthType = INPUT_MODE_AUTH_TYPE_NONE;
             }
             changed = true;
-            break;
-        case 64:
-            // Runtime-only solder/port test. Do not persist this, so a bad USB
-            // host bring-up cannot freeze every subsequent boot.
-            peripheralOptions.blockUSB0.enabled = true;
-            PeripheralManager::getInstance().initUSB();
-            USBHostManager::getInstance().start();
-            glyphUsbHostRuntimeTest = PeripheralManager::getInstance().isUSBEnabled(0);
             break;
         default:
             break;
@@ -436,8 +422,6 @@ int32_t MainMenuScreen::currentGlyphUsbHostOption()
             return gamepadOptions.xinputAuthType == INPUT_MODE_AUTH_TYPE_USB ? option : 0;
         case 32:
             return peripheralOptions.blockUSB0.enabled ? option : 0;
-        case 64:
-            return glyphUsbHostRuntimeTest ? option : 0;
         default:
             return 0;
     }
