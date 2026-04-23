@@ -17,6 +17,7 @@ std::pair<std::string, std::string> glyphTopLabelLines(const std::string& label)
 {
     if (label == "Input Viewer") return {"Input", "Viewer"};
     if (label == "Input Mode" || label == "USB Mode") return {"USB", "Mode"};
+    if (label == "USB Host") return {"USB", "Host"};
     if (label == "USB Support") return {"USB", "Support"};
     if (label == "Profiles") return {"Profile", ""};
     if (label == "D-Pad Mode") return {"D-Pad", "Mode"};
@@ -33,6 +34,7 @@ const char* glyphIconText(const std::string& label)
 {
     if (label == "Input Viewer") return "IN";
     if (label == "Input Mode" || label == "USB Mode") return "USB";
+    if (label == "USB Host") return "USB";
     if (label == "USB Support") return "USB";
     if (label == "Profiles") return "PRO";
     if (label == "D-Pad Mode") return "DP";
@@ -49,6 +51,7 @@ const unsigned char* glyphSmallIcon(const std::string& label)
 {
     if (label == "Input Viewer") return bitmap_input_small;
     if (label == "Input Mode" || label == "USB Mode") return bitmap_usb_small;
+    if (label == "USB Host") return bitmap_usb_small;
     if (label == "USB Support") return bitmap_usb_small;
     if (label == "Profiles") return bitmap_gamemode_small;
     if (label == "D-Pad Mode") return bitmap_input_small;
@@ -65,6 +68,7 @@ const unsigned char* glyphLargeIcon(const std::string& label)
 {
     if (label == "Input Viewer") return bitmap_input_large;
     if (label == "Input Mode" || label == "USB Mode") return bitmap_usb_large;
+    if (label == "USB Host") return bitmap_usb_large;
     if (label == "USB Support") return bitmap_usb_large;
     if (label == "Profiles") return bitmap_gamemode_large;
     if (label == "D-Pad Mode") return bitmap_input_large;
@@ -90,6 +94,7 @@ void setGlyphButtonsScreenMode(bool inputViewer)
 std::string glyphListTitle(std::vector<MenuEntry>* menu,
                            std::vector<MenuEntry>* profilesMenu,
                            std::vector<MenuEntry>* inputModeMenu,
+                           std::vector<MenuEntry>* usbHostMenu,
                            std::vector<MenuEntry>* backendSupportMenu,
                            std::vector<MenuEntry>* dpadModeMenu,
                            std::vector<MenuEntry>* socdModeMenu,
@@ -99,6 +104,7 @@ std::string glyphListTitle(std::vector<MenuEntry>* menu,
 {
     if (menu == profilesMenu) return "Set Profile";
     if (menu == inputModeMenu) return "USB Mode";
+    if (menu == usbHostMenu) return "USB Host";
     if (menu == backendSupportMenu) return "USB Support";
     if (menu == dpadModeMenu) return "D-Pad Mode";
     if (menu == socdModeMenu) return "SOCD Mode";
@@ -229,6 +235,7 @@ void MainMenuScreen::populateGlyphBackendMenu()
         InputMode mode;
     } modes[] = {
         {"XInput",     INPUT_MODE_XINPUT},
+        {"Xbox One",   INPUT_MODE_XBONE},
         {"DInput",     INPUT_MODE_GENERIC},
         {"Switch",     INPUT_MODE_SWITCH},
         {"Switch Pro", INPUT_MODE_SWITCH_PRO},
@@ -293,6 +300,78 @@ int32_t MainMenuScreen::currentGlyphBackendSupport()
     const uint8_t profile = updateProfile >= 1 ? updateProfile : Storage::getInstance().GetGamepad()->getOptions().profileNumber;
     const uint16_t backendMask = static_cast<uint16_t>(currentMenu->at(gpMenu->getIndex()).optionValue);
     return GlyphProfiles::backendEnabled(profile, backendMask) ? backendMask : 0;
+}
+
+void MainMenuScreen::toggleGlyphUsbHostOption()
+{
+    if (currentMenu->at(gpMenu->getIndex()).optionValue == -1) {
+        return;
+    }
+
+    const int32_t option = currentMenu->at(gpMenu->getIndex()).optionValue;
+    AddonOptions& addonOptions = Storage::getInstance().getAddonOptions();
+    GamepadOptions& gamepadOptions = Storage::getInstance().getGamepadOptions();
+    bool changed = false;
+
+    switch (option) {
+        case 1:
+            addonOptions.gamepadUSBHostOptions.enabled = !addonOptions.gamepadUSBHostOptions.enabled;
+            changed = true;
+            break;
+        case 2:
+            addonOptions.keyboardHostOptions.enabled = !addonOptions.keyboardHostOptions.enabled;
+            changed = true;
+            break;
+        case 4:
+            gamepadOptions.ps4AuthType = gamepadOptions.ps4AuthType == INPUT_MODE_AUTH_TYPE_USB ?
+                INPUT_MODE_AUTH_TYPE_NONE : INPUT_MODE_AUTH_TYPE_USB;
+            changed = true;
+            break;
+        case 8:
+            gamepadOptions.ps5AuthType = gamepadOptions.ps5AuthType == INPUT_MODE_AUTH_TYPE_USB ?
+                INPUT_MODE_AUTH_TYPE_NONE : INPUT_MODE_AUTH_TYPE_USB;
+            changed = true;
+            break;
+        case 16:
+            gamepadOptions.xinputAuthType = gamepadOptions.xinputAuthType == INPUT_MODE_AUTH_TYPE_USB ?
+                INPUT_MODE_AUTH_TYPE_NONE : INPUT_MODE_AUTH_TYPE_USB;
+            changed = true;
+            break;
+        default:
+            break;
+    }
+
+    if (changed) {
+        EventManager::getInstance().triggerEvent(new GPStorageSaveEvent(true, true));
+        exitToScreen = DisplayMode::RESTART;
+        exitToScreenBeforePrompt = DisplayMode::RESTART;
+    }
+}
+
+int32_t MainMenuScreen::currentGlyphUsbHostOption()
+{
+    if (currentMenu->at(gpMenu->getIndex()).optionValue == -1) {
+        return 0;
+    }
+
+    const int32_t option = currentMenu->at(gpMenu->getIndex()).optionValue;
+    const AddonOptions& addonOptions = Storage::getInstance().getAddonOptions();
+    const GamepadOptions& gamepadOptions = Storage::getInstance().getGamepadOptions();
+
+    switch (option) {
+        case 1:
+            return addonOptions.gamepadUSBHostOptions.enabled ? option : 0;
+        case 2:
+            return addonOptions.keyboardHostOptions.enabled ? option : 0;
+        case 4:
+            return gamepadOptions.ps4AuthType == INPUT_MODE_AUTH_TYPE_USB ? option : 0;
+        case 8:
+            return gamepadOptions.ps5AuthType == INPUT_MODE_AUTH_TYPE_USB ? option : 0;
+        case 16:
+            return gamepadOptions.xinputAuthType == INPUT_MODE_AUTH_TYPE_USB ? option : 0;
+        default:
+            return 0;
+    }
 }
 #endif
 
@@ -392,7 +471,7 @@ void MainMenuScreen::drawGlyphListMenu()
 {
     drawGlyphBitmap(getRenderer(), bitmap_glyph_list_menu_base, 128, 64, 0, 0);
 
-    std::string title = glyphListTitle(currentMenu, &profilesMenu, &inputModeMenu, &backendSupportMenu, &dpadModeMenu, &socdModeMenu, &rgbBrightnessMenu, &turboModeMenu, &saveMenu);
+    std::string title = glyphListTitle(currentMenu, &profilesMenu, &inputModeMenu, &usbHostMenu, &backendSupportMenu, &dpadModeMenu, &socdModeMenu, &rgbBrightnessMenu, &turboModeMenu, &saveMenu);
     if (title.length() > 14) {
         title.resize(14);
     }

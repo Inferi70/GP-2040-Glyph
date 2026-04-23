@@ -68,6 +68,8 @@ class MainMenuScreen : public GPScreen {
         void populateGlyphBackendSupportMenu();
         void toggleGlyphBackendSupport();
         int32_t currentGlyphBackendSupport();
+        void toggleGlyphUsbHostOption();
+        int32_t currentGlyphUsbHostOption();
 #endif
 
         void selectDPadMode();
@@ -145,6 +147,13 @@ class MainMenuScreen : public GPScreen {
         InputMode updateInputMode;
 
         std::vector<MenuEntry> backendSupportMenu = {};
+        std::vector<MenuEntry> usbHostMenu = {
+            {"Gamepad Input", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 1},
+            {"Keyboard Input", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 2},
+            {"XInput Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 16},
+            {"PS4 Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 4},
+            {"PS5 Auth", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphUsbHostOption, this), std::bind(&MainMenuScreen::toggleGlyphUsbHostOption, this), 8},
+        };
 
         std::vector<MenuEntry> dpadModeMenu = {
             DpadMode_VALUELIST(DPAD_MODE_ENTRIES)
@@ -189,6 +198,7 @@ class MainMenuScreen : public GPScreen {
             {"Input Viewer", NULL, nullptr,      std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::openInputViewer, this)},
             {"Profiles",   NULL, &profilesMenu,  std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
             {"USB Mode",   NULL, &inputModeMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
+            {"USB Host",   NULL, &usbHostMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
             {"USB Support",NULL, &backendSupportMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
             {"D-Pad Mode", NULL, &dpadModeMenu,  std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
             {"SOCD Mode",  NULL, &socdModeMenu,  std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
