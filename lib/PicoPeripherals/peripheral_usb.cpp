@@ -29,7 +29,12 @@ void PeripheralUSB::setup() {
 
         pio_cfg.pin_dp = _DP;
         pio_cfg.pinout = (_Order == 0 ? PIO_USB_PINOUT_DPDM : PIO_USB_PINOUT_DMDP);
-        pio_cfg.sm_tx = 1; // Move TX to PIO0:1, NeoPico is in PIO0:0
-        // RX and EOP are PIO1:0, PIO1:1
+        // Keep PIO0:0 free for NeoPico LEDs. Pico-PIO-USB needs three SMs.
+        pio_cfg.pio_rx_num = 0;
+        pio_cfg.sm_rx = 2;
+        pio_cfg.sm_eop = 3;
+        pio_cfg.pio_tx_num = 1;
+        pio_cfg.sm_tx = 3;
+        pio_cfg.tx_ch = 9;
     }
 }
