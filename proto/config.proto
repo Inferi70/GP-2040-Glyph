@@ -923,12 +923,41 @@ message GlyphProfileEntry
     optional bytes socdPairs = 6 [(nanopb).max_size = 30];
     optional bytes buttonRemaps = 7 [(nanopb).max_size = 120];
     optional bytes rgbColors = 8 [(nanopb).max_size = 240];
+    optional uint32 modProfile = 9;
+    optional uint32 behaviorMode = 10;
+    optional bool analogTriggersEnabled = 11;
+}
+
+message GlyphModProfileEntry
+{
+    optional string name = 1 [(nanopb).max_length = 16];
+    optional uint32 modXHorizontal = 2 [deprecated = true];
+    optional uint32 modXVertical = 3 [deprecated = true];
+    optional uint32 modYHorizontal = 4 [deprecated = true];
+    optional uint32 modYVertical = 5 [deprecated = true];
+    optional bool enabled = 6 [default = false];
+    optional uint32 modXMagnitude = 7 [deprecated = true];
+    optional uint32 modYMagnitude = 8 [deprecated = true];
+    repeated uint32 modXAngles = 9 [(nanopb).max_count = 4, deprecated = true];
+    repeated uint32 modYAngles = 10 [(nanopb).max_count = 4, deprecated = true];
+    repeated uint32 modXX = 11 [(nanopb).max_count = 4];
+    repeated uint32 modXY = 12 [(nanopb).max_count = 4];
+    repeated uint32 modYX = 13 [(nanopb).max_count = 4];
+    repeated uint32 modYY = 14 [(nanopb).max_count = 4];
+    optional uint32 lightShield1 = 15;
+    optional uint32 lightShield2 = 16;
+    optional uint32 modXDiagonalX = 17;
+    optional uint32 modXDiagonalY = 18;
+    optional uint32 modYDiagonalX = 19;
+    optional uint32 modYDiagonalY = 20;
+    optional bool analogTriggersEnabled = 21;
 }
 
 message GlyphOptions
 {
     optional uint32 version = 1;
     repeated GlyphProfileEntry profiles = 2 [(nanopb).max_count = 20];
+    repeated GlyphModProfileEntry modProfiles = 3 [(nanopb).max_count = 8];
 }
 
 message AddonOptions

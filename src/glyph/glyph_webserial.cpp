@@ -39,7 +39,10 @@ enum HayboxMode : uint32_t {
     MODE_PROJECT_M = 2,
     MODE_ULTIMATE = 3,
     MODE_FGC = 4,
+    MODE_RIVALS_OF_AETHER = 5,
+    MODE_RIVALS2 = 6,
     MODE_64 = 8,
+    MODE_KEYBOARD = 13,
 };
 
 enum HayboxLayout : uint32_t {
@@ -186,15 +189,23 @@ GlyphProfiles::Layout layoutFromHaybox(uint32_t mode, uint32_t layout)
     return GlyphProfiles::Layout::Platform;
 }
 
-uint32_t modeFromLayout(GlyphProfiles::Layout layout, uint8_t profileNumber)
+uint32_t modeFromBehavior(uint32_t behaviorMode, GlyphProfiles::Layout layout, uint8_t modProfileId)
 {
+    if (behaviorMode != 0) {
+        return behaviorMode;
+    }
     if (layout == GlyphProfiles::Layout::Fgc || layout == GlyphProfiles::Layout::SplitFgc) {
         return MODE_FGC;
     }
-    if (profileNumber == 2) return MODE_PROJECT_M;
-    if (profileNumber == 3) return MODE_ULTIMATE;
-    if (profileNumber == 6) return MODE_64;
-    return MODE_MELEE;
+    switch (modProfileId) {
+        case 2: return MODE_PROJECT_M;
+        case 3: return MODE_ULTIMATE;
+        case 1:
+        case 4:
+        case 5:
+        default:
+            return MODE_MELEE;
+    }
 }
 
 uint32_t layoutToHaybox(GlyphProfiles::Layout layout)
@@ -453,8 +464,14 @@ bool parseGameMode(const uint8_t* data, size_t length, uint8_t profileNumber)
     if (hasName) {
         GlyphProfiles::setName(profileNumber, name);
     }
+    if (hasMode) {
+        GlyphProfiles::setBehaviorMode(profileNumber, mode);
+    }
     if (hasMode || hasLayout) {
         GlyphProfiles::setLayout(profileNumber, layoutFromHaybox(mode, layout));
+    }
+    if (hasMode) {
+        GlyphProfiles::setModProfile(profileNumber, GlyphProfiles::defaultModProfileForLegacyMode(mode));
     }
     GlyphProfiles::setSOCDMode(profileNumber, socdMode);
     if (hasRgbConfig) {
@@ -580,7 +597,7 @@ std::vector<uint8_t> encodeGameMode(uint8_t profileNumber)
 {
     const GlyphProfiles::ProfileState& profile = GlyphProfiles::state(profileNumber);
     std::vector<uint8_t> mode;
-    writeUInt(mode, 1, modeFromLayout(profile.layout, profileNumber));
+    writeUInt(mode, 1, modeFromBehavior(profile.behaviorMode, profile.layout, profile.modProfileId));
     writeString(mode, 2, profile.name);
     for (uint8_t pairIndex = 0; pairIndex < profile.socdPairCount; pairIndex++) {
         writeMessage(mode, 3, encodeSocdPair(profile.socdPairs[pairIndex]));

@@ -66,8 +66,17 @@ class MainMenuScreen : public GPScreen {
 #ifdef GLYPH_DISPLAY_SCREEN
         void populateGlyphBackendMenu();
         void populateGlyphBackendSupportMenu();
+        void populateGlyphModProfileMenu();
+        void populateGlyphModAngleMenus();
+        void populateGlyphModCoordinateMenu();
+        void populateGlyphLightShieldMenu();
+        void populateGlyphModSingleValueMenu();
+        void selectGlyphAnalogTriggers();
+        int32_t currentGlyphAnalogTriggers();
         void toggleGlyphBackendSupport();
         int32_t currentGlyphBackendSupport();
+        void selectGlyphModProfile();
+        int32_t currentGlyphModProfile();
         void refreshGlyphUsbHostMenuLabels();
         void toggleGlyphUsbHostOption();
         int32_t currentGlyphUsbHostOption();
@@ -104,11 +113,15 @@ class MainMenuScreen : public GPScreen {
         void drawGlyphTopMenu();
         void drawGlyphListMenu();
         void drawGlyphControls();
+        bool handleGlyphModProfileNavigation(GpioAction action);
+        int32_t currentGlyphModCoordinateValue();
+        int32_t currentGlyphModSingleValue();
 #endif
         bool isPressed = false;
         uint32_t checkDebounce;
         std::vector<MenuEntry>* currentMenu;
         std::vector<MenuEntry>* previousMenu;
+        std::vector<std::vector<MenuEntry>*> menuHistory;
         uint16_t prevButtonState = 0;
         uint8_t prevDpadState = 0;
         Mask_t prevValues;
@@ -148,7 +161,22 @@ class MainMenuScreen : public GPScreen {
         InputMode updateInputMode;
 
         std::vector<MenuEntry> backendSupportMenu = {};
+        std::vector<MenuEntry> modProfileMenu = {};
+        std::vector<MenuEntry> analogTriggersMenu = {};
+        std::vector<MenuEntry> lightShieldMenu = {};
+        std::vector<MenuEntry> modSingleValueMenu = {};
+        std::vector<MenuEntry> modXAngleMenu = {};
+        std::vector<MenuEntry> modYAngleMenu = {};
+        std::vector<MenuEntry> modMagnitudeMenu = {};
+        std::vector<MenuEntry> modCoordinateMenu = {};
         std::vector<MenuEntry> usbHostMenu = {};
+        bool modMagnitudeMenuIsModX = true;
+        bool modCoordinateMenuIsModX = true;
+        uint8_t modCoordinateMenuSlot = 0;
+        bool modCoordinateEditing = false;
+        bool modSingleValueEditing = false;
+        int32_t modSingleValueSource = 0;
+        std::string modSingleValueTitle = "";
 
         std::vector<MenuEntry> dpadModeMenu = {
             DpadMode_VALUELIST(DPAD_MODE_ENTRIES)
@@ -192,6 +220,7 @@ class MainMenuScreen : public GPScreen {
         std::vector<MenuEntry> mainMenu = {
             {"Input Viewer", NULL, nullptr,      std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::openInputViewer, this)},
             {"Profiles",   NULL, &profilesMenu,  std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
+            {"Mod Profile", NULL, &modProfileMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
             {"USB Mode",   NULL, &inputModeMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
             {"USB Host",   NULL, &usbHostMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
             {"USB Support",NULL, &backendSupportMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},

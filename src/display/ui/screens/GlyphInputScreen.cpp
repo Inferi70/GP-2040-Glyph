@@ -4,6 +4,7 @@
 #include "addons/glyph_matrix_input.h"
 #include "drivermanager.h"
 #include "gamepad.h"
+#include "display/fonts/GP_Font_Standard.h"
 #include "glyph/assets/GlyphButtonBitmaps.h"
 #include "glyph/assets/GlyphDashboardBitmaps.h"
 #include "glyph/assets/GlyphInputBitmaps.h"
@@ -151,6 +152,35 @@ void drawRightAlignedText(GPGFX* renderer, uint8_t rightColumn, uint8_t row, con
     renderer->drawText(startColumn, row, text);
 }
 
+void drawDashboardValue(GPGFX* renderer, uint8_t x, uint8_t y, const std::string& text)
+{
+    constexpr uint8_t kGlyphWidth = 5;
+    constexpr uint8_t kGlyphHeight = 7;
+    constexpr uint8_t kGlyphAdvance = 6;
+
+    uint8_t cursorX = x;
+    for (char ch : text) {
+        if (ch < GPGFX_FONT_CHAR_OFFSET) {
+            cursorX = static_cast<uint8_t>(cursorX + kGlyphAdvance);
+            continue;
+        }
+
+        const uint8_t glyphIndex = static_cast<uint8_t>(ch - GPGFX_FONT_CHAR_OFFSET);
+        const uint8_t* glyph = &GP_Font_Standard[glyphIndex * kGlyphWidth];
+
+        for (uint8_t glyphX = 0; glyphX < kGlyphWidth; glyphX++) {
+            const uint8_t column = glyph[glyphX];
+            for (uint8_t glyphY = 0; glyphY < kGlyphHeight; glyphY++) {
+                if ((column >> glyphY) & 0x01) {
+                    renderer->drawPixel(static_cast<uint8_t>(cursorX + glyphX), static_cast<uint8_t>(y + glyphY), 1);
+                }
+            }
+        }
+
+        cursorX = static_cast<uint8_t>(cursorX + kGlyphAdvance);
+    }
+}
+
 void drawHintIcon(GPGFX* renderer, const unsigned char* bitmap, uint16_t x, bool pressed)
 {
     if (bitmap == nullptr) {
@@ -242,6 +272,78 @@ const unsigned char* activeInputIcon(const GamepadState& state, InputMode mode)
 
     return nullptr;
 }
+
+bool iconStillActive(const unsigned char* icon, const GamepadState& state, InputMode mode)
+{
+    if (icon == nullptr) return false;
+
+    if (icon == Bitmap_ModX_16) return GlyphMatrixInput::glyphModXPressed();
+    if (icon == Bitmap_ModY_16) return GlyphMatrixInput::glyphModYPressed();
+
+    if (icon == Bitmap_A_16) return (state.buttons & GAMEPAD_MASK_B1) != 0;
+    if (icon == Bitmap_B_16) return (state.buttons & GAMEPAD_MASK_B2) != 0;
+    if (icon == Bitmap_X_16) return (state.buttons & GAMEPAD_MASK_B3) != 0;
+    if (icon == Bitmap_Y_16) return (state.buttons & GAMEPAD_MASK_B4) != 0;
+    if (icon == Bitmap_LB_16 || icon == Bitmap_L_16) return (state.buttons & GAMEPAD_MASK_L1) != 0;
+    if (icon == Bitmap_RB_16 || icon == Bitmap_R_16) return (state.buttons & GAMEPAD_MASK_R1) != 0;
+    if (icon == Bitmap_LT_16 || icon == Bitmap_ZL_16) return (state.buttons & GAMEPAD_MASK_L2) != 0;
+    if (icon == Bitmap_RT_16 || icon == Bitmap_ZR_16) return (state.buttons & GAMEPAD_MASK_R2) != 0;
+    if (icon == Bitmap_XB_Start_16 || icon == Bitmap_Plus_16) return (state.buttons & GAMEPAD_MASK_S2) != 0;
+    if (icon == Bitmap_XB_Back_16 || icon == Bitmap_Minus_16) return (state.buttons & GAMEPAD_MASK_S1) != 0;
+    if (icon == Bitmap_Home_16) return (state.aux & AUX_MASK_FUNCTION) != 0;
+    if (icon == Bitmap_LSClick_16) return (state.buttons & GAMEPAD_MASK_L3) != 0;
+    if (icon == Bitmap_RSClick_16) return (state.buttons & GAMEPAD_MASK_R3) != 0;
+
+    if (icon == Bitmap_DPadDown_16) return (state.dpad & GAMEPAD_MASK_DOWN) != 0;
+    if (icon == Bitmap_DpadUp_16) return (state.dpad & GAMEPAD_MASK_UP) != 0;
+    if (icon == Bitmap_DPadLeft_16) return (state.dpad & GAMEPAD_MASK_LEFT) != 0;
+    if (icon == Bitmap_DpadRight_16) return (state.dpad & GAMEPAD_MASK_RIGHT) != 0;
+
+    if (icon == Bitmap_LS_Left_16) return state.lx < (GAMEPAD_JOYSTICK_MID - 4096);
+    if (icon == Bitmap_LS_Right_16) return state.lx > (GAMEPAD_JOYSTICK_MID + 4096);
+    if (icon == Bitmap_LS_Up_16) return state.ly < (GAMEPAD_JOYSTICK_MID - 4096);
+    if (icon == Bitmap_LS_Down_16) return state.ly > (GAMEPAD_JOYSTICK_MID + 4096);
+    if (icon == Bitmap_RS_Left_16) return state.rx < (GAMEPAD_JOYSTICK_MID - 4096);
+    if (icon == Bitmap_RS_Right_16) return state.rx > (GAMEPAD_JOYSTICK_MID + 4096);
+    if (icon == Bitmap_RS_Up_16) return state.ry < (GAMEPAD_JOYSTICK_MID - 4096);
+    if (icon == Bitmap_RS_Down_16) return state.ry > (GAMEPAD_JOYSTICK_MID + 4096);
+
+    return false;
+}
+
+bool anyDashboardInputActive(const GamepadState& state)
+{
+    if (GlyphMatrixInput::glyphModXPressed() || GlyphMatrixInput::glyphModYPressed()) return true;
+    if (state.buttons != 0) return true;
+    if (state.dpad != 0) return true;
+    if (state.aux != 0) return true;
+    if (state.lx < (GAMEPAD_JOYSTICK_MID - 4096) || state.lx > (GAMEPAD_JOYSTICK_MID + 4096)) return true;
+    if (state.ly < (GAMEPAD_JOYSTICK_MID - 4096) || state.ly > (GAMEPAD_JOYSTICK_MID + 4096)) return true;
+    if (state.rx < (GAMEPAD_JOYSTICK_MID - 4096) || state.rx > (GAMEPAD_JOYSTICK_MID + 4096)) return true;
+    if (state.ry < (GAMEPAD_JOYSTICK_MID - 4096) || state.ry > (GAMEPAD_JOYSTICK_MID + 4096)) return true;
+    return false;
+}
+
+const unsigned char* stableInputIcon(const GamepadState& state, InputMode mode)
+{
+    constexpr uint32_t kDashboardIconHoldMs = 120;
+    static const unsigned char* lastIcon = nullptr;
+    static uint32_t lastIconAt = 0;
+
+    const unsigned char* currentIcon = activeInputIcon(state, mode);
+    if (currentIcon != nullptr) {
+        lastIcon = currentIcon;
+        lastIconAt = getMillis();
+        return currentIcon;
+    }
+
+    if (lastIcon != nullptr && !anyDashboardInputActive(state) && (getMillis() - lastIconAt) <= kDashboardIconHoldMs) {
+        return lastIcon;
+    }
+
+    lastIcon = nullptr;
+    return nullptr;
+}
 }
 
 bool GlyphInputScreen::inputViewerMode = false;
@@ -271,7 +373,8 @@ void GlyphInputScreen::drawScreen()
         gamepad = Storage::getInstance().GetGamepad();
     }
 
-    const GamepadState state = gamepad != nullptr ? gamepad->state : GamepadState{};
+    Gamepad* processedGamepad = getProcessedGamepad();
+    const GamepadState state = processedGamepad != nullptr ? processedGamepad->state : GamepadState{};
     const InputMode mode = DriverManager::getInstance().getInputMode();
     const uint8_t profileNumber = gamepad != nullptr ? gamepad->getOptions().profileNumber : 1;
     const std::string profile = truncateText(GlyphProfiles::name(profileNumber), 10);
@@ -285,27 +388,27 @@ void GlyphInputScreen::drawScreen()
     }
 
     if (inputViewerMode) {
-        const ButtonDot* dots = kFullLayoutDots;
-        const size_t dotCount = sizeof(kFullLayoutDots) / sizeof(kFullLayoutDots[0]);
+        size_t dotCount = 0;
+        const ButtonDot* dots = activeDots(dotCount);
         for (size_t i = 0; i < dotCount; i++) {
             drawDot(dots[i], state);
         }
         return;
     }
 
-    getRenderer()->drawText(2, 1, "Glyph");
-    getRenderer()->drawText(2, 2, profile);
-    getRenderer()->drawText(2, 3, layout);
-    getRenderer()->drawText(2, 4, backend);
+    drawDashboardValue(getRenderer(), 13, 3, "Glyph");
+    drawDashboardValue(getRenderer(), 13, 13, profile);
+    drawDashboardValue(getRenderer(), 13, 23, layout);
+    drawDashboardValue(getRenderer(), 13, 33, backend);
 
-    drawRightAlignedText(getRenderer(), 15, 1, std::to_string(axisToSigned8(state.lx)));
-    drawRightAlignedText(getRenderer(), 15, 2, std::to_string(axisToSigned8(state.ly)));
-    drawRightAlignedText(getRenderer(), 15, 3, std::to_string(axisToSigned8(state.rx)));
-    drawRightAlignedText(getRenderer(), 15, 4, std::to_string(axisToSigned8(state.ry)));
-    drawRightAlignedText(getRenderer(), 21, 3, std::to_string(state.rt));
-    drawRightAlignedText(getRenderer(), 21, 4, std::to_string(state.lt));
+    drawDashboardValue(getRenderer(), 78, 5, std::to_string(axisToSigned8(state.lx)));
+    drawDashboardValue(getRenderer(), 78, 13, std::to_string(axisToSigned8(state.ly)));
+    drawDashboardValue(getRenderer(), 84, 21, std::to_string(axisToSigned8(state.rx)));
+    drawDashboardValue(getRenderer(), 84, 29, std::to_string(axisToSigned8(state.ry)));
+    drawDashboardValue(getRenderer(), 113, 21, std::to_string(state.rt));
+    drawDashboardValue(getRenderer(), 113, 29, std::to_string(state.lt));
 
-    const unsigned char* currentInput = activeInputIcon(state, mode);
+    const unsigned char* currentInput = stableInputIcon(state, mode);
     if (currentInput != nullptr) {
         drawGlyphBitmap(getRenderer(), currentInput, 16, 16, 109, 3);
     }

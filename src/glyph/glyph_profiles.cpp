@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 namespace
 {
@@ -15,6 +16,7 @@ using GlyphProfiles::BackendSwitch;
 using GlyphProfiles::BackendXInput;
 using GlyphProfiles::Action;
 using GlyphProfiles::Layout;
+using GlyphProfiles::ModProfile;
 using GlyphProfiles::OutputIcon;
 using GlyphProfiles::Profile;
 using GlyphProfiles::Target;
@@ -68,6 +70,12 @@ constexpr uint8_t SOCD_NEUTRAL = 1;
 constexpr uint8_t SOCD_2IP = 2;
 constexpr uint8_t SOCD_2IP_NO_REAC = 3;
 constexpr uint32_t GLYPH_DEFAULT_RGB_COLOR = 2282478;
+constexpr uint8_t MOD_PROFILE_MELEE = 1;
+constexpr uint8_t MOD_PROFILE_PROJECT_M = 2;
+constexpr uint8_t MOD_PROFILE_ULTIMATE = 3;
+constexpr uint8_t MOD_PROFILE_RIVALS = 4;
+constexpr uint8_t MOD_PROFILE_RIVALS2 = 5;
+constexpr uint8_t MOD_PROFILE_DEFAULT = 6;
 
 constexpr Action none()
 {
@@ -100,14 +108,24 @@ constexpr Action aux(uint32_t mask)
 }
 
 constexpr Profile kProfiles[] = {
-    {1, "Melee",     Layout::Platform, SOCD_MODE_SECOND_INPUT_PRIORITY, 1, kPlatformBackends},
-    {2, "Brawl",     Layout::Platform, SOCD_MODE_SECOND_INPUT_PRIORITY, 2, kPlatformBackends},
-    {3, "Ultimate",  Layout::Platform, SOCD_MODE_SECOND_INPUT_PRIORITY, 3, kPlatformBackends},
-    {4, "Split FGC", Layout::SplitFgc, SOCD_MODE_NEUTRAL,               4, kModernBackends},
-    {5, "FGC",       Layout::Fgc,      SOCD_MODE_NEUTRAL,               5, kModernBackends},
-    {6, "Smash64",   Layout::Platform, SOCD_MODE_NEUTRAL,               6, BackendN64},
+    {1, "Melee",     GlyphProfiles::BehaviorMelee,    Layout::Platform, SOCD_MODE_SECOND_INPUT_PRIORITY, 1, MOD_PROFILE_MELEE,     kPlatformBackends},
+    {2, "Brawl",     GlyphProfiles::BehaviorProjectM, Layout::Platform, SOCD_MODE_SECOND_INPUT_PRIORITY, 2, MOD_PROFILE_PROJECT_M, kPlatformBackends},
+    {3, "Ultimate",  GlyphProfiles::BehaviorUltimate, Layout::Platform, SOCD_MODE_SECOND_INPUT_PRIORITY, 3, MOD_PROFILE_ULTIMATE,  kPlatformBackends},
+    {4, "Split FGC", GlyphProfiles::BehaviorFgc,      Layout::SplitFgc, SOCD_MODE_NEUTRAL,               4, MOD_PROFILE_DEFAULT,   kModernBackends},
+    {5, "FGC",       GlyphProfiles::BehaviorFgc,      Layout::Fgc,      SOCD_MODE_NEUTRAL,               5, MOD_PROFILE_DEFAULT,   kModernBackends},
+    {6, "Smash64",   GlyphProfiles::BehaviorSmash64,  Layout::Platform, SOCD_MODE_NEUTRAL,               6, MOD_PROFILE_DEFAULT,   BackendN64},
 };
 constexpr uint8_t kPresetProfileCount = sizeof(kProfiles) / sizeof(kProfiles[0]);
+
+constexpr ModProfile kModProfiles[] = {
+    {MOD_PROFILE_MELEE,     "Melee",     53, 43, 59, 25, 27, 59, 25, 59, 49, 94, true,  {49, 56, 63, 56}, {42, 41, 39, 29}, {51, 41, 39, 29}, {61, 56, 63, 56}},
+    {MOD_PROFILE_PROJECT_M, "Project M", 70, 60, 70, 34, 35, 70, 28, 58, 49, 94, true,  {72, 77, 84, 82}, {61, 55, 50, 36}, {62, 55, 40, 34}, {72, 77, 84, 82}},
+    {MOD_PROFILE_ULTIMATE,  "Ultimate",  53, 44, 53, 35, 35, 53, 35, 53, 49, 94, false, {53, 53, 53, 53}, {28, 31, 39, 43}, {28, 31, 49, 43}, {53, 53, 53, 53}},
+    {MOD_PROFILE_RIVALS,    "Rivals",    66, 44, 59, 23, 44, 67, 44, 113, 49, 94, false, {51, 49, 52, 49}, {43, 35, 31, 24}, {47, 45, 44, 44}, {57, 63, 74, 90}},
+    {MOD_PROFILE_RIVALS2,   "Rivals 2",  92, 72, 92, 42, 76, 71, 51, 84, 49, 94, false, {69, 78, 88, 78}, {59, 57, 55, 41}, {71, 57, 55, 41}, {85, 78, 88, 78}},
+    {MOD_PROFILE_DEFAULT,   "Default",   53, 35, 53, 35, 35, 53, 35, 53, 49, 94, false, {53, 53, 53, 53}, {35, 35, 35, 35}, {35, 35, 35, 35}, {53, 53, 53, 53}},
+};
+constexpr uint8_t kModProfileCount = sizeof(kModProfiles) / sizeof(kModProfiles[0]);
 
 constexpr GlyphProfiles::SocdPair kPlatformSocdPairs[] = {
     {BTN_LF3, BTN_LF1, SOCD_2IP_NO_REAC},
@@ -130,19 +148,30 @@ constexpr GlyphProfiles::SocdPair kFgcSocdPairs[] = {
 
 constexpr GlyphProfiles::ButtonRemap kMeleeRemaps[] = {
     {BTN_MB1, BTN_UNSPECIFIED},
-    {BTN_LF8, BTN_UNSPECIFIED},
-    {BTN_LF7, BTN_UNSPECIFIED},
-    {BTN_LF6, BTN_UNSPECIFIED},
-    {BTN_LT6, BTN_UNSPECIFIED},
+    {BTN_MB2, BTN_UNSPECIFIED},
+    {BTN_MB3, BTN_UNSPECIFIED},
 };
 
 constexpr GlyphProfiles::ButtonRemap kBrawlRemaps[] = {
     {BTN_MB1, BTN_UNSPECIFIED},
-    {BTN_LF8, BTN_UNSPECIFIED},
+    {BTN_MB2, BTN_UNSPECIFIED},
+    {BTN_MB3, BTN_UNSPECIFIED},
     {BTN_LF7, BTN_UNSPECIFIED},
-    {BTN_LF6, BTN_UNSPECIFIED},
     {BTN_LT6, BTN_UNSPECIFIED},
-    {BTN_RF9, BTN_UNSPECIFIED},
+};
+
+constexpr GlyphProfiles::ButtonRemap kUltimateRemaps[] = {
+    {BTN_MB1, BTN_UNSPECIFIED},
+    {BTN_MB2, BTN_UNSPECIFIED},
+    {BTN_MB3, BTN_UNSPECIFIED},
+    {BTN_LF7, BTN_UNSPECIFIED},
+    {BTN_LT6, BTN_UNSPECIFIED},
+};
+
+constexpr GlyphProfiles::ButtonRemap kSmash64Remaps[] = {
+    {BTN_MB1, BTN_UNSPECIFIED},
+    {BTN_MB2, BTN_UNSPECIFIED},
+    {BTN_MB3, BTN_UNSPECIFIED},
 };
 
 constexpr GlyphProfiles::ButtonRemap kSplitFgcRemaps[] = {
@@ -270,13 +299,15 @@ constexpr OutputIcon kMenuButtonIcons[][7] = {
     {OutputIcon::None, OutputIcon::None, OutputIcon::None, OutputIcon::None, OutputIcon::Home, OutputIcon::XboxBack, OutputIcon::Start},
 };
 
-constexpr uint32_t kGlyphOptionsVersion = 8;
+constexpr uint32_t kGlyphOptionsVersion = 11;
 constexpr uint8_t kPackedSocdPairSize = 3;
 constexpr uint8_t kPackedButtonRemapSize = 2;
 constexpr uint8_t kPackedRgbColorSize = 4;
 
 GlyphProfiles::ProfileState mutableProfiles[GlyphProfiles::MaxProfiles] = {};
+GlyphProfiles::ModProfileState mutableModProfiles[GlyphProfiles::MaxModProfiles] = {};
 bool mutableProfilesReady = false;
+uint8_t configuredProfileCount = kPresetProfileCount;
 
 void copyName(char* destination, const char* source)
 {
@@ -293,6 +324,55 @@ void copyName(char* destination, const char* source)
     destination[GlyphProfiles::ProfileNameLength] = '\0';
 }
 
+void initializeModProfiles()
+{
+    for (uint8_t i = 0; i < GlyphProfiles::MaxModProfiles; i++) {
+        mutableModProfiles[i].number = i + 1;
+        mutableModProfiles[i].enabled = false;
+        copyName(mutableModProfiles[i].name, "");
+        mutableModProfiles[i].modXHorizontal = 53;
+        mutableModProfiles[i].modXVertical = 35;
+        mutableModProfiles[i].modXDiagonalX = 53;
+        mutableModProfiles[i].modXDiagonalY = 35;
+        mutableModProfiles[i].modYHorizontal = 35;
+        mutableModProfiles[i].modYVertical = 53;
+        mutableModProfiles[i].modYDiagonalX = 35;
+        mutableModProfiles[i].modYDiagonalY = 53;
+        mutableModProfiles[i].lightShield1 = 49;
+        mutableModProfiles[i].lightShield2 = 94;
+        mutableModProfiles[i].analogTriggersEnabled = false;
+        for (uint8_t slot = 0; slot < 4; slot++) {
+            mutableModProfiles[i].modXX[slot] = 53;
+            mutableModProfiles[i].modXY[slot] = 35;
+            mutableModProfiles[i].modYX[slot] = 35;
+            mutableModProfiles[i].modYY[slot] = 53;
+        }
+    }
+
+    for (uint8_t i = 0; i < kModProfileCount; i++) {
+        mutableModProfiles[i].number = kModProfiles[i].number;
+        mutableModProfiles[i].enabled = true;
+        copyName(mutableModProfiles[i].name, kModProfiles[i].name);
+        mutableModProfiles[i].modXHorizontal = kModProfiles[i].modXHorizontal;
+        mutableModProfiles[i].modXVertical = kModProfiles[i].modXVertical;
+        mutableModProfiles[i].modXDiagonalX = kModProfiles[i].modXDiagonalX;
+        mutableModProfiles[i].modXDiagonalY = kModProfiles[i].modXDiagonalY;
+        mutableModProfiles[i].modYHorizontal = kModProfiles[i].modYHorizontal;
+        mutableModProfiles[i].modYVertical = kModProfiles[i].modYVertical;
+        mutableModProfiles[i].modYDiagonalX = kModProfiles[i].modYDiagonalX;
+        mutableModProfiles[i].modYDiagonalY = kModProfiles[i].modYDiagonalY;
+        mutableModProfiles[i].lightShield1 = kModProfiles[i].lightShield1;
+        mutableModProfiles[i].lightShield2 = kModProfiles[i].lightShield2;
+        mutableModProfiles[i].analogTriggersEnabled = kModProfiles[i].analogTriggersEnabled;
+        for (uint8_t slot = 0; slot < 4; slot++) {
+            mutableModProfiles[i].modXX[slot] = kModProfiles[i].modXX[slot];
+            mutableModProfiles[i].modXY[slot] = kModProfiles[i].modXY[slot];
+            mutableModProfiles[i].modYX[slot] = kModProfiles[i].modYX[slot];
+            mutableModProfiles[i].modYY[slot] = kModProfiles[i].modYY[slot];
+        }
+    }
+}
+
 void ensureMutableProfiles()
 {
     if (mutableProfilesReady) {
@@ -300,20 +380,25 @@ void ensureMutableProfiles()
     }
 
     mutableProfilesReady = true;
+    initializeModProfiles();
     for (uint8_t i = 0; i < GlyphProfiles::count(); i++) {
         if (i < kPresetProfileCount) {
             mutableProfiles[i].number = kProfiles[i].number;
             copyName(mutableProfiles[i].name, kProfiles[i].name);
+            mutableProfiles[i].behaviorMode = kProfiles[i].behaviorMode;
             mutableProfiles[i].layout = kProfiles[i].layout;
             mutableProfiles[i].socdMode = kProfiles[i].socdMode;
             mutableProfiles[i].rgbConfig = kProfiles[i].rgbConfig;
+            mutableProfiles[i].modProfileId = kProfiles[i].modProfileId;
             mutableProfiles[i].backends = kProfiles[i].backends;
         } else {
             mutableProfiles[i].number = i + 1;
             snprintf(mutableProfiles[i].name, sizeof(mutableProfiles[i].name), "Profile %u", i + 1);
+            mutableProfiles[i].behaviorMode = GlyphProfiles::BehaviorMelee;
             mutableProfiles[i].layout = Layout::Platform;
             mutableProfiles[i].socdMode = SOCD_MODE_NEUTRAL;
             mutableProfiles[i].rgbConfig = i + 1;
+            mutableProfiles[i].modProfileId = MOD_PROFILE_DEFAULT;
             mutableProfiles[i].backends = kModernBackends;
         }
         mutableProfiles[i].socdPairCount = 0;
@@ -336,10 +421,15 @@ void ensureMutableProfiles()
 
     for (const auto& remap : kMeleeRemaps) {
         GlyphProfiles::addButtonRemap(1, remap.physicalButton, remap.activates);
-        GlyphProfiles::addButtonRemap(3, remap.physicalButton, remap.activates);
     }
     for (const auto& remap : kBrawlRemaps) {
         GlyphProfiles::addButtonRemap(2, remap.physicalButton, remap.activates);
+    }
+    for (const auto& remap : kUltimateRemaps) {
+        GlyphProfiles::addButtonRemap(3, remap.physicalButton, remap.activates);
+    }
+    for (const auto& remap : kSmash64Remaps) {
+        GlyphProfiles::addButtonRemap(6, remap.physicalButton, remap.activates);
     }
     for (const auto& remap : kSplitFgcRemaps) {
         GlyphProfiles::addButtonRemap(4, remap.physicalButton, remap.activates);
@@ -430,6 +520,72 @@ bool validLayout(uint32_t value)
     return value <= static_cast<uint32_t>(Layout::SplitFgc);
 }
 
+uint8_t clampModProfile(uint8_t modProfileId)
+{
+    return (modProfileId >= 1 && modProfileId <= GlyphProfiles::MaxModProfiles) ? modProfileId : MOD_PROFILE_MELEE;
+}
+
+uint8_t firstVisibleModProfile()
+{
+    for (uint8_t modProfile = 1; modProfile <= GlyphProfiles::MaxModProfiles; modProfile++) {
+        if (mutableModProfiles[modProfile - 1].enabled) {
+            return modProfile;
+        }
+    }
+    return MOD_PROFILE_MELEE;
+}
+
+uint8_t clampModProfileValue(int16_t value)
+{
+    if (value < 0) {
+        return 0;
+    }
+    if (value > 127) {
+        return 127;
+    }
+    return static_cast<uint8_t>(value);
+}
+
+uint8_t deriveAngle(uint8_t horizontal, uint8_t vertical)
+{
+    if (horizontal == 0 && vertical == 0) {
+        return 45;
+    }
+    float angle = atan2f(static_cast<float>(vertical), static_cast<float>(horizontal)) * (180.0f / 3.14159265f);
+    if (angle < 0.0f) {
+        angle = 0.0f;
+    }
+    if (angle > 90.0f) {
+        angle = 90.0f;
+    }
+    return static_cast<uint8_t>(lroundf(angle));
+}
+
+void polarToCartesian(uint8_t magnitude, uint8_t angle, uint8_t& x, uint8_t& y)
+{
+    const float radians = static_cast<float>(angle) * (3.14159265f / 180.0f);
+    x = clampModProfileValue(static_cast<int16_t>(lroundf(cosf(radians) * magnitude)));
+    y = clampModProfileValue(static_cast<int16_t>(lroundf(sinf(radians) * magnitude)));
+}
+
+uint8_t defaultModProfileForLegacyProfile(uint8_t profileNumber)
+{
+    const uint8_t profile = (profileNumber >= 1 && profileNumber <= GlyphProfiles::count()) ? profileNumber : 1;
+    if (profile <= kPresetProfileCount) {
+        return kProfiles[profile - 1].modProfileId;
+    }
+    return MOD_PROFILE_MELEE;
+}
+
+uint32_t defaultBehaviorForLegacyProfile(uint8_t profileNumber)
+{
+    const uint8_t profile = (profileNumber >= 1 && profileNumber <= GlyphProfiles::count()) ? profileNumber : 1;
+    if (profile <= kPresetProfileCount) {
+        return kProfiles[profile - 1].behaviorMode;
+    }
+    return GlyphProfiles::BehaviorMelee;
+}
+
 uint8_t clampProfile(uint8_t profileNumber)
 {
     return (profileNumber >= 1 && profileNumber <= GlyphProfiles::count()) ? profileNumber : 1;
@@ -479,6 +635,37 @@ const Profile& get(uint8_t profileNumber)
     return kProfiles[(profile <= kPresetProfileCount ? profile : 1) - 1];
 }
 
+bool isDefaultProfileState(uint8_t profileNumber)
+{
+    const uint8_t profile = clampProfile(profileNumber);
+    const ProfileState& current = mutableProfiles[profile - 1];
+    const Profile& defaults = get(profile);
+
+    if (strcmp(current.name, defaults.name) != 0) return false;
+    if (current.behaviorMode != defaults.behaviorMode) return false;
+    if (current.layout != defaults.layout) return false;
+    if (current.socdMode != defaults.socdMode) return false;
+    if (current.rgbConfig != defaults.rgbConfig) return false;
+    if (current.modProfileId != defaults.modProfileId) return false;
+    if (current.backends != defaults.backends) return false;
+    if (current.socdPairCount != 0) return false;
+    if (current.buttonRemapCount != 0) return false;
+    if (current.rgbColorCount != 0) return false;
+
+    return true;
+}
+
+bool usingDefaultProfileSet()
+{
+    for (uint8_t profile = 1; profile <= GlyphProfiles::count(); profile++) {
+        if (!isDefaultProfileState(profile)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 const ProfileState& state(uint8_t profileNumber)
 {
     ensureMutableProfiles();
@@ -488,6 +675,11 @@ const ProfileState& state(uint8_t profileNumber)
 const char* name(uint8_t profileNumber)
 {
     return state(profileNumber).name;
+}
+
+uint32_t behaviorMode(uint8_t profileNumber)
+{
+    return state(profileNumber).behaviorMode;
 }
 
 Layout layout(uint8_t profileNumber)
@@ -505,6 +697,11 @@ uint8_t rgbConfig(uint8_t profileNumber)
     return state(profileNumber).rgbConfig;
 }
 
+uint8_t modProfile(uint8_t profileNumber)
+{
+    return state(profileNumber).modProfileId;
+}
+
 uint16_t backends(uint8_t profileNumber)
 {
     return state(profileNumber).backends;
@@ -514,13 +711,121 @@ void resetToDefaults()
 {
     mutableProfilesReady = false;
     ensureMutableProfiles();
+    configuredProfileCount = kPresetProfileCount;
 }
 
 void loadFromConfig(const GlyphOptions& options)
 {
     resetToDefaults();
 
+    const uint8_t modProfileCount = options.modProfiles_count < GlyphProfiles::MaxModProfiles ? options.modProfiles_count : GlyphProfiles::MaxModProfiles;
+    for (uint8_t i = 0; i < modProfileCount; i++) {
+        const GlyphModProfileEntry& source = options.modProfiles[i];
+        ModProfileState& destination = mutableModProfiles[i];
+        destination.enabled = source.enabled || (i < kModProfileCount);
+        if (source.name[0] != '\0') {
+            copyName(destination.name, source.name);
+        }
+        if (source.modXX_count == 4 && source.modXY_count == 4) {
+            for (uint8_t slot = 0; slot < 4; slot++) {
+                destination.modXX[slot] = clampModProfileValue(static_cast<int16_t>(source.modXX[slot]));
+                destination.modXY[slot] = clampModProfileValue(static_cast<int16_t>(source.modXY[slot]));
+            }
+        }
+        if (source.modYX_count == 4 && source.modYY_count == 4) {
+            for (uint8_t slot = 0; slot < 4; slot++) {
+                destination.modYX[slot] = clampModProfileValue(static_cast<int16_t>(source.modYX[slot]));
+                destination.modYY[slot] = clampModProfileValue(static_cast<int16_t>(source.modYY[slot]));
+            }
+        }
+
+        if (source.modXX_count == 0 && source.modXY_count == 0 && source.modXAngles_count == 4) {
+            for (uint8_t slot = 0; slot < 4; slot++) {
+                uint8_t x = 0;
+                uint8_t y = 0;
+                polarToCartesian(
+                    source.has_modXMagnitude ? clampModProfileValue(static_cast<int16_t>(source.modXMagnitude)) : 0,
+                    source.modXAngles[slot] <= 90 ? static_cast<uint8_t>(source.modXAngles[slot]) : 45,
+                    x,
+                    y
+                );
+                destination.modXX[slot] = x;
+                destination.modXY[slot] = y;
+            }
+        }
+        if (source.modYX_count == 0 && source.modYY_count == 0 && source.modYAngles_count == 4) {
+            for (uint8_t slot = 0; slot < 4; slot++) {
+                uint8_t x = 0;
+                uint8_t y = 0;
+                polarToCartesian(
+                    source.has_modYMagnitude ? clampModProfileValue(static_cast<int16_t>(source.modYMagnitude)) : 0,
+                    source.modYAngles[slot] <= 90 ? static_cast<uint8_t>(source.modYAngles[slot]) : 45,
+                    x,
+                    y
+                );
+                destination.modYX[slot] = x;
+                destination.modYY[slot] = y;
+            }
+        }
+
+        if (source.modXX_count == 0 && source.modXY_count == 0 && source.has_modXHorizontal && source.has_modXVertical) {
+            const uint8_t x = clampModProfileValue(static_cast<int16_t>(source.modXHorizontal));
+            const uint8_t y = clampModProfileValue(static_cast<int16_t>(source.modXVertical));
+            destination.modXHorizontal = x;
+            destination.modXVertical = y;
+            for (uint8_t slot = 0; slot < 4; slot++) {
+                destination.modXX[slot] = x;
+                destination.modXY[slot] = y;
+            }
+        }
+        if (source.modYX_count == 0 && source.modYY_count == 0 && source.has_modYHorizontal && source.has_modYVertical) {
+            const uint8_t x = clampModProfileValue(static_cast<int16_t>(source.modYHorizontal));
+            const uint8_t y = clampModProfileValue(static_cast<int16_t>(source.modYVertical));
+            destination.modYHorizontal = x;
+            destination.modYVertical = y;
+            for (uint8_t slot = 0; slot < 4; slot++) {
+                destination.modYX[slot] = x;
+                destination.modYY[slot] = y;
+            }
+        }
+
+        if (source.has_modXHorizontal) {
+            destination.modXHorizontal = clampModProfileValue(static_cast<int16_t>(source.modXHorizontal));
+        }
+        if (source.has_modXVertical) {
+            destination.modXVertical = clampModProfileValue(static_cast<int16_t>(source.modXVertical));
+        }
+        if (source.has_modXDiagonalX) {
+            destination.modXDiagonalX = clampModProfileValue(static_cast<int16_t>(source.modXDiagonalX));
+        }
+        if (source.has_modXDiagonalY) {
+            destination.modXDiagonalY = clampModProfileValue(static_cast<int16_t>(source.modXDiagonalY));
+        }
+        if (source.has_modYHorizontal) {
+            destination.modYHorizontal = clampModProfileValue(static_cast<int16_t>(source.modYHorizontal));
+        }
+        if (source.has_modYVertical) {
+            destination.modYVertical = clampModProfileValue(static_cast<int16_t>(source.modYVertical));
+        }
+        if (source.has_modYDiagonalX) {
+            destination.modYDiagonalX = clampModProfileValue(static_cast<int16_t>(source.modYDiagonalX));
+        }
+        if (source.has_modYDiagonalY) {
+            destination.modYDiagonalY = clampModProfileValue(static_cast<int16_t>(source.modYDiagonalY));
+        }
+        if (source.has_lightShield1) {
+            destination.lightShield1 = clampModProfileValue(static_cast<int16_t>(source.lightShield1));
+        }
+        if (source.has_lightShield2) {
+            destination.lightShield2 = clampModProfileValue(static_cast<int16_t>(source.lightShield2));
+        }
+        if (source.has_analogTriggersEnabled) {
+            destination.analogTriggersEnabled = source.analogTriggersEnabled;
+        }
+    }
+
     const uint8_t profileCount = options.profiles_count < count() ? options.profiles_count : count();
+    configuredProfileCount = profileCount == 0 ? kPresetProfileCount : profileCount;
     for (uint8_t i = 0; i < profileCount; i++) {
         const GlyphProfileEntry& source = options.profiles[i];
         ProfileState& destination = mutableProfiles[i];
@@ -528,11 +833,13 @@ void loadFromConfig(const GlyphOptions& options)
         if (source.name[0] != '\0') {
             copyName(destination.name, source.name);
         }
+        destination.behaviorMode = source.has_behaviorMode ? source.behaviorMode : defaultBehaviorForLegacyProfile(i + 1);
         if (validLayout(source.layout)) {
             destination.layout = static_cast<Layout>(source.layout);
         }
         destination.socdMode = source.socdMode;
         destination.rgbConfig = static_cast<uint8_t>(source.rgbConfig);
+        destination.modProfileId = source.has_modProfile ? clampModProfile(static_cast<uint8_t>(source.modProfile)) : defaultModProfileForLegacyProfile(i + 1);
         destination.backends = static_cast<uint16_t>(source.backends);
 
         if (source.has_socdPairs && source.socdPairs.size >= kPackedSocdPairSize) {
@@ -581,15 +888,77 @@ void writeToConfig(GlyphOptions& options)
     ensureMutableProfiles();
 
     options.version = kGlyphOptionsVersion;
-    options.profiles_count = count();
+    uint8_t serializedModProfileCount = kModProfileCount;
+    for (uint8_t i = kModProfileCount; i < GlyphProfiles::MaxModProfiles; i++) {
+        if (mutableModProfiles[i].enabled) {
+            serializedModProfileCount = i + 1;
+        }
+    }
+
+    options.modProfiles_count = serializedModProfileCount;
+    for (uint8_t i = 0; i < serializedModProfileCount; i++) {
+        GlyphModProfileEntry& destination = options.modProfiles[i];
+        const ModProfileState& source = mutableModProfiles[i];
+        copyName(destination.name, source.name);
+        destination.has_modXHorizontal = true;
+        destination.modXHorizontal = source.modXHorizontal;
+        destination.has_modXVertical = true;
+        destination.modXVertical = source.modXVertical;
+        destination.has_modXDiagonalX = true;
+        destination.modXDiagonalX = source.modXDiagonalX;
+        destination.has_modXDiagonalY = true;
+        destination.modXDiagonalY = source.modXDiagonalY;
+        destination.has_modYHorizontal = true;
+        destination.modYHorizontal = source.modYHorizontal;
+        destination.has_modYVertical = true;
+        destination.modYVertical = source.modYVertical;
+        destination.has_modYDiagonalX = true;
+        destination.modYDiagonalX = source.modYDiagonalX;
+        destination.has_modYDiagonalY = true;
+        destination.modYDiagonalY = source.modYDiagonalY;
+        destination.has_lightShield1 = true;
+        destination.lightShield1 = source.lightShield1;
+        destination.has_lightShield2 = true;
+        destination.lightShield2 = source.lightShield2;
+        destination.has_analogTriggersEnabled = true;
+        destination.analogTriggersEnabled = source.analogTriggersEnabled;
+        destination.modXX_count = 4;
+        destination.modXY_count = 4;
+        destination.modYX_count = 4;
+        destination.modYY_count = 4;
+        for (uint8_t slot = 0; slot < 4; slot++) {
+            destination.modXX[slot] = source.modXX[slot];
+            destination.modXY[slot] = source.modXY[slot];
+            destination.modYX[slot] = source.modYX[slot];
+            destination.modYY[slot] = source.modYY[slot];
+        }
+        destination.enabled = source.enabled;
+    }
+
+    uint8_t serializedProfileCount = usingDefaultProfileSet() ? kPresetProfileCount : 1;
+    if (!usingDefaultProfileSet()) {
+        for (uint8_t i = 1; i <= count(); i++) {
+            if (!isDefaultProfileState(i)) {
+                serializedProfileCount = i;
+            }
+        }
+    }
+
+    configuredProfileCount = serializedProfileCount;
+    options.profiles_count = serializedProfileCount;
     for (uint8_t i = 0; i < count(); i++) {
         GlyphProfileEntry& destination = options.profiles[i];
         const ProfileState& source = mutableProfiles[i];
 
         copyName(destination.name, source.name);
+        destination.behaviorMode = source.behaviorMode;
         destination.layout = static_cast<uint32_t>(source.layout);
         destination.socdMode = source.socdMode;
         destination.rgbConfig = source.rgbConfig;
+        destination.modProfile = source.modProfileId;
+        destination.has_modProfile = true;
+        destination.behaviorMode = source.behaviorMode;
+        destination.has_behaviorMode = true;
         destination.backends = source.backends;
         destination.has_socdPairs = true;
         destination.socdPairs.size = 0;
@@ -636,6 +1005,12 @@ void setName(uint8_t profileNumber, const char* value)
     copyName(mutableProfiles[clampProfile(profileNumber) - 1].name, value);
 }
 
+void setBehaviorMode(uint8_t profileNumber, uint32_t value)
+{
+    ensureMutableProfiles();
+    mutableProfiles[clampProfile(profileNumber) - 1].behaviorMode = value;
+}
+
 void setLayout(uint8_t profileNumber, Layout value)
 {
     ensureMutableProfiles();
@@ -652,6 +1027,12 @@ void setRgbConfig(uint8_t profileNumber, uint8_t value)
 {
     ensureMutableProfiles();
     mutableProfiles[clampProfile(profileNumber) - 1].rgbConfig = value;
+}
+
+void setModProfile(uint8_t profileNumber, uint8_t value)
+{
+    ensureMutableProfiles();
+    mutableProfiles[clampProfile(profileNumber) - 1].modProfileId = clampModProfile(value);
 }
 
 void setBackends(uint8_t profileNumber, uint16_t value)
@@ -763,6 +1144,18 @@ void addRgbColor(uint8_t profileNumber, uint8_t button, uint32_t color)
     profile.rgbColors[profile.rgbColorCount++] = {button, color & 0x00ffffff};
 }
 
+bool isVisibleProfile(uint8_t profileNumber)
+{
+    ensureMutableProfiles();
+    const uint8_t profile = clampProfile(profileNumber);
+
+    if (usingDefaultProfileSet()) {
+        return profile <= kPresetProfileCount;
+    }
+
+    return profile <= configuredProfileCount && !isDefaultProfileState(profile);
+}
+
 bool backendEnabled(uint8_t profileNumber, uint16_t backendMask)
 {
     return (backends(profileNumber) & backendMask) != 0;
@@ -828,6 +1221,213 @@ const char* layoutName(Layout layout)
         case Layout::Platform:
         default:
             return "Full";
+    }
+}
+
+uint8_t modProfileCount()
+{
+    return GlyphProfiles::MaxModProfiles;
+}
+
+const ModProfileState& getModProfile(uint8_t modProfileId)
+{
+    ensureMutableProfiles();
+    return mutableModProfiles[clampModProfile(modProfileId) - 1];
+}
+
+const char* modProfileName(uint8_t modProfileId)
+{
+    return getModProfile(modProfileId).name;
+}
+
+bool modProfileEditable(uint8_t modProfileId)
+{
+    return clampModProfile(modProfileId) > kModProfileCount;
+}
+
+bool modProfileVisible(uint8_t modProfileId)
+{
+    return getModProfile(modProfileId).enabled;
+}
+
+bool modProfileAnalogTriggersEnabled(uint8_t modProfileId)
+{
+    return getModProfile(modProfileId).analogTriggersEnabled;
+}
+
+uint8_t visibleModProfileCount()
+{
+    ensureMutableProfiles();
+    uint8_t count = 0;
+    for (uint8_t i = 0; i < GlyphProfiles::MaxModProfiles; i++) {
+        if (mutableModProfiles[i].enabled) {
+            count++;
+        }
+    }
+    return count;
+}
+
+bool duplicateModProfile(uint8_t sourceModProfileId, uint8_t& newModProfileId)
+{
+    ensureMutableProfiles();
+    const uint8_t source = clampModProfile(sourceModProfileId);
+    for (uint8_t i = kModProfileCount; i < GlyphProfiles::MaxModProfiles; i++) {
+        if (mutableModProfiles[i].enabled) {
+            continue;
+        }
+
+        mutableModProfiles[i] = mutableModProfiles[source - 1];
+        mutableModProfiles[i].number = i + 1;
+        mutableModProfiles[i].enabled = true;
+        snprintf(mutableModProfiles[i].name, sizeof(mutableModProfiles[i].name), "Custom %u", (i + 1) - kModProfileCount);
+        newModProfileId = i + 1;
+        return true;
+    }
+
+    newModProfileId = source;
+    return false;
+}
+
+void deleteModProfile(uint8_t modProfileId)
+{
+    ensureMutableProfiles();
+    const uint8_t target = clampModProfile(modProfileId);
+    if (!modProfileEditable(target)) {
+        return;
+    }
+
+    mutableModProfiles[target - 1].enabled = false;
+    const uint8_t replacement = firstVisibleModProfile();
+
+    for (uint8_t profile = 1; profile <= count(); profile++) {
+        if (mutableProfiles[profile - 1].modProfileId == target) {
+            mutableProfiles[profile - 1].modProfileId = replacement;
+        }
+    }
+}
+
+void adjustModProfileCoordinate(uint8_t modProfileId, bool modX, uint8_t slot, bool yAxis, int8_t delta)
+{
+    ensureMutableProfiles();
+    ModProfileState& profile = mutableModProfiles[clampModProfile(modProfileId) - 1];
+    if (!profile.enabled || slot >= 6) {
+        return;
+    }
+
+    if (modX) {
+        if (slot == 4) {
+            if (yAxis) {
+                profile.modXVertical = clampModProfileValue(static_cast<int16_t>(profile.modXVertical) + delta);
+            } else {
+                profile.modXHorizontal = clampModProfileValue(static_cast<int16_t>(profile.modXHorizontal) + delta);
+            }
+        } else if (slot == 5) {
+            if (yAxis) {
+                profile.modXDiagonalY = clampModProfileValue(static_cast<int16_t>(profile.modXDiagonalY) + delta);
+            } else {
+                profile.modXDiagonalX = clampModProfileValue(static_cast<int16_t>(profile.modXDiagonalX) + delta);
+            }
+        } else if (yAxis) {
+            profile.modXY[slot] = clampModProfileValue(static_cast<int16_t>(profile.modXY[slot]) + delta);
+        } else {
+            profile.modXX[slot] = clampModProfileValue(static_cast<int16_t>(profile.modXX[slot]) + delta);
+        }
+    } else {
+        if (slot == 4) {
+            if (yAxis) {
+                profile.modYVertical = clampModProfileValue(static_cast<int16_t>(profile.modYVertical) + delta);
+            } else {
+                profile.modYHorizontal = clampModProfileValue(static_cast<int16_t>(profile.modYHorizontal) + delta);
+            }
+        } else if (slot == 5) {
+            if (yAxis) {
+                profile.modYDiagonalY = clampModProfileValue(static_cast<int16_t>(profile.modYDiagonalY) + delta);
+            } else {
+                profile.modYDiagonalX = clampModProfileValue(static_cast<int16_t>(profile.modYDiagonalX) + delta);
+            }
+        } else if (yAxis) {
+            profile.modYY[slot] = clampModProfileValue(static_cast<int16_t>(profile.modYY[slot]) + delta);
+        } else {
+            profile.modYX[slot] = clampModProfileValue(static_cast<int16_t>(profile.modYX[slot]) + delta);
+        }
+    }
+}
+
+void adjustModProfileLightShield(uint8_t modProfileId, bool secondary, int8_t delta)
+{
+    ensureMutableProfiles();
+    ModProfileState& profile = mutableModProfiles[clampModProfile(modProfileId) - 1];
+    if (!profile.enabled) {
+        return;
+    }
+
+    if (secondary) {
+        profile.lightShield2 = clampModProfileValue(static_cast<int16_t>(profile.lightShield2) + delta);
+    } else {
+        profile.lightShield1 = clampModProfileValue(static_cast<int16_t>(profile.lightShield1) + delta);
+    }
+}
+
+void setModProfileAnalogTriggersEnabled(uint8_t modProfileId, bool value)
+{
+    ensureMutableProfiles();
+    ModProfileState& profile = mutableModProfiles[clampModProfile(modProfileId) - 1];
+    if (!profile.enabled) {
+        return;
+    }
+    profile.analogTriggersEnabled = value;
+}
+
+void restoreModProfileDefaults(uint8_t modProfileId)
+{
+    ensureMutableProfiles();
+    const uint8_t target = clampModProfile(modProfileId);
+    if (target > kModProfileCount) {
+        return;
+    }
+
+    const ModProfile& defaults = kModProfiles[target - 1];
+    ModProfileState& profile = mutableModProfiles[target - 1];
+    profile.number = defaults.number;
+    copyName(profile.name, defaults.name);
+    profile.modXHorizontal = defaults.modXHorizontal;
+    profile.modXVertical = defaults.modXVertical;
+    profile.modXDiagonalX = defaults.modXDiagonalX;
+    profile.modXDiagonalY = defaults.modXDiagonalY;
+    profile.modYHorizontal = defaults.modYHorizontal;
+    profile.modYVertical = defaults.modYVertical;
+    profile.modYDiagonalX = defaults.modYDiagonalX;
+    profile.modYDiagonalY = defaults.modYDiagonalY;
+    profile.lightShield1 = defaults.lightShield1;
+    profile.lightShield2 = defaults.lightShield2;
+    profile.analogTriggersEnabled = defaults.analogTriggersEnabled;
+    for (uint8_t slot = 0; slot < 4; slot++) {
+        profile.modXX[slot] = defaults.modXX[slot];
+        profile.modXY[slot] = defaults.modXY[slot];
+        profile.modYX[slot] = defaults.modYX[slot];
+        profile.modYY[slot] = defaults.modYY[slot];
+    }
+    profile.enabled = true;
+}
+
+uint8_t defaultModProfileForLegacyMode(uint32_t mode)
+{
+    switch (mode) {
+        case GlyphProfiles::BehaviorProjectM:
+            return MOD_PROFILE_PROJECT_M;
+        case GlyphProfiles::BehaviorUltimate:
+            return MOD_PROFILE_ULTIMATE;
+        case GlyphProfiles::BehaviorRivals:
+            return MOD_PROFILE_RIVALS;
+        case GlyphProfiles::BehaviorRivals2:
+            return MOD_PROFILE_RIVALS2;
+        case GlyphProfiles::BehaviorUnknown:
+        case GlyphProfiles::BehaviorFgc:
+        case GlyphProfiles::BehaviorSmash64:
+            return MOD_PROFILE_DEFAULT;
+        case GlyphProfiles::BehaviorMelee:
+        default:
+            return MOD_PROFILE_MELEE;
     }
 }
 
