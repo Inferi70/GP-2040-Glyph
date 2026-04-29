@@ -15,6 +15,8 @@
 
 namespace
 {
+constexpr uint8_t kGlyphMenuTurboButton = 50;
+
 constexpr GlyphInputScreen::ButtonDot kFullLayoutDots[] = {
     {"LF4", 6,   29, 4, GAMEPAD_MASK_E1, 0, 0},
     {"LF3", 15,  23, 4, 0, GAMEPAD_MASK_LEFT, 0},
@@ -172,6 +174,8 @@ const unsigned char* menuHintIcon(GlyphProfiles::OutputIcon icon)
             return XboxBack12;
         case GlyphProfiles::OutputIcon::Start:
             return Start12;
+        case GlyphProfiles::OutputIcon::Turbo:
+            return Turbo12;
         case GlyphProfiles::OutputIcon::None:
         default:
             return nullptr;
@@ -181,6 +185,7 @@ const unsigned char* menuHintIcon(GlyphProfiles::OutputIcon icon)
 bool menuHintPressed(uint8_t menuButtonIndex, const GamepadState& state)
 {
     switch (menuButtonIndex) {
+        case 1: return GlyphMatrixInput::glyphPhysicalButtonPressed(kGlyphMenuTurboButton);
         case 4: return (state.aux & AUX_MASK_FUNCTION) != 0;
         case 5: return (state.buttons & GAMEPAD_MASK_S1) != 0;
         case 6: return (state.buttons & GAMEPAD_MASK_S2) != 0;
@@ -388,7 +393,13 @@ void GlyphInputScreen::drawScreen()
 
     constexpr uint16_t kHintX[] = {4, 22, 40, 58, 76, 94, 112};
     for (uint8_t i = 1; i < 7; i++) {
-        drawHintIcon(getRenderer(), menuHintIcon(GlyphProfiles::menuIcon(profileNumber, i)), kHintX[i], menuHintPressed(i, state));
+        const GlyphProfiles::OutputIcon icon = GlyphProfiles::menuIcon(profileNumber, i);
+        if (icon == GlyphProfiles::OutputIcon::Turbo) {
+            if (!Storage::getInstance().getAddonOptions().turboOptions.enabled) {
+                continue;
+            }
+        }
+        drawHintIcon(getRenderer(), menuHintIcon(icon), kHintX[i], menuHintPressed(i, state));
     }
 }
 

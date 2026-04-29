@@ -1,4 +1,5 @@
 #include "MainMenuScreen.h"
+#include "addons/glyph_matrix_input.h"
 #include "glyph/assets/GlyphButtonBitmaps.h"
 #include "glyph/assets/GlyphMenuBitmaps.h"
 #include "glyph/glyph_profiles.h"
@@ -1804,6 +1805,10 @@ void MainMenuScreen::selectTurboMode() {
         updateTurbo = valueToSave;
 
 #ifdef GLYPH_DISPLAY_SCREEN
+        if (valueToSave && !GlyphMatrixInput::turboAvailable()) {
+            updateTurbo = false;
+            return;
+        }
         if (prevTurbo != valueToSave) {
             Storage::getInstance().getAddonOptions().turboOptions.enabled = valueToSave;
             EventManager::getInstance().triggerEvent(new GPStorageSaveEvent(true));
@@ -1824,6 +1829,11 @@ void MainMenuScreen::selectTurboMode() {
 }
 
 int32_t MainMenuScreen::currentTurboMode() {
+#ifdef GLYPH_DISPLAY_SCREEN
+    if (updateTurbo && !GlyphMatrixInput::turboAvailable()) {
+        return 0;
+    }
+#endif
     return updateTurbo;
 }
 

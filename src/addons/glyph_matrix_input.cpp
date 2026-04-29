@@ -1,8 +1,10 @@
 #include "addons/glyph_matrix_input.h"
+#include "addons/turbo.h"
 
 #include "eventmanager.h"
 #include "gamepad.h"
 #include "glyph/glyph_profiles.h"
+#include "helper.h"
 #include "storagemanager.h"
 #include "types.h"
 
@@ -54,12 +56,21 @@ constexpr uint8_t kGlyphButtonCRight = 45;
 constexpr uint8_t kGlyphButtonCUp = 44;
 constexpr uint8_t kGlyphButtonCLeft = 43;
 constexpr uint8_t kGlyphButtonCDown = 42;
+constexpr uint8_t kGlyphButtonMB2 = 50;
 constexpr uint8_t kGlyphButtonMB4 = 52;
 constexpr uint8_t kGlyphButtonMB5 = 53;
 constexpr uint8_t kGlyphButtonMB6 = 54;
 constexpr uint8_t kGlyphButtonMB7 = 55;
 constexpr uint8_t kFullAnalogMagnitude = 127;
 constexpr uint8_t kNoCAngleSlot = 0xff;
+constexpr uint8_t kTurboLedStateOff = 0;
+constexpr uint8_t kTurboLedStateOn = 1;
+
+bool glyphTurboFlicker = false;
+uint32_t glyphTurboNextToggleMs = 0;
+uint8_t glyphTurboLastShotCount = 0;
+uint16_t glyphTurboButtonsMask = 0;
+uint16_t glyphTurboLastPressedMask = 0;
 
 enum class LegacyPlatformProfile : uint8_t {
     None,
@@ -174,6 +185,106 @@ bool inputModeNeedsGlyphButtonTranslation(InputMode inputMode)
             return true;
         default:
             return false;
+    }
+}
+
+bool glyphHasTurboPinAssigned()
+{
+    GpioMappingInfo* pinMappings = Storage::getInstance().getProfilePinMappings();
+    for (Pin_t pin = 0; pin < (Pin_t)NUM_BANK0_GPIOS; pin++) {
+        if (pinMappings[pin].action == GpioAction::BUTTON_PRESS_TURBO) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool glyphVirtualTurboAvailable(uint8_t profile)
+{
+    return GlyphProfiles::buttonAvailable(profile, kGlyphButtonMB2);
+}
+
+void resetGlyphVirtualTurboState()
+{
+    glyphTurboFlicker = false;
+    glyphTurboNextToggleMs = 0;
+    glyphTurboLastPressedMask = 0;
+    glyphTurboButtonsMask = 0;
+}
+
+void applyGlyphVirtualTurbo(GamepadState& state)
+{
+    Gamepad* gamepad = Storage::getInstance().GetGamepad();
+    const TurboOptions& turboOptions = Storage::getInstance().getAddonOptions().turboOptions;
+    const uint8_t profile = gamepad != nullptr ? gamepad->getOptions().profileNumber : 1;
+    const bool hasTurboPinAssigned = glyphHasTurboPinAssigned();
+    const bool virtualTurboAvailable = !hasTurboPinAssigned && glyphVirtualTurboAvailable(profile);
+
+    if (hasTurboPinAssigned) {
+        resetGlyphVirtualTurboState();
+        return;
+    }
+
+    if (!turboOptions.enabled || !virtualTurboAvailable) {
+        resetGlyphVirtualTurboState();
+        glyphTurboLastShotCount = turboOptions.shotCount;
+        if (gamepad != nullptr) {
+            gamepad->turboState.buttons = 0;
+        }
+        Gamepad* processedGamepad = Storage::getInstance().GetProcessedGamepad();
+        if (processedGamepad != nullptr) {
+            processedGamepad->auxState.turbo.enabled = turboOptions.enabled;
+            processedGamepad->auxState.turbo.active = 0;
+            processedGamepad->auxState.turbo.activity = kTurboLedStateOff;
+        }
+        return;
+    }
+
+    const uint8_t shotCount = turboOptions.shotCount < 2 ? 2 : turboOptions.shotCount;
+    const uint32_t intervalMs = 1000 / (static_cast<uint32_t>(shotCount) * 2);
+    const uint32_t now = getMillis();
+
+    if (glyphTurboLastShotCount != shotCount) {
+        glyphTurboLastShotCount = shotCount;
+        glyphTurboNextToggleMs = now + intervalMs;
+        glyphTurboFlicker = false;
+    } else if (glyphTurboNextToggleMs == 0) {
+        glyphTurboNextToggleMs = now + intervalMs;
+    } else if (now >= glyphTurboNextToggleMs) {
+        glyphTurboFlicker = !glyphTurboFlicker;
+        glyphTurboNextToggleMs = now + intervalMs;
+    }
+
+    const bool turboModifierHeld = GlyphMatrixInput::glyphPhysicalButtonPressed(kGlyphButtonMB2);
+    const uint16_t buttonsPressed = state.buttons & TURBO_BUTTON_MASK;
+    if (turboModifierHeld) {
+        if (buttonsPressed && glyphTurboLastPressedMask != buttonsPressed) {
+            glyphTurboButtonsMask ^= (glyphTurboLastPressedMask ^ buttonsPressed) & ~glyphTurboLastPressedMask;
+            glyphTurboFlicker = false;
+        }
+        glyphTurboLastPressedMask = buttonsPressed;
+    } else {
+        glyphTurboLastPressedMask = 0;
+    }
+
+    if (glyphTurboFlicker) {
+        state.buttons &= ~glyphTurboButtonsMask;
+    }
+
+    if (gamepad != nullptr) {
+        gamepad->turboState.buttons = glyphTurboButtonsMask;
+        Gamepad* processedGamepad = Storage::getInstance().GetProcessedGamepad();
+        if (processedGamepad != nullptr) {
+            processedGamepad->auxState.turbo.enabled = true;
+            processedGamepad->auxState.turbo.active = 1;
+            if (glyphTurboButtonsMask) {
+                processedGamepad->auxState.turbo.activity =
+                    (state.buttons & glyphTurboButtonsMask) ? (glyphTurboFlicker ? kTurboLedStateOff : kTurboLedStateOn)
+                                                            : kTurboLedStateOn;
+            } else {
+                processedGamepad->auxState.turbo.activity = kTurboLedStateOff;
+            }
+        }
     }
 }
 
@@ -616,6 +727,14 @@ bool GlyphMatrixInput::glyphModYPressed()
     return glyphModYPressedState;
 }
 
+bool GlyphMatrixInput::turboAvailable()
+{
+    Gamepad* gamepad = Storage::getInstance().GetGamepad();
+    const uint8_t profile = gamepad != nullptr ? gamepad->getOptions().profileNumber : 1;
+    const bool hasTurboPinAssigned = glyphHasTurboPinAssigned();
+    return hasTurboPinAssigned || glyphVirtualTurboAvailable(profile);
+}
+
 void GlyphMatrixInput::scan()
 {
     clearPressed();
@@ -811,6 +930,7 @@ void GlyphMatrixInput::apply(GamepadState& state)
     }
     applyAnalogOutput(state, leftAnalogOutput, false, modProfile, cAngleSlot, modXPressed, modYPressed);
     applyAnalogOutput(state, rightAnalogOutput, true, modProfile, cAngleSlot, modXPressed, modYPressed);
+    applyGlyphVirtualTurbo(state);
 }
 
 void GlyphMatrixInput::handleMenuControls()

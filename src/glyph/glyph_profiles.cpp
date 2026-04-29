@@ -1495,13 +1495,32 @@ OutputIcon menuIcon(uint8_t profileNumber, uint8_t menuButtonIndex)
         return OutputIcon::None;
     }
 
-    (void)profileNumber;
+    if (menuButtonIndex == 1 && buttonAvailable(profileNumber, BTN_MB2)) {
+        return OutputIcon::Turbo;
+    }
     return kDefaultMenuIcons[menuButtonIndex];
 }
 
 Action buttonAction(uint8_t profileNumber, uint8_t buttonId)
 {
     return actionForButton(layout(profileNumber), buttonId);
+}
+
+bool buttonAvailable(uint8_t profileNumber, uint8_t buttonId)
+{
+    if (buttonId == 0) {
+        return false;
+    }
+
+    for (uint8_t index = 0; index < buttonRemapCount(profileNumber); index++) {
+        const ButtonRemap& remap = buttonRemap(profileNumber, index);
+        if (remap.physicalButton == buttonId) {
+            return remap.activates == BTN_UNSPECIFIED;
+        }
+    }
+
+    const Action action = buttonAction(profileNumber, buttonId);
+    return action.target == Target::None;
 }
 
 uint8_t matrixButton(uint8_t row, uint8_t col)

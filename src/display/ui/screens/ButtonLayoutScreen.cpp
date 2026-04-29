@@ -1,4 +1,5 @@
 #include "ButtonLayoutScreen.h"
+#include "addons/glyph_matrix_input.h"
 #include "buttonlayouts.h"
 #include "drivermanager.h"
 #include "drivers/ps4/PS4Driver.h"
@@ -75,7 +76,7 @@ void ButtonLayoutScreen::init() {
 
     // determine which fields will be displayed on the status bar
     showInputMode = Storage::getInstance().getDisplayOptions().inputMode;
-    showTurboMode = Storage::getInstance().getDisplayOptions().turboMode && hasTurboAssigned;
+    showTurboMode = Storage::getInstance().getDisplayOptions().turboMode && (hasTurboAssigned || GlyphMatrixInput::turboAvailable());
     showDpadMode = Storage::getInstance().getDisplayOptions().dpadMode;
     showSocdMode = Storage::getInstance().getDisplayOptions().socdMode;
     showMacroMode = Storage::getInstance().getDisplayOptions().macroMode;

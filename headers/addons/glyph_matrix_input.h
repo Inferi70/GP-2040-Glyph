@@ -36,6 +36,7 @@ public:
     static bool glyphPhysicalButtonPressed(uint8_t buttonId);
     static bool glyphModXPressed();
     static bool glyphModYPressed();
+    static bool turboAvailable();
 
 private:
     void ensureProfiles();

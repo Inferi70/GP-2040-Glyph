@@ -52,6 +52,7 @@ enum class OutputIcon : uint8_t {
     Home,
     XboxBack,
     Start,
+    Turbo,
 };
 
 constexpr uint32_t BehaviorUnknown = 0;
@@ -214,6 +215,7 @@ void restoreModProfileDefaults(uint8_t modProfileId);
 uint8_t defaultModProfileForLegacyMode(uint32_t mode);
 OutputIcon menuIcon(uint8_t profileNumber, uint8_t menuButtonIndex);
 Action buttonAction(uint8_t profileNumber, uint8_t buttonId);
+bool buttonAvailable(uint8_t profileNumber, uint8_t buttonId);
 uint8_t matrixButton(uint8_t row, uint8_t col);
 }
 
