@@ -1,11 +1,7 @@
 #include "drivers/net/NetDriver.h"
 #include "drivers/shared/driverhelper.h"
-#ifdef GLYPH_DISPLAY_SCREEN
-#include "glyph/glyph_webserial.h"
-#else
 #include "class/net/net_device.h"
 #include "rndis.h"
-#endif
 
 /* A combination of interfaces must have a unique product id, since PC will save device driver after the first plug.
  * Same VID/PID with different interface e.g MSC (first), then CDC (later) will possibly cause system error on PC.
@@ -20,20 +16,12 @@
 // String Descriptor Index
 enum
 {
-#ifdef GLYPH_DISPLAY_SCREEN
-  STRID_LANGID = 0,
-  STRID_MANUFACTURER,
-  STRID_PRODUCT,
-  STRID_SERIAL,
-  STRID_INTERFACE
-#else
   STRID_LANGID = 0,
   STRID_MANUFACTURER,
   STRID_PRODUCT,
   STRID_SERIAL,
   STRID_INTERFACE,
   STRID_MAC
-#endif
 };
 
 enum
@@ -45,9 +33,7 @@ enum
 
 enum
 {
-#ifdef GLYPH_DISPLAY_SCREEN
-  CONFIG_ID_CDC = 0,
-#elif CFG_TUD_ECM_RNDIS
+#if CFG_TUD_ECM_RNDIS
   CONFIG_ID_RNDIS = 0,
   CONFIG_ID_ECM   = 1,
 #else
@@ -57,9 +43,6 @@ enum
 };
 
 void NetDriver::initialize() {
-#ifdef GLYPH_DISPLAY_SCREEN
-    class_driver = {};
-#else
 	class_driver = {
     #if CFG_TUSB_DEBUG >= 2
         .name = "NET",
@@ -71,16 +54,11 @@ void NetDriver::initialize() {
         .xfer_cb          = netd_xfer_cb,
         .sof              = NULL,
     };
-#endif
 }
 
 // Run RNDIS task from web config
 bool NetDriver::process(Gamepad * gamepad) {
-#ifdef GLYPH_DISPLAY_SCREEN
-    GlyphWebSerial::process();
-#else
     rndis_task();
-#endif
     return false;
 }
 
@@ -100,17 +78,10 @@ bool NetDriver::vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_contr
 static char const* string_desc_arr [] =
 {
   [STRID_LANGID]       = (const char[]) { 0x09, 0x04 }, // supported language is English (0x0409)
-#ifdef GLYPH_DISPLAY_SCREEN
-  [STRID_MANUFACTURER] = "OpenStickCommunity",
-  [STRID_PRODUCT]      = "FW-Glyph Configurator",
-  [STRID_SERIAL]       = "GlyphMK6",
-  [STRID_INTERFACE]    = "FW-Glyph WebSerial"
-#else
   [STRID_MANUFACTURER] = "TinyUSB",                     // Manufacturer
   [STRID_PRODUCT]      = "TinyUSB Device",              // Product
   [STRID_SERIAL]       = "123456",                      // Serial
   [STRID_INTERFACE]    = "TinyUSB Network Interface"    // Interface Description
-#endif
 
   // STRID_MAC index is handled separately
 };
@@ -124,7 +95,6 @@ const uint16_t * NetDriver::get_descriptor_string_cb(uint8_t index, uint16_t lan
         memcpy(&_desc_str[1], string_desc_arr[STRID_LANGID], 2);
         chr_count = 1;
     }
-#ifndef GLYPH_DISPLAY_SCREEN
     else if (STRID_MAC == index) {
         // Convert MAC address into UTF-16
         for (unsigned i=0; i<sizeof(tud_network_mac_address); i++)
@@ -132,11 +102,7 @@ const uint16_t * NetDriver::get_descriptor_string_cb(uint8_t index, uint16_t lan
             _desc_str[1+chr_count++] = "0123456789ABCDEF"[(tud_network_mac_address[i] >> 4) & 0xf];
             _desc_str[1+chr_count++] = "0123456789ABCDEF"[(tud_network_mac_address[i] >> 0) & 0xf];
         }
-    } else
-#else
-    else
-#endif
-    {
+    } else {
         // Note: the 0xEE index string is a Microsoft OS 1.0 Descriptors.
         // https://docs.microsoft.com/en-us/windows-hardware/drivers/usbcon/microsoft-defined-usb-descriptors
 
@@ -176,13 +142,8 @@ tusb_desc_device_t const desc_device =
     
     .bMaxPacketSize0    = CFG_TUD_ENDPOINT0_SIZE,
 
-#ifdef GLYPH_DISPLAY_SCREEN
-    .idVendor           = 0x2E8A,
-    .idProduct          = 0x1092,
-#else
     .idVendor           = 0xCafe,
     .idProduct          = USB_PID,
-#endif
     .bcdDevice          = 0x0101,
 
     .iManufacturer      = STRID_MANUFACTURER,
@@ -204,13 +165,9 @@ const uint8_t * NetDriver::get_hid_descriptor_report_cb(uint8_t itf) {
 //--------------------------------------------------------------------+
 // Configuration Descriptor
 //--------------------------------------------------------------------+
-#ifdef GLYPH_DISPLAY_SCREEN
-#define MAIN_CONFIG_TOTAL_LEN    (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN)
-#else
 #define MAIN_CONFIG_TOTAL_LEN    (TUD_CONFIG_DESC_LEN + TUD_RNDIS_DESC_LEN)
 #define ALT_CONFIG_TOTAL_LEN     (TUD_CONFIG_DESC_LEN + TUD_CDC_ECM_DESC_LEN)
 #define NCM_CONFIG_TOTAL_LEN     (TUD_CONFIG_DESC_LEN + TUD_CDC_NCM_DESC_LEN)
-#endif
 
 #if CFG_TUSB_MCU == OPT_MCU_LPC175X_6X || CFG_TUSB_MCU == OPT_MCU_LPC177X_8X || CFG_TUSB_MCU == OPT_MCU_LPC40XX
   // LPC 17xx and 40xx endpoint type (bulk/interrupt/iso) are fixed by its number
@@ -232,15 +189,7 @@ const uint8_t * NetDriver::get_hid_descriptor_report_cb(uint8_t itf) {
   #define EPNUM_NET_IN      0x82
 #endif
 
-#ifdef GLYPH_DISPLAY_SCREEN
-
-static uint8_t const cdc_configuration[] =
-{
-  TUD_CONFIG_DESCRIPTOR(CONFIG_ID_CDC + 1, ITF_NUM_TOTAL, 0, MAIN_CONFIG_TOTAL_LEN, 0, 100),
-  TUD_CDC_DESCRIPTOR(ITF_NUM_CDC, STRID_INTERFACE, EPNUM_NET_NOTIF, 8, EPNUM_NET_OUT, EPNUM_NET_IN, 64),
-};
-
-#elif CFG_TUD_ECM_RNDIS
+#if CFG_TUD_ECM_RNDIS
 
 static uint8_t const rndis_configuration[] =
 {
@@ -279,9 +228,7 @@ static uint8_t const ncm_configuration[] =
 // - Linux will work on both
 static uint8_t const * const configuration_arr[2] =
 {
-#ifdef GLYPH_DISPLAY_SCREEN
-  [CONFIG_ID_CDC] = cdc_configuration
-#elif CFG_TUD_ECM_RNDIS
+#if CFG_TUD_ECM_RNDIS
   [CONFIG_ID_RNDIS] = rndis_configuration,
   [CONFIG_ID_ECM  ] = ecm_configuration
 #else

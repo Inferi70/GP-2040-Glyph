@@ -59,33 +59,6 @@ constexpr GlyphInputScreen::ButtonDot kFullLayoutDots[] = {
     {"RF16", 72, 35, 4, 0, 0, AUX_MASK_FUNCTION},
 };
 
-constexpr GlyphInputScreen::ButtonDot kPlatformLayoutDots[] = {
-    {"LF4", 6,   29, 4, GAMEPAD_MASK_E1, 0, 0},
-    {"LF3", 15,  23, 4, 0, GAMEPAD_MASK_LEFT, 0},
-    {"LF2", 25,  22, 4, 0, GAMEPAD_MASK_DOWN, 0},
-    {"LF1", 35,  27, 4, GAMEPAD_MASK_E8, 0, 0},
-    {"LF5", 24,  32, 4, GAMEPAD_MASK_E7, 0, 0},
-    {"RF1", 93,  27, 4, GAMEPAD_MASK_B1, 0, 0},
-    {"RF2", 102, 23, 4, GAMEPAD_MASK_B2, 0, 0},
-    {"RF3", 112, 24, 4, GAMEPAD_MASK_B3, 0, 0},
-    {"RF4", 122, 29, 4, GAMEPAD_MASK_B4, 0, 0},
-    {"RF5", 93,  17, 4, GAMEPAD_MASK_R2, 0, 0},
-    {"RF6", 102, 13, 4, GAMEPAD_MASK_L1, 0, 0},
-    {"RF7", 112, 14, 4, GAMEPAD_MASK_R1, 0, 0},
-    {"RF8", 122, 19, 4, GAMEPAD_MASK_L2, 0, 0},
-    {"LT1", 38,  52, 4, GAMEPAD_MASK_A1, 0, 0},
-    {"LT2", 46,  58, 4, GAMEPAD_MASK_A2, 0, 0},
-    {"LT3", 46,  46, 4, GAMEPAD_MASK_A3, 0, 0},
-    {"LT4", 38,  40, 4, GAMEPAD_MASK_A4, 0, 0},
-    {"LT5", 30,  46, 4, GAMEPAD_MASK_L3, 0, 0},
-    {"LT6", 59,  50, 5, GAMEPAD_MASK_R3, 0, 0},
-    {"RT1", 90,  52, 4, GAMEPAD_MASK_R3, 0, 0},
-    {"RT2", 82,  58, 4, GAMEPAD_MASK_R3, 0, 0},
-    {"RT3", 82,  46, 4, GAMEPAD_MASK_E3, 0, 0},
-    {"RT4", 90,  40, 4, GAMEPAD_MASK_E4, 0, 0},
-    {"RT5", 98,  46, 4, GAMEPAD_MASK_E2, 0, 0},
-};
-
 constexpr GlyphInputScreen::ButtonDot kFgcLayoutDots[] = {
     {"LF8", 35, 17, 4, 0, GAMEPAD_MASK_LEFT, 0},
     {"LF7", 46, 19, 4, 0, GAMEPAD_MASK_DOWN, 0},
@@ -451,18 +424,6 @@ std::string GlyphInputScreen::inputModeName(InputMode mode) const
         case INPUT_MODE_KEYBOARD: return "HID-KB";
         case INPUT_MODE_CONFIG: return "Config";
         default: return "USB";
-    }
-}
-
-std::string GlyphInputScreen::socdName(SOCDMode mode) const
-{
-    switch (mode) {
-        case SOCD_MODE_NEUTRAL: return "N";
-        case SOCD_MODE_UP_PRIORITY: return "U";
-        case SOCD_MODE_SECOND_INPUT_PRIORITY: return "L";
-        case SOCD_MODE_FIRST_INPUT_PRIORITY: return "F";
-        case SOCD_MODE_BYPASS: return "X";
-        default: return "?";
     }
 }
 

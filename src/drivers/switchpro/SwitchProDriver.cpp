@@ -103,19 +103,10 @@ bool SwitchProDriver::process(Gamepad * gamepad) {
 
     switchReport.inputs.chargingGrip = 1;
 
-#if GLYPH_MATRIX_INPUT_ENABLED == 1
-    // Glyph profiles are named by logical output (B1 = A, B2 = B,
-    // B3 = X, B4 = Y). Keep those semantics stable in Switch Pro mode.
-    switchReport.inputs.buttonY = gamepad->pressedB4();
-    switchReport.inputs.buttonX = gamepad->pressedB3();
-    switchReport.inputs.buttonB = gamepad->pressedB2();
-    switchReport.inputs.buttonA = gamepad->pressedB1();
-#else
     switchReport.inputs.buttonY = gamepad->pressedB3();
     switchReport.inputs.buttonX = gamepad->pressedB4();
     switchReport.inputs.buttonB = gamepad->pressedB1();
     switchReport.inputs.buttonA = gamepad->pressedB2();
-#endif
     switchReport.inputs.buttonRightSR = 0;
     switchReport.inputs.buttonRightSL = 0;
     switchReport.inputs.buttonR = gamepad->pressedR1();

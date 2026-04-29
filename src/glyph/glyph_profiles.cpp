@@ -69,6 +69,9 @@ constexpr uint8_t BTN_MB7 = 55;
 constexpr uint8_t SOCD_NEUTRAL = 1;
 constexpr uint8_t SOCD_2IP = 2;
 constexpr uint8_t SOCD_2IP_NO_REAC = 3;
+constexpr uint8_t SOCD_DIR1_PRIORITY = 4;
+constexpr uint8_t SOCD_DIR2_PRIORITY = 5;
+constexpr uint8_t SOCD_1IP = 6;
 constexpr uint32_t GLYPH_DEFAULT_RGB_COLOR = 2282478;
 constexpr uint8_t MOD_PROFILE_MELEE = 1;
 constexpr uint8_t MOD_PROFILE_PROJECT_M = 2;
@@ -146,6 +149,97 @@ constexpr GlyphProfiles::SocdPair kFgcSocdPairs[] = {
     {BTN_LF2, BTN_LT1, SOCD_NEUTRAL},
 };
 
+bool isUpButton(uint8_t button)
+{
+    switch (button) {
+        case BTN_RF4:
+        case BTN_RT4:
+        case BTN_LT1:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool isDownButton(uint8_t button)
+{
+    switch (button) {
+        case BTN_LF2:
+        case BTN_RT2:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool isHorizontalPair(const GlyphProfiles::SocdPair& pair)
+{
+    return (pair.buttonDir1 == BTN_LF3 && pair.buttonDir2 == BTN_LF1) ||
+           (pair.buttonDir1 == BTN_RT3 && pair.buttonDir2 == BTN_RT5);
+}
+
+bool isVerticalPair(const GlyphProfiles::SocdPair& pair)
+{
+    return (isDownButton(pair.buttonDir1) && isUpButton(pair.buttonDir2)) ||
+           (isUpButton(pair.buttonDir1) && isDownButton(pair.buttonDir2));
+}
+
+const GlyphProfiles::SocdPair* defaultSocdPairsForProfile(const GlyphProfiles::ProfileState& profile, uint8_t& count)
+{
+    switch (profile.behaviorMode) {
+        case GlyphProfiles::BehaviorFgc:
+            count = sizeof(kFgcSocdPairs) / sizeof(kFgcSocdPairs[0]);
+            return kFgcSocdPairs;
+        case GlyphProfiles::BehaviorUltimate:
+        case GlyphProfiles::BehaviorSmash64:
+            count = sizeof(kUltimateSocdPairs) / sizeof(kUltimateSocdPairs[0]);
+            return kUltimateSocdPairs;
+        case GlyphProfiles::BehaviorMelee:
+        case GlyphProfiles::BehaviorProjectM:
+        case GlyphProfiles::BehaviorRivals:
+        case GlyphProfiles::BehaviorRivals2:
+        default:
+            count = sizeof(kPlatformSocdPairs) / sizeof(kPlatformSocdPairs[0]);
+            return kPlatformSocdPairs;
+    }
+}
+
+uint8_t pairTypeForMode(const GlyphProfiles::SocdPair& pair, SOCDMode mode)
+{
+    switch (mode) {
+        case SOCD_MODE_NEUTRAL:
+            return SOCD_NEUTRAL;
+        case SOCD_MODE_SECOND_INPUT_PRIORITY:
+            return SOCD_2IP;
+        case SOCD_MODE_FIRST_INPUT_PRIORITY:
+            return SOCD_1IP;
+        case SOCD_MODE_UP_PRIORITY:
+            if (isVerticalPair(pair)) {
+                return isUpButton(pair.buttonDir1) ? SOCD_DIR1_PRIORITY : SOCD_DIR2_PRIORITY;
+            }
+            return SOCD_NEUTRAL;
+        case SOCD_MODE_BYPASS:
+        default:
+            return 0;
+    }
+}
+
+void rebuildSocdPairsForMode(GlyphProfiles::ProfileState& profile, SOCDMode mode)
+{
+    if (profile.socdPairCount == 0) {
+        uint8_t defaultCount = 0;
+        const GlyphProfiles::SocdPair* defaults = defaultSocdPairsForProfile(profile, defaultCount);
+        for (uint8_t index = 0; index < defaultCount && index < GlyphProfiles::MaxSocdPairs; index++) {
+            profile.socdPairs[index] = defaults[index];
+        }
+        profile.socdPairCount = defaultCount;
+    }
+
+    for (uint8_t index = 0; index < profile.socdPairCount; index++) {
+        profile.socdPairs[index].socdType = pairTypeForMode(profile.socdPairs[index], mode);
+    }
+}
+
 constexpr GlyphProfiles::ButtonRemap kMeleeRemaps[] = {
     {BTN_MB1, BTN_UNSPECIFIED},
     {BTN_MB2, BTN_UNSPECIFIED},
@@ -175,53 +269,15 @@ constexpr GlyphProfiles::ButtonRemap kSmash64Remaps[] = {
 };
 
 constexpr GlyphProfiles::ButtonRemap kSplitFgcRemaps[] = {
-    {BTN_RT1, BTN_LT1},
-    {BTN_LF5, BTN_LT2},
-    {BTN_RF9, BTN_RT1},
-    {BTN_LF8, BTN_UNSPECIFIED},
-    {BTN_LF7, BTN_UNSPECIFIED},
-    {BTN_LF6, BTN_UNSPECIFIED},
-    {BTN_LT6, BTN_UNSPECIFIED},
-    {BTN_LT2, BTN_UNSPECIFIED},
-    {BTN_RT2, BTN_UNSPECIFIED},
-    {BTN_RT3, BTN_UNSPECIFIED},
-    {BTN_RT4, BTN_UNSPECIFIED},
-    {BTN_RT5, BTN_UNSPECIFIED},
     {BTN_MB1, BTN_UNSPECIFIED},
+    {BTN_MB2, BTN_UNSPECIFIED},
+    {BTN_MB3, BTN_UNSPECIFIED},
 };
 
 constexpr GlyphProfiles::ButtonRemap kFgcRemaps[] = {
-    {BTN_RF10, BTN_RF1},
-    {BTN_RF11, BTN_RF2},
-    {BTN_RF12, BTN_RF3},
-    {BTN_RF1, BTN_RF4},
-    {BTN_RF13, BTN_RF5},
-    {BTN_RF14, BTN_RF6},
-    {BTN_RF15, BTN_RF7},
-    {BTN_RF5, BTN_RF8},
-    {BTN_LF6, BTN_LF1},
-    {BTN_LF7, BTN_LF2},
-    {BTN_LF8, BTN_LF3},
-    {BTN_LT6, BTN_LT1},
-    {BTN_RF16, BTN_LT2},
-    {BTN_RF2, BTN_UNSPECIFIED},
-    {BTN_RF3, BTN_UNSPECIFIED},
-    {BTN_RF4, BTN_UNSPECIFIED},
-    {BTN_RF6, BTN_UNSPECIFIED},
-    {BTN_RF7, BTN_UNSPECIFIED},
-    {BTN_RF8, BTN_UNSPECIFIED},
-    {BTN_LF1, BTN_UNSPECIFIED},
-    {BTN_LF2, BTN_UNSPECIFIED},
-    {BTN_LF3, BTN_UNSPECIFIED},
-    {BTN_LF5, BTN_UNSPECIFIED},
-    {BTN_LT1, BTN_UNSPECIFIED},
-    {BTN_LT2, BTN_UNSPECIFIED},
-    {BTN_RT1, BTN_UNSPECIFIED},
-    {BTN_RT2, BTN_UNSPECIFIED},
-    {BTN_RT3, BTN_UNSPECIFIED},
-    {BTN_RT4, BTN_UNSPECIFIED},
-    {BTN_RT5, BTN_UNSPECIFIED},
     {BTN_MB1, BTN_UNSPECIFIED},
+    {BTN_MB2, BTN_UNSPECIFIED},
+    {BTN_MB3, BTN_UNSPECIFIED},
 };
 
 constexpr Action kPlatformMatrix[GlyphProfiles::MatrixRows][GlyphProfiles::MatrixCols] = {
@@ -290,16 +346,17 @@ constexpr Action fgcActionForButton(uint8_t buttonId)
     }
 }
 
-constexpr OutputIcon kMenuButtonIcons[][7] = {
-    {OutputIcon::None, OutputIcon::None, OutputIcon::None, OutputIcon::None, OutputIcon::Home, OutputIcon::XboxBack, OutputIcon::Start},
-    {OutputIcon::None, OutputIcon::None, OutputIcon::None, OutputIcon::None, OutputIcon::Home, OutputIcon::XboxBack, OutputIcon::Start},
-    {OutputIcon::None, OutputIcon::None, OutputIcon::None, OutputIcon::None, OutputIcon::Home, OutputIcon::XboxBack, OutputIcon::Start},
-    {OutputIcon::None, OutputIcon::None, OutputIcon::None, OutputIcon::None, OutputIcon::Home, OutputIcon::XboxBack, OutputIcon::Start},
-    {OutputIcon::None, OutputIcon::None, OutputIcon::None, OutputIcon::None, OutputIcon::Home, OutputIcon::XboxBack, OutputIcon::Start},
-    {OutputIcon::None, OutputIcon::None, OutputIcon::None, OutputIcon::None, OutputIcon::Home, OutputIcon::XboxBack, OutputIcon::Start},
+constexpr OutputIcon kDefaultMenuIcons[7] = {
+    OutputIcon::None,
+    OutputIcon::None,
+    OutputIcon::None,
+    OutputIcon::None,
+    OutputIcon::Home,
+    OutputIcon::XboxBack,
+    OutputIcon::Start,
 };
 
-constexpr uint32_t kGlyphOptionsVersion = 11;
+constexpr uint32_t kGlyphOptionsVersion = 12;
 constexpr uint8_t kPackedSocdPairSize = 3;
 constexpr uint8_t kPackedButtonRemapSize = 2;
 constexpr uint8_t kPackedRgbColorSize = 4;
@@ -606,7 +663,7 @@ const Action (&matrixForLayout(Layout layout))[GlyphProfiles::MatrixRows][GlyphP
 
 GlyphProfiles::Action actionForButton(Layout layout, uint8_t buttonId)
 {
-    if (layout == Layout::Fgc || layout == Layout::SplitFgc) {
+    if (layout == Layout::Fgc) {
         return fgcActionForButton(buttonId);
     }
 
@@ -881,6 +938,7 @@ void loadFromConfig(const GlyphOptions& options)
             }
         }
     }
+
 }
 
 void writeToConfig(GlyphOptions& options)
@@ -1020,7 +1078,9 @@ void setLayout(uint8_t profileNumber, Layout value)
 void setSOCDMode(uint8_t profileNumber, SOCDMode value)
 {
     ensureMutableProfiles();
-    mutableProfiles[clampProfile(profileNumber) - 1].socdMode = value;
+    ProfileState& profile = mutableProfiles[clampProfile(profileNumber) - 1];
+    profile.socdMode = value;
+    rebuildSocdPairsForMode(profile, value);
 }
 
 void setRgbConfig(uint8_t profileNumber, uint8_t value)
@@ -1039,6 +1099,16 @@ void setBackends(uint8_t profileNumber, uint16_t value)
 {
     ensureMutableProfiles();
     mutableProfiles[clampProfile(profileNumber) - 1].backends = value;
+}
+
+void setSocdPairType(uint8_t profileNumber, uint8_t index, uint8_t socdType)
+{
+    ensureMutableProfiles();
+    ProfileState& profile = mutableProfiles[clampProfile(profileNumber) - 1];
+    if (index >= profile.socdPairCount) {
+        return;
+    }
+    profile.socdPairs[index].socdType = socdType;
 }
 
 uint8_t socdPairCount(uint8_t profileNumber)
@@ -1255,18 +1325,6 @@ bool modProfileAnalogTriggersEnabled(uint8_t modProfileId)
     return getModProfile(modProfileId).analogTriggersEnabled;
 }
 
-uint8_t visibleModProfileCount()
-{
-    ensureMutableProfiles();
-    uint8_t count = 0;
-    for (uint8_t i = 0; i < GlyphProfiles::MaxModProfiles; i++) {
-        if (mutableModProfiles[i].enabled) {
-            count++;
-        }
-    }
-    return count;
-}
-
 bool duplicateModProfile(uint8_t sourceModProfileId, uint8_t& newModProfileId)
 {
     ensureMutableProfiles();
@@ -1433,23 +1491,12 @@ uint8_t defaultModProfileForLegacyMode(uint32_t mode)
 
 OutputIcon menuIcon(uint8_t profileNumber, uint8_t menuButtonIndex)
 {
-    if (menuButtonIndex >= 7) {
+    if (menuButtonIndex >= std::size(kDefaultMenuIcons)) {
         return OutputIcon::None;
     }
 
-    const uint8_t profile = clampProfile(profileNumber);
-    const uint8_t presetIndex = (profile <= kPresetProfileCount ? profile : 1) - 1;
-    return kMenuButtonIcons[presetIndex][menuButtonIndex];
-}
-
-Action matrixAction(uint8_t profileNumber, uint8_t row, uint8_t col)
-{
-    if (row >= MatrixRows || col >= MatrixCols) {
-        return {Target::None, 0};
-    }
-
-    const Action (&matrix)[MatrixRows][MatrixCols] = matrixForLayout(layout(profileNumber));
-    return matrix[row][col];
+    (void)profileNumber;
+    return kDefaultMenuIcons[menuButtonIndex];
 }
 
 Action buttonAction(uint8_t profileNumber, uint8_t buttonId)

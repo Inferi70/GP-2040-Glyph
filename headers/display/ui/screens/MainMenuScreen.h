@@ -71,8 +71,11 @@ class MainMenuScreen : public GPScreen {
         void populateGlyphModCoordinateMenu();
         void populateGlyphLightShieldMenu();
         void populateGlyphModSingleValueMenu();
+        void populateGlyphSocdMenus();
         void selectGlyphAnalogTriggers();
         int32_t currentGlyphAnalogTriggers();
+        void selectGlyphSocdPairMode();
+        int32_t currentGlyphSocdPairMode();
         void toggleGlyphBackendSupport();
         int32_t currentGlyphBackendSupport();
         void selectGlyphModProfile();
@@ -165,6 +168,8 @@ class MainMenuScreen : public GPScreen {
         std::vector<MenuEntry> analogTriggersMenu = {};
         std::vector<MenuEntry> lightShieldMenu = {};
         std::vector<MenuEntry> modSingleValueMenu = {};
+        std::vector<MenuEntry> socdPairsMenu = {};
+        std::vector<MenuEntry> socdPairModeMenu = {};
         std::vector<MenuEntry> modXAngleMenu = {};
         std::vector<MenuEntry> modYAngleMenu = {};
         std::vector<MenuEntry> modMagnitudeMenu = {};
@@ -189,6 +194,7 @@ class MainMenuScreen : public GPScreen {
         };
         SOCDMode prevSocdMode;
         SOCDMode updateSocdMode;
+        uint8_t currentSocdPairIndex = 0;
 
         std::vector<MenuEntry> profilesMenu = {};
         uint8_t prevProfile;

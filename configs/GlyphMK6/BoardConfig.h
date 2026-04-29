@@ -72,6 +72,9 @@
 #define CASE_RGB_COUNT LED_COUNT
 
 #define HAS_I2C_DISPLAY 1
+#undef I2C1_ENABLED
+#undef I2C1_PIN_SDA
+#undef I2C1_PIN_SCL
 #define I2C1_ENABLED 1
 #define I2C1_PIN_SDA 2
 #define I2C1_PIN_SCL 3

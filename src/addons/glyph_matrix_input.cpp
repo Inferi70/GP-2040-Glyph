@@ -123,6 +123,60 @@ LegacyPlatformProfile legacyPlatformProfile(uint32_t behaviorMode)
     }
 }
 
+GlyphProfiles::Action translateGlyphButtonsForInputMode(
+    const GlyphProfiles::Action& action,
+    InputMode inputMode
+) {
+    if (action.target != GlyphProfiles::Target::Button) {
+        return action;
+    }
+
+    GlyphProfiles::Action translated = action;
+    switch (inputMode) {
+        case INPUT_MODE_SWITCH:
+        case INPUT_MODE_SWITCH_PRO:
+            switch (action.mask) {
+                case GAMEPAD_MASK_B1: translated.mask = GAMEPAD_MASK_B2; break;
+                case GAMEPAD_MASK_B2: translated.mask = GAMEPAD_MASK_B1; break;
+                case GAMEPAD_MASK_B3: translated.mask = GAMEPAD_MASK_B4; break;
+                case GAMEPAD_MASK_B4: translated.mask = GAMEPAD_MASK_B3; break;
+                default: break;
+            }
+            break;
+        case INPUT_MODE_GENERIC:
+            switch (action.mask) {
+                case GAMEPAD_MASK_B1: translated.mask = GAMEPAD_MASK_B1; break; // A -> HID 2
+                case GAMEPAD_MASK_B2: translated.mask = GAMEPAD_MASK_B3; break; // B -> HID 1
+                case GAMEPAD_MASK_B3: translated.mask = GAMEPAD_MASK_B4; break; // X -> HID 4
+                case GAMEPAD_MASK_B4: translated.mask = GAMEPAD_MASK_B2; break; // Y -> HID 3
+                case GAMEPAD_MASK_L1: translated.mask = GAMEPAD_MASK_L2; break; // L1 -> HID 7
+                case GAMEPAD_MASK_R1: translated.mask = GAMEPAD_MASK_L1; break; // R1 -> HID 5
+                case GAMEPAD_MASK_L2: translated.mask = GAMEPAD_MASK_R2; break; // L2 -> HID 8
+                case GAMEPAD_MASK_R2: translated.mask = GAMEPAD_MASK_R1; break; // R2 -> HID 6
+                case GAMEPAD_MASK_L3: translated.mask = GAMEPAD_MASK_R3; break; // L3 -> HID 12
+                case GAMEPAD_MASK_R3: translated.mask = GAMEPAD_MASK_L3; break; // R3 -> HID 11
+                default: break;
+            }
+            break;
+        default:
+            break;
+    }
+
+    return translated;
+}
+
+bool inputModeNeedsGlyphButtonTranslation(InputMode inputMode)
+{
+    switch (inputMode) {
+        case INPUT_MODE_SWITCH:
+        case INPUT_MODE_SWITCH_PRO:
+        case INPUT_MODE_GENERIC:
+            return true;
+        default:
+            return false;
+    }
+}
+
 bool maskHasHorizontal(uint8_t mask)
 {
     return (mask & (GAMEPAD_MASK_LEFT | GAMEPAD_MASK_RIGHT)) != 0;
@@ -585,6 +639,8 @@ void GlyphMatrixInput::apply(GamepadState& state)
 {
     Gamepad* gamepad = Storage::getInstance().GetGamepad();
     const uint8_t profile = gamepad != nullptr ? gamepad->getOptions().profileNumber : 1;
+    const InputMode inputMode = gamepad != nullptr ? gamepad->getOptions().inputMode : INPUT_MODE_XINPUT;
+    const bool translateGlyphButtons = inputModeNeedsGlyphButtonTranslation(inputMode);
     const GlyphProfiles::ModProfileState& modProfile = GlyphProfiles::getModProfile(GlyphProfiles::modProfile(profile));
     if (gamepad != nullptr) {
         gamepad->hasAnalogTriggers = modProfile.analogTriggersEnabled;
@@ -643,6 +699,9 @@ void GlyphMatrixInput::apply(GamepadState& state)
         if (pair.buttonDir1 >= sizeof(glyphPressed) || pair.buttonDir2 >= sizeof(glyphPressed)) {
             continue;
         }
+        if (pair.socdType == 0) {
+            continue;
+        }
         if (!glyphPressed[pair.buttonDir1] || !glyphPressed[pair.buttonDir2]) {
             continue;
         }
@@ -657,6 +716,13 @@ void GlyphMatrixInput::apply(GamepadState& state)
                 break;
             case 5: // Dir2 priority
                 glyphPressed[pair.buttonDir1] = false;
+                break;
+            case 6: // 1IP
+                if (glyphButtonPressedAt[pair.buttonDir1] <= glyphButtonPressedAt[pair.buttonDir2]) {
+                    glyphPressed[pair.buttonDir2] = false;
+                } else {
+                    glyphPressed[pair.buttonDir1] = false;
+                }
                 break;
             case 2: // 2IP
             case 3: // 2IP no-react, approximated as 2IP for now
@@ -706,7 +772,10 @@ void GlyphMatrixInput::apply(GamepadState& state)
             continue;
         }
 
-        const GlyphProfiles::Action action = GlyphProfiles::buttonAction(profile, buttonId);
+        const GlyphProfiles::Action rawAction = GlyphProfiles::buttonAction(profile, buttonId);
+        const GlyphProfiles::Action action = translateGlyphButtons ?
+            translateGlyphButtonsForInputMode(rawAction, inputMode) :
+            rawAction;
         switch (action.target) {
             case GlyphProfiles::Target::Dpad:
                 dpadOutput |= static_cast<uint8_t>(action.mask);

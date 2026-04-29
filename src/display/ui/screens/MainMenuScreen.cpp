@@ -37,6 +37,100 @@ constexpr int32_t kGlyphModProfileActionEditModYDiagonal = -119;
 constexpr int32_t kGlyphModProfileActionSingleValue = -120;
 constexpr int32_t kGlyphModProfileActionEditModXMagnitudes = -121;
 constexpr int32_t kGlyphModProfileActionEditModYMagnitudes = -122;
+constexpr int32_t kGlyphSocdPairMenuBase = 1000;
+constexpr int32_t kGlyphSocdMenuPairsAction = 2000;
+
+bool isSocdUpButton(uint8_t button)
+{
+    return button == 20 || button == 38 || button == 44;
+}
+
+bool isSocdDownButton(uint8_t button)
+{
+    return button == 2 || button == 42;
+}
+
+bool isSocdVerticalPair(const GlyphProfiles::SocdPair& pair)
+{
+    return (isSocdDownButton(pair.buttonDir1) && isSocdUpButton(pair.buttonDir2)) ||
+           (isSocdUpButton(pair.buttonDir1) && isSocdDownButton(pair.buttonDir2));
+}
+
+const char* socdPairRole(const GlyphProfiles::SocdPair& pair)
+{
+    if ((pair.buttonDir1 == 3 && pair.buttonDir2 == 1) || (pair.buttonDir1 == 1 && pair.buttonDir2 == 3)) {
+        return "LS Left/Right";
+    }
+    if ((pair.buttonDir1 == 2 && pair.buttonDir2 == 20) || (pair.buttonDir1 == 20 && pair.buttonDir2 == 2)) {
+        return "LS Up/Down";
+    }
+    if ((pair.buttonDir1 == 2 && pair.buttonDir2 == 38) || (pair.buttonDir1 == 38 && pair.buttonDir2 == 2)) {
+        return "D-Pad Up/Down";
+    }
+    if ((pair.buttonDir1 == 43 && pair.buttonDir2 == 45) || (pair.buttonDir1 == 45 && pair.buttonDir2 == 43)) {
+        return "RS Left/Right";
+    }
+    if ((pair.buttonDir1 == 42 && pair.buttonDir2 == 44) || (pair.buttonDir1 == 44 && pair.buttonDir2 == 42)) {
+        return "RS Up/Down";
+    }
+    return isSocdVerticalPair(pair) ? "Up/Down" : "Left/Right";
+}
+
+const char* socdTypeLabel(uint8_t type)
+{
+    switch (type) {
+        case 1: return "NIP";
+        case 2:
+        case 3: return "2IP";
+        case 4:
+        case 5: return "Up Priority";
+        case 6: return "1IP";
+        default: return "Off";
+    }
+}
+
+uint8_t socdTypeForMenuMode(const GlyphProfiles::SocdPair& pair, SOCDMode mode)
+{
+    switch (mode) {
+        case SOCD_MODE_NEUTRAL:
+            return 1;
+        case SOCD_MODE_SECOND_INPUT_PRIORITY:
+            return 2;
+        case SOCD_MODE_FIRST_INPUT_PRIORITY:
+            return 6;
+        case SOCD_MODE_UP_PRIORITY:
+            if (isSocdVerticalPair(pair)) {
+                return isSocdUpButton(pair.buttonDir1) ? 4 : 5;
+            }
+            return 1;
+        case SOCD_MODE_BYPASS:
+        default:
+            return 0;
+    }
+}
+
+int32_t inferSocdModeForProfile(uint8_t profile)
+{
+    const uint8_t pairCount = GlyphProfiles::socdPairCount(profile);
+    if (pairCount == 0) {
+        return SOCD_MODE_BYPASS;
+    }
+
+    bool allOff = true;
+
+    for (uint8_t index = 0; index < pairCount; index++) {
+        const GlyphProfiles::SocdPair& pair = GlyphProfiles::socdPair(profile, index);
+        allOff &= pair.socdType == 0;
+    }
+
+    if (allOff) return SOCD_MODE_BYPASS;
+    return kGlyphSocdMenuPairsAction;
+}
+
+std::string socdPairLabel(const GlyphProfiles::SocdPair& pair)
+{
+    return std::string(socdPairRole(pair)) + " " + socdTypeLabel(pair.socdType);
+}
 
 std::pair<std::string, std::string> glyphTopLabelLines(const std::string& label)
 {
@@ -48,6 +142,8 @@ std::pair<std::string, std::string> glyphTopLabelLines(const std::string& label)
     if (label == "Mod Profile") return {"Mod", "Profile"};
     if (label == "Analog Triggers") return {"Analog", "Triggers"};
     if (label == "Light Shields") return {"Light", "Shields"};
+    if (label == "SOCD Pairs") return {"SOCD", "Pairs"};
+    if (label == "SOCD Pair") return {"SOCD", "Pair"};
     if (label == "Magnitudes") return {"Magnitude", ""};
     if (label == "D-Pad Mode") return {"D-Pad", "Mode"};
     if (label == "SOCD Mode") return {"SOCD", "Mode"};
@@ -69,6 +165,7 @@ const char* glyphIconText(const std::string& label)
     if (label == "Mod Profile") return "MOD";
     if (label == "Analog Triggers") return "AT";
     if (label == "Light Shields") return "LS";
+    if (label == "SOCD Pairs" || label == "SOCD Pair") return "SP";
     if (label == "Magnitudes") return "MAG";
     if (label == "D-Pad Mode") return "DP";
     if (label == "SOCD Mode") return "SO";
@@ -90,6 +187,7 @@ const unsigned char* glyphSmallIcon(const std::string& label)
     if (label == "Mod Profile") return bitmap_profile_small;
     if (label == "Analog Triggers") return bitmap_profile_small;
     if (label == "Light Shields") return bitmap_profile_small;
+    if (label == "SOCD Pairs" || label == "SOCD Pair") return bitmap_profile_small;
     if (label == "Magnitudes") return bitmap_profile_small;
     if (label == "D-Pad Mode") return bitmap_input_small;
     if (label == "SOCD Mode") return bitmap_profile_small;
@@ -111,6 +209,7 @@ const unsigned char* glyphLargeIcon(const std::string& label)
     if (label == "Mod Profile") return bitmap_profile_large;
     if (label == "Analog Triggers") return bitmap_profile_large;
     if (label == "Light Shields") return bitmap_profile_large;
+    if (label == "SOCD Pairs" || label == "SOCD Pair") return bitmap_profile_large;
     if (label == "Magnitudes") return bitmap_profile_large;
     if (label == "D-Pad Mode") return bitmap_input_large;
     if (label == "SOCD Mode") return bitmap_profile_large;
@@ -143,6 +242,8 @@ std::string glyphListTitle(std::vector<MenuEntry>* menu,
                            std::vector<MenuEntry>* modProfileMenu,
                            std::vector<MenuEntry>* analogTriggersMenu,
                            std::vector<MenuEntry>* lightShieldMenu,
+                           std::vector<MenuEntry>* socdPairsMenu,
+                           std::vector<MenuEntry>* socdPairModeMenu,
                            std::vector<MenuEntry>* modXAngleMenu,
                            std::vector<MenuEntry>* modYAngleMenu,
                            std::vector<MenuEntry>* modMagnitudeMenu,
@@ -161,6 +262,8 @@ std::string glyphListTitle(std::vector<MenuEntry>* menu,
     if (menu == modProfileMenu) return "Mod Profile";
     if (menu == analogTriggersMenu) return "Analog Triggers";
     if (menu == lightShieldMenu) return "Light Shields";
+    if (menu == socdPairsMenu) return "SOCD Pairs";
+    if (menu == socdPairModeMenu) return "SOCD Pair";
     if (menu == modXAngleMenu) return "Edit Mod X";
     if (menu == modYAngleMenu) return "Edit Mod Y";
     if (menu == modMagnitudeMenu) return "Magnitudes";
@@ -315,6 +418,7 @@ void MainMenuScreen::init() {
     populateGlyphBackendMenu();
     populateGlyphBackendSupportMenu();
     populateGlyphModProfileMenu();
+    populateGlyphSocdMenus();
 #endif
 
     setMenuHome();
@@ -492,6 +596,37 @@ void MainMenuScreen::populateGlyphModSingleValueMenu()
 {
     modSingleValueMenu.clear();
     modSingleValueMenu.push_back({"Value " + std::to_string(currentGlyphModSingleValue()), NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphModSingleValue, this), std::bind(&MainMenuScreen::testMenu, this), kGlyphModProfileActionSingleValue});
+}
+
+void MainMenuScreen::populateGlyphSocdMenus()
+{
+    const uint8_t profile = updateProfile >= 1 ? updateProfile : Storage::getInstance().GetGamepad()->getOptions().profileNumber;
+
+    socdModeMenu.clear();
+    if (GlyphProfiles::socdPairCount(profile) > 0) {
+        socdModeMenu.push_back({"Pairs", NULL, &socdPairsMenu, std::bind(&MainMenuScreen::currentSOCDMode, this), std::bind(&MainMenuScreen::testMenu, this), kGlyphSocdMenuPairsAction});
+    }
+    socdModeMenu.push_back({"Off", NULL, nullptr, std::bind(&MainMenuScreen::currentSOCDMode, this), std::bind(&MainMenuScreen::selectSOCDMode, this), SOCD_MODE_BYPASS});
+
+    socdPairModeMenu.clear();
+    socdPairModeMenu.push_back({"Up Priority", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphSocdPairMode, this), std::bind(&MainMenuScreen::selectGlyphSocdPairMode, this), SOCD_MODE_UP_PRIORITY});
+    socdPairModeMenu.push_back({"NIP", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphSocdPairMode, this), std::bind(&MainMenuScreen::selectGlyphSocdPairMode, this), SOCD_MODE_NEUTRAL});
+    socdPairModeMenu.push_back({"2IP", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphSocdPairMode, this), std::bind(&MainMenuScreen::selectGlyphSocdPairMode, this), SOCD_MODE_SECOND_INPUT_PRIORITY});
+    socdPairModeMenu.push_back({"1IP", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphSocdPairMode, this), std::bind(&MainMenuScreen::selectGlyphSocdPairMode, this), SOCD_MODE_FIRST_INPUT_PRIORITY});
+    socdPairModeMenu.push_back({"OFF", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphSocdPairMode, this), std::bind(&MainMenuScreen::selectGlyphSocdPairMode, this), SOCD_MODE_BYPASS});
+
+    socdPairsMenu.clear();
+    const uint8_t pairCount = GlyphProfiles::socdPairCount(profile);
+    for (uint8_t index = 0; index < pairCount; index++) {
+        socdPairsMenu.push_back({
+            socdPairLabel(GlyphProfiles::socdPair(profile, index)),
+            NULL,
+            &socdPairModeMenu,
+            std::bind(&MainMenuScreen::currentGlyphSocdPairMode, this),
+            std::bind(&MainMenuScreen::testMenu, this),
+            static_cast<int32_t>(kGlyphSocdPairMenuBase + index)
+        });
+    }
 }
 
 void MainMenuScreen::toggleGlyphBackendSupport()
@@ -743,6 +878,46 @@ int32_t MainMenuScreen::currentGlyphAnalogTriggers()
     return GlyphProfiles::modProfileAnalogTriggersEnabled(GlyphProfiles::modProfile(profile)) ? 1 : 0;
 }
 
+void MainMenuScreen::selectGlyphSocdPairMode()
+{
+    const uint8_t profile = updateProfile >= 1 ? updateProfile : Storage::getInstance().GetGamepad()->getOptions().profileNumber;
+    const SOCDMode mode = static_cast<SOCDMode>(currentMenu->at(gpMenu->getIndex()).optionValue);
+
+    if (currentSocdPairIndex >= GlyphProfiles::socdPairCount(profile)) {
+        return;
+    }
+
+    if (mode == SOCD_MODE_BYPASS) {
+        GlyphProfiles::setSocdPairType(profile, currentSocdPairIndex, 0);
+    } else {
+        const GlyphProfiles::SocdPair& pair = GlyphProfiles::socdPair(profile, currentSocdPairIndex);
+        GlyphProfiles::setSocdPairType(profile, currentSocdPairIndex, socdTypeForMenuMode(pair, mode));
+    }
+
+    GlyphProfiles::writeToConfig(Storage::getInstance().getGlyphOptions());
+    populateGlyphSocdMenus();
+    EventManager::getInstance().triggerEvent(new GPStorageSaveEvent(true));
+}
+
+int32_t MainMenuScreen::currentGlyphSocdPairMode()
+{
+    const uint8_t profile = updateProfile >= 1 ? updateProfile : Storage::getInstance().GetGamepad()->getOptions().profileNumber;
+    if (currentSocdPairIndex >= GlyphProfiles::socdPairCount(profile)) {
+        return -1;
+    }
+
+    const GlyphProfiles::SocdPair& pair = GlyphProfiles::socdPair(profile, currentSocdPairIndex);
+    switch (pair.socdType) {
+        case 1: return SOCD_MODE_NEUTRAL;
+        case 2:
+        case 3: return SOCD_MODE_SECOND_INPUT_PRIORITY;
+        case 4:
+        case 5: return SOCD_MODE_UP_PRIORITY;
+        case 6: return SOCD_MODE_FIRST_INPUT_PRIORITY;
+        default: return SOCD_MODE_BYPASS;
+    }
+}
+
 void MainMenuScreen::refreshGlyphUsbHostMenuLabels()
 {
     usbHostMenu.clear();
@@ -847,43 +1022,45 @@ void MainMenuScreen::drawGlyphTopMenu()
     const uint16_t index = gpMenu->getIndex();
 
     drawGlyphBitmap(getRenderer(), bitmap_glyph_menu_base, 128, 64, 0, 0);
+    if (menuSize == 0) {
+        return;
+    }
 
-    const struct {
-        int8_t relativeIndex;
-        uint16_t x;
-        uint16_t y;
-        bool selected;
-    } slots[] = {
-        {-2,  8,  5, false},
-        {-1, 24,  5, false},
-        { 0, 48,  1, true},
-        { 1, 82,  5, false},
-        { 2, 98,  5, false},
-    };
+    constexpr uint8_t kSmallIconSize = 10;
+    constexpr uint8_t kLargeIconSize = 28;
+    constexpr uint8_t kTopY = 2;
+    constexpr uint8_t kVisibleIconCount = 9;
+    const uint16_t visibleCount = menuSize < kVisibleIconCount ? menuSize : kVisibleIconCount;
+    const uint16_t totalStripWidth = visibleCount * kSmallIconSize;
+    const uint8_t startX = static_cast<uint8_t>((128 - totalStripWidth) / 2);
 
-    auto wrapIndex = [menuSize](int16_t value) -> uint16_t {
-        if (menuSize == 0) {
-            return 0;
-        }
-
-        while (value < 0) {
-            value += menuSize;
-        }
-        return static_cast<uint16_t>(value % menuSize);
-    };
-
-    for (const auto& slot : slots) {
-        if (!slot.selected && menuSize <= static_cast<uint16_t>(slot.relativeIndex < 0 ? -slot.relativeIndex : slot.relativeIndex)) {
-            continue;
-        }
-
-        const uint16_t itemIndex = wrapIndex(static_cast<int16_t>(index) + slot.relativeIndex);
-        if (slot.selected) {
-            drawGlyphBitmap(getRenderer(), glyphLargeIcon(currentMenu->at(itemIndex).label), 28, 28, slot.x, slot.y);
+    uint16_t firstVisible = 0;
+    if (menuSize > visibleCount) {
+        const uint16_t halfWindow = visibleCount / 2;
+        if (index <= halfWindow) {
+            firstVisible = 0;
+        } else if (index + halfWindow >= menuSize) {
+            firstVisible = menuSize - visibleCount;
         } else {
-            drawGlyphBitmap(getRenderer(), glyphSmallIcon(currentMenu->at(itemIndex).label), 10, 10, slot.x, slot.y);
+            firstVisible = index - halfWindow;
         }
     }
+
+    for (uint16_t visibleIndex = 0; visibleIndex < visibleCount; visibleIndex++) {
+        const uint16_t itemIndex = firstVisible + visibleIndex;
+        const uint8_t x = static_cast<uint8_t>(startX + (visibleIndex * kSmallIconSize));
+        drawGlyphBitmap(getRenderer(), glyphSmallIcon(currentMenu->at(itemIndex).label), kSmallIconSize, kSmallIconSize, x, kTopY);
+    }
+
+    const uint16_t selectedVisibleIndex = index - firstVisible;
+    int16_t selectedX = static_cast<int16_t>(startX + (selectedVisibleIndex * kSmallIconSize)) - ((kLargeIconSize - kSmallIconSize) / 2);
+    if (selectedX < 0) {
+        selectedX = 0;
+    }
+    if (selectedX > 128 - kLargeIconSize) {
+        selectedX = 128 - kLargeIconSize;
+    }
+    drawGlyphBitmap(getRenderer(), glyphLargeIcon(currentMenu->at(index).label), kLargeIconSize, kLargeIconSize, static_cast<uint16_t>(selectedX), kTopY);
 
     auto labelLines = glyphTopLabelLines(currentMenu->at(index).label);
     std::string firstLine = labelLines.first;
@@ -905,7 +1082,7 @@ void MainMenuScreen::drawGlyphListMenu()
 
     drawGlyphBitmap(getRenderer(), bitmap_glyph_list_menu_base, 128, 64, 0, 0);
 
-    std::string title = glyphListTitle(currentMenu, &profilesMenu, &modProfileMenu, &analogTriggersMenu, &lightShieldMenu, &modXAngleMenu, &modYAngleMenu, &modMagnitudeMenu, &modCoordinateMenu, &modSingleValueMenu, &inputModeMenu, &usbHostMenu, &backendSupportMenu, &dpadModeMenu, &socdModeMenu, &rgbBrightnessMenu, &turboModeMenu, &saveMenu);
+    std::string title = glyphListTitle(currentMenu, &profilesMenu, &modProfileMenu, &analogTriggersMenu, &lightShieldMenu, &socdPairsMenu, &socdPairModeMenu, &modXAngleMenu, &modYAngleMenu, &modMagnitudeMenu, &modCoordinateMenu, &modSingleValueMenu, &inputModeMenu, &usbHostMenu, &backendSupportMenu, &dpadModeMenu, &socdModeMenu, &rgbBrightnessMenu, &turboModeMenu, &saveMenu);
     auto titleLines = glyphListTitleLines(title);
     if (titleLines.first.length() > 10) {
         titleLines.first.resize(10);
@@ -1197,6 +1374,12 @@ void MainMenuScreen::updateMenuNavigation(GpioAction action) {
                     modSingleValueTitle = entry.label;
                     modSingleValueEditing = false;
                     populateGlyphModSingleValueMenu();
+                    return;
+                }
+
+                if (menu == &socdPairsMenu && entry.submenu == &socdPairModeMenu) {
+                    currentSocdPairIndex = static_cast<uint8_t>(entry.optionValue - kGlyphSocdPairMenuBase);
+                    populateGlyphSocdMenus();
                 }
             };
 
@@ -1469,12 +1652,11 @@ void MainMenuScreen::selectSOCDMode() {
 
 #ifdef GLYPH_DISPLAY_SCREEN
         const uint8_t profile = updateProfile >= 1 ? updateProfile : Storage::getInstance().GetGamepad()->getOptions().profileNumber;
-        if (GlyphProfiles::socdMode(profile) != valueToSave) {
-            GlyphProfiles::setSOCDMode(profile, valueToSave);
-            GlyphProfiles::writeToConfig(Storage::getInstance().getGlyphOptions());
-            Storage::getInstance().getGamepadOptions().socdMode = valueToSave;
-            EventManager::getInstance().triggerEvent(new GPStorageSaveEvent(true));
-        }
+        GlyphProfiles::setSOCDMode(profile, valueToSave);
+        GlyphProfiles::writeToConfig(Storage::getInstance().getGlyphOptions());
+        populateGlyphSocdMenus();
+        Storage::getInstance().getGamepadOptions().socdMode = valueToSave;
+        EventManager::getInstance().triggerEvent(new GPStorageSaveEvent(true));
         changeRequiresSave = false;
         changeRequiresReboot = false;
         screenIsPrompting = false;
@@ -1493,7 +1675,7 @@ void MainMenuScreen::selectSOCDMode() {
 int32_t MainMenuScreen::currentSOCDMode() {
 #ifdef GLYPH_DISPLAY_SCREEN
     const uint8_t profile = updateProfile >= 1 ? updateProfile : Storage::getInstance().GetGamepad()->getOptions().profileNumber;
-    return GlyphProfiles::socdMode(profile);
+    return inferSocdModeForProfile(profile);
 #endif
     return updateSocdMode;
 }
@@ -1575,6 +1757,7 @@ void MainMenuScreen::selectProfile() {
         populateGlyphBackendMenu();
         populateGlyphBackendSupportMenu();
         populateGlyphModProfileMenu();
+        populateGlyphSocdMenus();
         if (prevProfile != valueToSave) {
             Storage::getInstance().getGamepadOptions().profileNumber = valueToSave;
             EventManager::getInstance().triggerEvent(new GPStorageSaveEvent(true));

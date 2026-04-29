@@ -228,8 +228,6 @@ void ButtonLayoutScreen::generateHeader() {
         }
     }
 
-	const GamepadOptions & options = gamepad->getOptions();
-
     if (showDpadMode) {
         switch (gamepad->getActiveDpadMode())
         {
@@ -551,7 +549,6 @@ void ButtonLayoutScreen::handleProfileChange(GPEvent* e) {
 }
 
 void ButtonLayoutScreen::handleUSB(GPEvent* e) {
-    GPUSBHostEvent* event = (GPUSBHostEvent*)e;
     bannerDelayStart = getMillis();
     prevProfileNumber = profileNumber;
 
@@ -564,6 +561,7 @@ void ButtonLayoutScreen::handleUSB(GPEvent* e) {
 }
 
 void ButtonLayoutScreen::trim(std::string &s) {
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(),
-            std::not1(std::ptr_fun<int, int>(std::isspace))));
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }));
 }

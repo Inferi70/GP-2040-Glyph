@@ -8,6 +8,8 @@
 
 namespace GlyphUsbHost
 {
+namespace
+{
 bool isSupportedOption(int32_t option)
 {
     return option == OptionXInputAuth || option == OptionXBOneAuth || option == OptionPS4Auth || option == OptionPS5Auth || option == OptionDisable;
@@ -36,6 +38,7 @@ void disableAll(AddonOptions& addonOptions, GamepadOptions& gamepadOptions, Peri
     gamepadOptions.xinputAuthType = INPUT_MODE_AUTH_TYPE_NONE;
     gamepadOptions.ps4AuthType = INPUT_MODE_AUTH_TYPE_NONE;
     gamepadOptions.ps5AuthType = INPUT_MODE_AUTH_TYPE_NONE;
+}
 }
 
 void sanitizeConfig(Config& config)

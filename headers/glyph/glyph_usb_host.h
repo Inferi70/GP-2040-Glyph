@@ -14,10 +14,6 @@ constexpr int32_t OptionPS4Auth = 4;
 constexpr int32_t OptionPS5Auth = 8;
 constexpr int32_t OptionDisable = 32;
 
-bool isSupportedOption(int32_t option);
-bool hasSupportedAuth(const GamepadOptions& gamepadOptions);
-void configurePort(PeripheralOptions& peripheralOptions);
-void disableAll(AddonOptions& addonOptions, GamepadOptions& gamepadOptions, PeripheralOptions& peripheralOptions);
 void sanitizeConfig(Config& config);
 bool toggleOption(AddonOptions& addonOptions, GamepadOptions& gamepadOptions, PeripheralOptions& peripheralOptions, int32_t option);
 int32_t currentOption(const GamepadOptions& gamepadOptions, const PeripheralOptions& peripheralOptions, int32_t option);

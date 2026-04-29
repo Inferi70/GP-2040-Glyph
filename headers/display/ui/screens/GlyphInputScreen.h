@@ -35,7 +35,6 @@ protected:
 
 private:
     std::string inputModeName(InputMode mode) const;
-    std::string socdName(SOCDMode mode) const;
     const ButtonDot* activeDots(size_t& count) const;
     void drawDot(const ButtonDot& dot, const GamepadState& state);
     bool dotPressed(const ButtonDot& dot, const GamepadState& state) const;
