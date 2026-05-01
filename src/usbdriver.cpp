@@ -22,7 +22,7 @@ bool get_usb_suspended(void) {
 
 const usbd_class_driver_t *usbd_app_driver_get_cb(uint8_t *driver_count) {
 #ifdef GLYPH_DISPLAY_SCREEN
-	if (DriverManager::getInstance().isConfigMode()) {
+	if (DriverManager::getInstance().isGlyphConfigMode()) {
 		*driver_count = 0;
 		return nullptr;
 	}
