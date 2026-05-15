@@ -16,6 +16,7 @@ constexpr uint8_t ProfileNameLength = 16;
 constexpr uint8_t MaxSocdPairs = 10;
 constexpr uint8_t MaxButtonRemaps = 60;
 constexpr uint8_t MaxRgbColors = 60;
+constexpr uint8_t LogicalSocdSlotCount = 6;
 
 enum class Layout : uint8_t {
     Platform,
@@ -143,6 +144,15 @@ struct RgbColor {
     uint32_t color;
 };
 
+enum SocdLogicalSlot : uint8_t {
+    SocdLogicalSlotDpadHorizontal = 0,
+    SocdLogicalSlotDpadVertical = 1,
+    SocdLogicalSlotLeftAnalogHorizontal = 2,
+    SocdLogicalSlotLeftAnalogVertical = 3,
+    SocdLogicalSlotRightAnalogHorizontal = 4,
+    SocdLogicalSlotRightAnalogVertical = 5,
+};
+
 struct ProfileState {
     uint8_t number;
     char name[ProfileNameLength + 1];
@@ -177,6 +187,10 @@ const ButtonRemap& buttonRemap(uint8_t profileNumber, uint8_t index);
 uint8_t rgbColorCount(uint8_t profileNumber);
 const RgbColor& rgbColor(uint8_t profileNumber, uint8_t index);
 bool rgbColorForButton(uint8_t profileNumber, uint8_t button, uint32_t& color);
+const char* logicalSocdSlotLabel(uint8_t profileNumber, uint8_t slot);
+bool logicalSocdSlotVisible(uint8_t profileNumber, uint8_t slot);
+SOCDMode logicalSocdMode(uint8_t profileNumber, uint8_t slot);
+void setLogicalSocdMode(uint8_t profileNumber, uint8_t slot, SOCDMode mode);
 void resetToDefaults();
 void loadFromConfig(const GlyphOptions& options);
 void writeToConfig(GlyphOptions& options);

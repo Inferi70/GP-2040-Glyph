@@ -618,6 +618,10 @@ static bool glyphButtonPressedState[61] = {};
 static bool glyphPhysicalButtonPressedState[61] = {};
 static bool glyphModXPressedState = false;
 static bool glyphModYPressedState = false;
+static SOCDHistory glyphDpadSocdHistory = {};
+static SOCDHistory glyphLeftSocdHistory = {};
+static SOCDHistory glyphRightSocdHistory = {};
+static uint8_t glyphSocdProfile = 0;
 
 bool GlyphMatrixInput::available()
 {
@@ -778,6 +782,13 @@ void GlyphMatrixInput::apply(GamepadState& state)
     bool modYPressed = false;
     uint8_t cAngleSlot = kNoCAngleSlot;
 
+    if (glyphSocdProfile != profile) {
+        glyphSocdProfile = profile;
+        glyphDpadSocdHistory = {};
+        glyphLeftSocdHistory = {};
+        glyphRightSocdHistory = {};
+    }
+
     for (uint8_t row = 0; row < kRows; row++) {
         for (uint8_t col = 0; col < kCols; col++) {
             if (!pressed[row][col]) {
@@ -811,48 +822,6 @@ void GlyphMatrixInput::apply(GamepadState& state)
     for (uint8_t buttonId = 1; buttonId < sizeof(glyphPressed); buttonId++) {
         glyphPressed[buttonId] = remappedGlyphPressed[buttonId] ||
                                  (originalGlyphPressed[buttonId] && !remappedPhysical[buttonId]);
-    }
-
-    for (uint8_t pairIndex = 0; pairIndex < GlyphProfiles::socdPairCount(profile); pairIndex++) {
-        const GlyphProfiles::SocdPair& pair = GlyphProfiles::socdPair(profile, pairIndex);
-        if (pair.buttonDir1 >= sizeof(glyphPressed) || pair.buttonDir2 >= sizeof(glyphPressed)) {
-            continue;
-        }
-        if (pair.socdType == 0) {
-            continue;
-        }
-        if (!glyphPressed[pair.buttonDir1] || !glyphPressed[pair.buttonDir2]) {
-            continue;
-        }
-
-        switch (pair.socdType) {
-            case 1: // Neutral
-                glyphPressed[pair.buttonDir1] = false;
-                glyphPressed[pair.buttonDir2] = false;
-                break;
-            case 4: // Dir1 priority
-                glyphPressed[pair.buttonDir2] = false;
-                break;
-            case 5: // Dir2 priority
-                glyphPressed[pair.buttonDir1] = false;
-                break;
-            case 6: // 1IP
-                if (glyphButtonPressedAt[pair.buttonDir1] <= glyphButtonPressedAt[pair.buttonDir2]) {
-                    glyphPressed[pair.buttonDir2] = false;
-                } else {
-                    glyphPressed[pair.buttonDir1] = false;
-                }
-                break;
-            case 2: // 2IP
-            case 3: // 2IP no-react, approximated as 2IP for now
-            default:
-                if (glyphButtonPressedAt[pair.buttonDir1] <= glyphButtonPressedAt[pair.buttonDir2]) {
-                    glyphPressed[pair.buttonDir1] = false;
-                } else {
-                    glyphPressed[pair.buttonDir2] = false;
-                }
-                break;
-        }
     }
 
     memcpy(glyphButtonPressedState, glyphPressed, sizeof(glyphButtonPressedState));
@@ -924,6 +893,25 @@ void GlyphMatrixInput::apply(GamepadState& state)
         applyLegacyLeftStickModifier(state, leftAnalogOutput, legacyPlatform, modProfile, modXPressed, modYPressed);
         leftAnalogOutput = 0;
     }
+
+    dpadOutput = runSOCDCleaner(
+        GlyphProfiles::logicalSocdMode(profile, GlyphProfiles::SocdLogicalSlotDpadVertical),
+        GlyphProfiles::logicalSocdMode(profile, GlyphProfiles::SocdLogicalSlotDpadHorizontal),
+        dpadOutput,
+        glyphDpadSocdHistory
+    );
+    leftAnalogOutput = runSOCDCleaner(
+        GlyphProfiles::logicalSocdMode(profile, GlyphProfiles::SocdLogicalSlotLeftAnalogVertical),
+        GlyphProfiles::logicalSocdMode(profile, GlyphProfiles::SocdLogicalSlotLeftAnalogHorizontal),
+        leftAnalogOutput,
+        glyphLeftSocdHistory
+    );
+    rightAnalogOutput = runSOCDCleaner(
+        GlyphProfiles::logicalSocdMode(profile, GlyphProfiles::SocdLogicalSlotRightAnalogVertical),
+        GlyphProfiles::logicalSocdMode(profile, GlyphProfiles::SocdLogicalSlotRightAnalogHorizontal),
+        rightAnalogOutput,
+        glyphRightSocdHistory
+    );
 
     if (gamepad != nullptr) {
         applyDirectionalOutput(state, dpadOutput, gamepad->getOptions().dpadMode, modProfile, cAngleSlot, modXPressed, modYPressed);

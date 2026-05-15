@@ -40,97 +40,47 @@ constexpr int32_t kGlyphModProfileActionEditModXMagnitudes = -121;
 constexpr int32_t kGlyphModProfileActionEditModYMagnitudes = -122;
 constexpr int32_t kGlyphSocdPairMenuBase = 1000;
 constexpr int32_t kGlyphSocdMenuPairsAction = 2000;
-
-bool isSocdUpButton(uint8_t button)
-{
-    return button == 20 || button == 38 || button == 44;
-}
-
-bool isSocdDownButton(uint8_t button)
-{
-    return button == 2 || button == 42;
-}
-
-bool isSocdVerticalPair(const GlyphProfiles::SocdPair& pair)
-{
-    return (isSocdDownButton(pair.buttonDir1) && isSocdUpButton(pair.buttonDir2)) ||
-           (isSocdUpButton(pair.buttonDir1) && isSocdDownButton(pair.buttonDir2));
-}
-
-const char* socdPairRole(const GlyphProfiles::SocdPair& pair)
-{
-    if ((pair.buttonDir1 == 3 && pair.buttonDir2 == 1) || (pair.buttonDir1 == 1 && pair.buttonDir2 == 3)) {
-        return "LS Left/Right";
-    }
-    if ((pair.buttonDir1 == 2 && pair.buttonDir2 == 20) || (pair.buttonDir1 == 20 && pair.buttonDir2 == 2)) {
-        return "LS Up/Down";
-    }
-    if ((pair.buttonDir1 == 2 && pair.buttonDir2 == 38) || (pair.buttonDir1 == 38 && pair.buttonDir2 == 2)) {
-        return "D-Pad Up/Down";
-    }
-    if ((pair.buttonDir1 == 43 && pair.buttonDir2 == 45) || (pair.buttonDir1 == 45 && pair.buttonDir2 == 43)) {
-        return "RS Left/Right";
-    }
-    if ((pair.buttonDir1 == 42 && pair.buttonDir2 == 44) || (pair.buttonDir1 == 44 && pair.buttonDir2 == 42)) {
-        return "RS Up/Down";
-    }
-    return isSocdVerticalPair(pair) ? "Up/Down" : "Left/Right";
-}
-
-const char* socdTypeLabel(uint8_t type)
-{
-    switch (type) {
-        case 1: return "NIP";
-        case 2:
-        case 3: return "2IP";
-        case 4:
-        case 5: return "Up Priority";
-        case 6: return "1IP";
-        default: return "Off";
-    }
-}
-
-uint8_t socdTypeForMenuMode(const GlyphProfiles::SocdPair& pair, SOCDMode mode)
+const char* socdModeLabel(SOCDMode mode)
 {
     switch (mode) {
-        case SOCD_MODE_NEUTRAL:
-            return 1;
-        case SOCD_MODE_SECOND_INPUT_PRIORITY:
-            return 2;
-        case SOCD_MODE_FIRST_INPUT_PRIORITY:
-            return 6;
-        case SOCD_MODE_UP_PRIORITY:
-            if (isSocdVerticalPair(pair)) {
-                return isSocdUpButton(pair.buttonDir1) ? 4 : 5;
-            }
-            return 1;
-        case SOCD_MODE_BYPASS:
-        default:
-            return 0;
+        case SOCD_MODE_NEUTRAL: return "NIP";
+        case SOCD_MODE_SECOND_INPUT_PRIORITY: return "2IP";
+        case SOCD_MODE_FIRST_INPUT_PRIORITY: return "1IP";
+        case SOCD_MODE_UP_PRIORITY: return "Up Priority";
+        default: return "Off";
     }
 }
 
 int32_t inferSocdModeForProfile(uint8_t profile)
 {
-    const uint8_t pairCount = GlyphProfiles::socdPairCount(profile);
-    if (pairCount == 0) {
-        return SOCD_MODE_BYPASS;
+    const SOCDMode profileMode = GlyphProfiles::socdMode(profile);
+    bool sawVisible = false;
+    for (uint8_t slot = 0; slot < GlyphProfiles::LogicalSocdSlotCount; slot++) {
+        if (!GlyphProfiles::logicalSocdSlotVisible(profile, slot)) {
+            continue;
+        }
+        sawVisible = true;
+
+        SOCDMode expectedMode = profileMode;
+        if (profileMode == SOCD_MODE_UP_PRIORITY &&
+            (slot == GlyphProfiles::SocdLogicalSlotDpadHorizontal ||
+             slot == GlyphProfiles::SocdLogicalSlotLeftAnalogHorizontal ||
+             slot == GlyphProfiles::SocdLogicalSlotRightAnalogHorizontal)) {
+            expectedMode = SOCD_MODE_NEUTRAL;
+        }
+
+        if (GlyphProfiles::logicalSocdMode(profile, slot) != expectedMode) {
+            return kGlyphSocdMenuPairsAction;
+        }
     }
 
-    bool allOff = true;
-
-    for (uint8_t index = 0; index < pairCount; index++) {
-        const GlyphProfiles::SocdPair& pair = GlyphProfiles::socdPair(profile, index);
-        allOff &= pair.socdType == 0;
-    }
-
-    if (allOff) return SOCD_MODE_BYPASS;
-    return kGlyphSocdMenuPairsAction;
+    return sawVisible ? profileMode : SOCD_MODE_BYPASS;
 }
 
-std::string socdPairLabel(const GlyphProfiles::SocdPair& pair)
+std::string socdPairLabel(uint8_t profile, uint8_t slot)
 {
-    return std::string(socdPairRole(pair)) + " " + socdTypeLabel(pair.socdType);
+    return std::string(GlyphProfiles::logicalSocdSlotLabel(profile, slot)) + " " +
+           socdModeLabel(GlyphProfiles::logicalSocdMode(profile, slot));
 }
 
 std::pair<std::string, std::string> glyphTopLabelLines(const std::string& label)
@@ -604,10 +554,12 @@ void MainMenuScreen::populateGlyphSocdMenus()
     const uint8_t profile = updateProfile >= 1 ? updateProfile : Storage::getInstance().GetGamepad()->getOptions().profileNumber;
 
     socdModeMenu.clear();
-    if (GlyphProfiles::socdPairCount(profile) > 0) {
-        socdModeMenu.push_back({"Pairs", NULL, &socdPairsMenu, std::bind(&MainMenuScreen::currentSOCDMode, this), std::bind(&MainMenuScreen::testMenu, this), kGlyphSocdMenuPairsAction});
-    }
+    socdModeMenu.push_back({"Up Priority", NULL, nullptr, std::bind(&MainMenuScreen::currentSOCDMode, this), std::bind(&MainMenuScreen::selectSOCDMode, this), SOCD_MODE_UP_PRIORITY});
+    socdModeMenu.push_back({"NIP", NULL, nullptr, std::bind(&MainMenuScreen::currentSOCDMode, this), std::bind(&MainMenuScreen::selectSOCDMode, this), SOCD_MODE_NEUTRAL});
+    socdModeMenu.push_back({"2IP", NULL, nullptr, std::bind(&MainMenuScreen::currentSOCDMode, this), std::bind(&MainMenuScreen::selectSOCDMode, this), SOCD_MODE_SECOND_INPUT_PRIORITY});
+    socdModeMenu.push_back({"1IP", NULL, nullptr, std::bind(&MainMenuScreen::currentSOCDMode, this), std::bind(&MainMenuScreen::selectSOCDMode, this), SOCD_MODE_FIRST_INPUT_PRIORITY});
     socdModeMenu.push_back({"Off", NULL, nullptr, std::bind(&MainMenuScreen::currentSOCDMode, this), std::bind(&MainMenuScreen::selectSOCDMode, this), SOCD_MODE_BYPASS});
+    socdModeMenu.push_back({"Pairs", NULL, &socdPairsMenu, std::bind(&MainMenuScreen::currentSOCDMode, this), std::bind(&MainMenuScreen::testMenu, this), kGlyphSocdMenuPairsAction});
 
     socdPairModeMenu.clear();
     socdPairModeMenu.push_back({"Up Priority", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphSocdPairMode, this), std::bind(&MainMenuScreen::selectGlyphSocdPairMode, this), SOCD_MODE_UP_PRIORITY});
@@ -617,10 +569,12 @@ void MainMenuScreen::populateGlyphSocdMenus()
     socdPairModeMenu.push_back({"OFF", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphSocdPairMode, this), std::bind(&MainMenuScreen::selectGlyphSocdPairMode, this), SOCD_MODE_BYPASS});
 
     socdPairsMenu.clear();
-    const uint8_t pairCount = GlyphProfiles::socdPairCount(profile);
-    for (uint8_t index = 0; index < pairCount; index++) {
+    for (uint8_t index = 0; index < GlyphProfiles::LogicalSocdSlotCount; index++) {
+        if (!GlyphProfiles::logicalSocdSlotVisible(profile, index)) {
+            continue;
+        }
         socdPairsMenu.push_back({
-            socdPairLabel(GlyphProfiles::socdPair(profile, index)),
+            socdPairLabel(profile, index),
             NULL,
             &socdPairModeMenu,
             std::bind(&MainMenuScreen::currentGlyphSocdPairMode, this),
@@ -884,17 +838,12 @@ void MainMenuScreen::selectGlyphSocdPairMode()
     const uint8_t profile = updateProfile >= 1 ? updateProfile : Storage::getInstance().GetGamepad()->getOptions().profileNumber;
     const SOCDMode mode = static_cast<SOCDMode>(currentMenu->at(gpMenu->getIndex()).optionValue);
 
-    if (currentSocdPairIndex >= GlyphProfiles::socdPairCount(profile)) {
+    if (currentSocdPairIndex >= GlyphProfiles::LogicalSocdSlotCount ||
+        !GlyphProfiles::logicalSocdSlotVisible(profile, currentSocdPairIndex)) {
         return;
     }
 
-    if (mode == SOCD_MODE_BYPASS) {
-        GlyphProfiles::setSocdPairType(profile, currentSocdPairIndex, 0);
-    } else {
-        const GlyphProfiles::SocdPair& pair = GlyphProfiles::socdPair(profile, currentSocdPairIndex);
-        GlyphProfiles::setSocdPairType(profile, currentSocdPairIndex, socdTypeForMenuMode(pair, mode));
-    }
-
+    GlyphProfiles::setLogicalSocdMode(profile, currentSocdPairIndex, mode);
     GlyphProfiles::writeToConfig(Storage::getInstance().getGlyphOptions());
     populateGlyphSocdMenus();
     EventManager::getInstance().triggerEvent(new GPStorageSaveEvent(true));
@@ -903,20 +852,12 @@ void MainMenuScreen::selectGlyphSocdPairMode()
 int32_t MainMenuScreen::currentGlyphSocdPairMode()
 {
     const uint8_t profile = updateProfile >= 1 ? updateProfile : Storage::getInstance().GetGamepad()->getOptions().profileNumber;
-    if (currentSocdPairIndex >= GlyphProfiles::socdPairCount(profile)) {
+    if (currentSocdPairIndex >= GlyphProfiles::LogicalSocdSlotCount ||
+        !GlyphProfiles::logicalSocdSlotVisible(profile, currentSocdPairIndex)) {
         return -1;
     }
 
-    const GlyphProfiles::SocdPair& pair = GlyphProfiles::socdPair(profile, currentSocdPairIndex);
-    switch (pair.socdType) {
-        case 1: return SOCD_MODE_NEUTRAL;
-        case 2:
-        case 3: return SOCD_MODE_SECOND_INPUT_PRIORITY;
-        case 4:
-        case 5: return SOCD_MODE_UP_PRIORITY;
-        case 6: return SOCD_MODE_FIRST_INPUT_PRIORITY;
-        default: return SOCD_MODE_BYPASS;
-    }
+    return GlyphProfiles::logicalSocdMode(profile, currentSocdPairIndex);
 }
 
 void MainMenuScreen::refreshGlyphUsbHostMenuLabels()

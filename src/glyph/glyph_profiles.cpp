@@ -144,17 +144,43 @@ constexpr GlyphProfiles::SocdPair kUltimateSocdPairs[] = {
     {BTN_RT2, BTN_RT4, SOCD_2IP},
 };
 
+constexpr GlyphProfiles::SocdPair kSmash64SocdPairs[] = {
+    {BTN_LF3, BTN_LF1, SOCD_NEUTRAL},
+    {BTN_LF2, BTN_LT6, SOCD_NEUTRAL},
+    {BTN_LF2, BTN_RF4, SOCD_NEUTRAL},
+    {BTN_RF7, BTN_RF8, SOCD_NEUTRAL},
+    {BTN_RF2, BTN_RF6, SOCD_NEUTRAL},
+};
+
+constexpr GlyphProfiles::SocdPair kLegacyFgcSocdPairs[] = {
+    {BTN_LF3, BTN_LF1, SOCD_NEUTRAL},
+    {BTN_LF2, BTN_LT1, SOCD_NEUTRAL},
+};
+
 constexpr GlyphProfiles::SocdPair kFgcSocdPairs[] = {
     {BTN_LF3, BTN_LF1, SOCD_NEUTRAL},
     {BTN_LF2, BTN_LT1, SOCD_NEUTRAL},
+    {BTN_LF8, BTN_LF6, SOCD_NEUTRAL},
+    {BTN_LF7, BTN_LT6, SOCD_NEUTRAL},
+    {BTN_RT3, BTN_RT5, SOCD_NEUTRAL},
+    {BTN_RT2, BTN_RT4, SOCD_NEUTRAL},
+};
+
+constexpr GlyphProfiles::SocdPair kSplitFgcSocdPairs[] = {
+    {BTN_LF3, BTN_LF1, SOCD_NEUTRAL},
+    {BTN_LF2, BTN_RF10, SOCD_NEUTRAL},
 };
 
 bool isUpButton(uint8_t button)
 {
     switch (button) {
         case BTN_RF4:
+        case BTN_RF6:
+        case BTN_RF8:
+        case BTN_RF10:
         case BTN_RT4:
         case BTN_LT1:
+        case BTN_LT6:
             return true;
         default:
             return false;
@@ -165,6 +191,9 @@ bool isDownButton(uint8_t button)
 {
     switch (button) {
         case BTN_LF2:
+        case BTN_LF7:
+        case BTN_RF2:
+        case BTN_RF7:
         case BTN_RT2:
             return true;
         default:
@@ -186,14 +215,25 @@ bool isVerticalPair(const GlyphProfiles::SocdPair& pair)
 
 const GlyphProfiles::SocdPair* defaultSocdPairsForProfile(const GlyphProfiles::ProfileState& profile, uint8_t& count)
 {
-    switch (profile.behaviorMode) {
-        case GlyphProfiles::BehaviorFgc:
+    switch (profile.layout) {
+        case Layout::Fgc:
             count = sizeof(kFgcSocdPairs) / sizeof(kFgcSocdPairs[0]);
             return kFgcSocdPairs;
+        case Layout::SplitFgc:
+            count = sizeof(kSplitFgcSocdPairs) / sizeof(kSplitFgcSocdPairs[0]);
+            return kSplitFgcSocdPairs;
+        case Layout::Platform:
+        default:
+            break;
+    }
+
+    switch (profile.behaviorMode) {
         case GlyphProfiles::BehaviorUltimate:
-        case GlyphProfiles::BehaviorSmash64:
             count = sizeof(kUltimateSocdPairs) / sizeof(kUltimateSocdPairs[0]);
             return kUltimateSocdPairs;
+        case GlyphProfiles::BehaviorSmash64:
+            count = sizeof(kSmash64SocdPairs) / sizeof(kSmash64SocdPairs[0]);
+            return kSmash64SocdPairs;
         case GlyphProfiles::BehaviorMelee:
         case GlyphProfiles::BehaviorProjectM:
         case GlyphProfiles::BehaviorRivals:
@@ -201,6 +241,135 @@ const GlyphProfiles::SocdPair* defaultSocdPairsForProfile(const GlyphProfiles::P
         default:
             count = sizeof(kPlatformSocdPairs) / sizeof(kPlatformSocdPairs[0]);
             return kPlatformSocdPairs;
+    }
+}
+
+bool pairMatchesButtons(const GlyphProfiles::SocdPair& pair, uint8_t dir1, uint8_t dir2)
+{
+    return (pair.buttonDir1 == dir1 && pair.buttonDir2 == dir2) ||
+           (pair.buttonDir1 == dir2 && pair.buttonDir2 == dir1);
+}
+
+GlyphProfiles::SocdPair canonicalSocdPairForSlot(const GlyphProfiles::ProfileState& profile, uint8_t slot)
+{
+    switch (profile.layout) {
+        case Layout::Fgc:
+            switch (slot) {
+                case GlyphProfiles::SocdLogicalSlotDpadHorizontal: return {BTN_LF3, BTN_LF1, 0};
+                case GlyphProfiles::SocdLogicalSlotDpadVertical: return {BTN_LF2, BTN_LT1, 0};
+                case GlyphProfiles::SocdLogicalSlotLeftAnalogHorizontal: return {BTN_LF8, BTN_LF6, 0};
+                case GlyphProfiles::SocdLogicalSlotLeftAnalogVertical: return {BTN_LF7, BTN_LT6, 0};
+                case GlyphProfiles::SocdLogicalSlotRightAnalogHorizontal: return {BTN_RT3, BTN_RT5, 0};
+                case GlyphProfiles::SocdLogicalSlotRightAnalogVertical: return {BTN_RT2, BTN_RT4, 0};
+                default: return {0, 0, 0};
+            }
+
+        case Layout::SplitFgc:
+            switch (slot) {
+                case GlyphProfiles::SocdLogicalSlotDpadHorizontal: return {BTN_LF3, BTN_LF1, 0};
+                case GlyphProfiles::SocdLogicalSlotDpadVertical: return {BTN_LF2, BTN_RF10, 0};
+                case GlyphProfiles::SocdLogicalSlotLeftAnalogHorizontal: return {0, 0, 0};
+                case GlyphProfiles::SocdLogicalSlotLeftAnalogVertical: return {0, 0, 0};
+                case GlyphProfiles::SocdLogicalSlotRightAnalogHorizontal: return {0, 0, 0};
+                case GlyphProfiles::SocdLogicalSlotRightAnalogVertical: return {0, 0, 0};
+                default: return {0, 0, 0};
+            }
+
+        case Layout::Platform:
+        default:
+            if (profile.behaviorMode == GlyphProfiles::BehaviorSmash64) {
+                switch (slot) {
+                    case GlyphProfiles::SocdLogicalSlotDpadHorizontal:
+                    case GlyphProfiles::SocdLogicalSlotLeftAnalogHorizontal:
+                        return {BTN_LF3, BTN_LF1, 0};
+                    case GlyphProfiles::SocdLogicalSlotDpadVertical:
+                        return {BTN_LF2, BTN_LT6, 0};
+                    case GlyphProfiles::SocdLogicalSlotLeftAnalogVertical:
+                        return {BTN_LF2, BTN_RF4, 0};
+                    case GlyphProfiles::SocdLogicalSlotRightAnalogHorizontal:
+                        return {BTN_RF7, BTN_RF8, 0};
+                    case GlyphProfiles::SocdLogicalSlotRightAnalogVertical:
+                        return {BTN_RF2, BTN_RF6, 0};
+                    default:
+                        return {0, 0, 0};
+                }
+            }
+
+            switch (slot) {
+                case GlyphProfiles::SocdLogicalSlotDpadHorizontal:
+                    return {BTN_LF8, BTN_LF6, 0};
+                case GlyphProfiles::SocdLogicalSlotDpadVertical:
+                    if (profile.behaviorMode == GlyphProfiles::BehaviorProjectM ||
+                        profile.behaviorMode == GlyphProfiles::BehaviorUltimate) {
+                        return {BTN_RF7, BTN_RF8, 0};
+                    }
+                    return {BTN_LF7, BTN_LT6, 0};
+                case GlyphProfiles::SocdLogicalSlotLeftAnalogHorizontal:
+                    return {BTN_LF3, BTN_LF1, 0};
+                case GlyphProfiles::SocdLogicalSlotLeftAnalogVertical:
+                    return {BTN_LF2, BTN_RF4, 0};
+                case GlyphProfiles::SocdLogicalSlotRightAnalogHorizontal:
+                    return {BTN_RT3, BTN_RT5, 0};
+                case GlyphProfiles::SocdLogicalSlotRightAnalogVertical:
+                    return {BTN_RT2, BTN_RT4, 0};
+                default:
+                    return {0, 0, 0};
+            }
+    }
+}
+
+bool logicalSocdSlotVisibleForProfile(const GlyphProfiles::ProfileState& profile, uint8_t slot)
+{
+    if (slot >= GlyphProfiles::LogicalSocdSlotCount) {
+        return false;
+    }
+
+    if (profile.layout == Layout::SplitFgc) {
+        return slot == GlyphProfiles::SocdLogicalSlotDpadHorizontal ||
+               slot == GlyphProfiles::SocdLogicalSlotDpadVertical;
+    }
+
+    if (profile.behaviorMode == GlyphProfiles::BehaviorSmash64) {
+        return slot != GlyphProfiles::SocdLogicalSlotDpadHorizontal;
+    }
+
+    const GlyphProfiles::SocdPair canonical = canonicalSocdPairForSlot(profile, slot);
+    return canonical.buttonDir1 != 0 && canonical.buttonDir2 != 0;
+}
+
+bool pairMatchesLogicalSlot(const GlyphProfiles::ProfileState& profile, const GlyphProfiles::SocdPair& pair, uint8_t slot)
+{
+    const GlyphProfiles::SocdPair canonical = canonicalSocdPairForSlot(profile, slot);
+    if (pairMatchesButtons(pair, canonical.buttonDir1, canonical.buttonDir2)) {
+        return true;
+    }
+
+    if (profile.layout == Layout::Platform) {
+        if (slot == GlyphProfiles::SocdLogicalSlotDpadVertical &&
+            (profile.behaviorMode == GlyphProfiles::BehaviorProjectM ||
+             profile.behaviorMode == GlyphProfiles::BehaviorUltimate)) {
+            return pairMatchesButtons(pair, BTN_LF7, BTN_LT6);
+        }
+    }
+
+    return false;
+}
+
+SOCDMode menuModeForSocdType(uint8_t socdType)
+{
+    switch (socdType) {
+        case SOCD_NEUTRAL:
+            return SOCD_MODE_NEUTRAL;
+        case SOCD_2IP:
+        case SOCD_2IP_NO_REAC:
+            return SOCD_MODE_SECOND_INPUT_PRIORITY;
+        case SOCD_DIR1_PRIORITY:
+        case SOCD_DIR2_PRIORITY:
+            return SOCD_MODE_UP_PRIORITY;
+        case SOCD_1IP:
+            return SOCD_MODE_FIRST_INPUT_PRIORITY;
+        default:
+            return SOCD_MODE_BYPASS;
     }
 }
 
@@ -237,6 +406,89 @@ void rebuildSocdPairsForMode(GlyphProfiles::ProfileState& profile, SOCDMode mode
 
     for (uint8_t index = 0; index < profile.socdPairCount; index++) {
         profile.socdPairs[index].socdType = pairTypeForMode(profile.socdPairs[index], mode);
+    }
+}
+
+void migrateLegacyFgcSocdPairs(GlyphProfiles::ProfileState& profile)
+{
+    if (profile.layout == Layout::Fgc &&
+        profile.socdPairCount == (sizeof(kLegacyFgcSocdPairs) / sizeof(kLegacyFgcSocdPairs[0])) &&
+        pairMatchesButtons(profile.socdPairs[0], BTN_LF3, BTN_LF1) &&
+        pairMatchesButtons(profile.socdPairs[1], BTN_LF2, BTN_LT1)) {
+        SOCDMode inferredMode = profile.socdMode;
+        const SOCDMode pair0Mode = menuModeForSocdType(profile.socdPairs[0].socdType);
+        const SOCDMode pair1Mode = menuModeForSocdType(profile.socdPairs[1].socdType);
+        if (pair0Mode != SOCD_MODE_BYPASS && pair0Mode == pair1Mode) {
+            inferredMode = pair0Mode;
+        }
+
+        GlyphProfiles::SocdPair migratedPairs[sizeof(kFgcSocdPairs) / sizeof(kFgcSocdPairs[0])] = {};
+        migratedPairs[0] = {BTN_LF3, BTN_LF1, profile.socdPairs[0].socdType};
+        migratedPairs[1] = {BTN_LF2, BTN_LT1, profile.socdPairs[1].socdType};
+        for (uint8_t index = 2; index < (sizeof(kFgcSocdPairs) / sizeof(kFgcSocdPairs[0])); index++) {
+            migratedPairs[index] = kFgcSocdPairs[index];
+            migratedPairs[index].socdType = pairTypeForMode(migratedPairs[index], inferredMode);
+        }
+
+        profile.socdPairCount = sizeof(migratedPairs) / sizeof(migratedPairs[0]);
+        for (uint8_t index = 0; index < profile.socdPairCount; index++) {
+            profile.socdPairs[index] = migratedPairs[index];
+        }
+        return;
+    }
+
+    if (profile.layout == Layout::SplitFgc &&
+        profile.socdPairCount == (sizeof(kLegacyFgcSocdPairs) / sizeof(kLegacyFgcSocdPairs[0])) &&
+        pairMatchesButtons(profile.socdPairs[0], BTN_LF3, BTN_LF1) &&
+        pairMatchesButtons(profile.socdPairs[1], BTN_LF2, BTN_LT1)) {
+        profile.socdPairs[1].buttonDir1 = BTN_LF2;
+        profile.socdPairs[1].buttonDir2 = BTN_RF10;
+    }
+}
+
+void migrateLegacySmash64SocdPairs(GlyphProfiles::ProfileState& profile)
+{
+    if (profile.behaviorMode != GlyphProfiles::BehaviorSmash64 || profile.socdPairCount != 4) {
+        return;
+    }
+
+    const int8_t sharedHorizontalPairIndex =
+        pairMatchesButtons(profile.socdPairs[0], BTN_LF3, BTN_LF1) ? 0 :
+        pairMatchesButtons(profile.socdPairs[1], BTN_LF3, BTN_LF1) ? 1 :
+        pairMatchesButtons(profile.socdPairs[2], BTN_LF3, BTN_LF1) ? 2 :
+        pairMatchesButtons(profile.socdPairs[3], BTN_LF3, BTN_LF1) ? 3 : -1;
+    const int8_t sharedVerticalPairIndex =
+        pairMatchesButtons(profile.socdPairs[0], BTN_LF2, BTN_RF4) ? 0 :
+        pairMatchesButtons(profile.socdPairs[1], BTN_LF2, BTN_RF4) ? 1 :
+        pairMatchesButtons(profile.socdPairs[2], BTN_LF2, BTN_RF4) ? 2 :
+        pairMatchesButtons(profile.socdPairs[3], BTN_LF2, BTN_RF4) ? 3 : -1;
+    const int8_t legacyRightHorizontalPairIndex =
+        pairMatchesButtons(profile.socdPairs[0], BTN_RT3, BTN_RT5) ? 0 :
+        pairMatchesButtons(profile.socdPairs[1], BTN_RT3, BTN_RT5) ? 1 :
+        pairMatchesButtons(profile.socdPairs[2], BTN_RT3, BTN_RT5) ? 2 :
+        pairMatchesButtons(profile.socdPairs[3], BTN_RT3, BTN_RT5) ? 3 : -1;
+    const int8_t legacyRightVerticalPairIndex =
+        pairMatchesButtons(profile.socdPairs[0], BTN_RT2, BTN_RT4) ? 0 :
+        pairMatchesButtons(profile.socdPairs[1], BTN_RT2, BTN_RT4) ? 1 :
+        pairMatchesButtons(profile.socdPairs[2], BTN_RT2, BTN_RT4) ? 2 :
+        pairMatchesButtons(profile.socdPairs[3], BTN_RT2, BTN_RT4) ? 3 : -1;
+
+    if (sharedHorizontalPairIndex < 0 || sharedVerticalPairIndex < 0 ||
+        legacyRightHorizontalPairIndex < 0 || legacyRightVerticalPairIndex < 0) {
+        return;
+    }
+
+    const GlyphProfiles::SocdPair migratedPairs[] = {
+        {BTN_LF3, BTN_LF1, profile.socdPairs[sharedHorizontalPairIndex].socdType},
+        {BTN_LF2, BTN_LT6, profile.socdPairs[sharedVerticalPairIndex].socdType},
+        {BTN_LF2, BTN_RF4, profile.socdPairs[sharedVerticalPairIndex].socdType},
+        {BTN_RF7, BTN_RF8, profile.socdPairs[legacyRightHorizontalPairIndex].socdType},
+        {BTN_RF2, BTN_RF6, profile.socdPairs[legacyRightVerticalPairIndex].socdType},
+    };
+
+    profile.socdPairCount = sizeof(migratedPairs) / sizeof(migratedPairs[0]);
+    for (uint8_t index = 0; index < profile.socdPairCount; index++) {
+        profile.socdPairs[index] = migratedPairs[index];
     }
 }
 
@@ -469,10 +721,14 @@ void ensureMutableProfiles()
     }
     for (const auto& pair : kUltimateSocdPairs) {
         GlyphProfiles::addSocdPair(3, pair.buttonDir1, pair.buttonDir2, pair.socdType);
+    }
+    for (const auto& pair : kSmash64SocdPairs) {
         GlyphProfiles::addSocdPair(6, pair.buttonDir1, pair.buttonDir2, pair.socdType);
     }
-    for (const auto& pair : kFgcSocdPairs) {
+    for (const auto& pair : kSplitFgcSocdPairs) {
         GlyphProfiles::addSocdPair(4, pair.buttonDir1, pair.buttonDir2, pair.socdType);
+    }
+    for (const auto& pair : kFgcSocdPairs) {
         GlyphProfiles::addSocdPair(5, pair.buttonDir1, pair.buttonDir2, pair.socdType);
     }
 
@@ -911,6 +1167,8 @@ void loadFromConfig(const GlyphOptions& options)
                             source.socdPairs.bytes[offset + 2]);
             }
         }
+        migrateLegacyFgcSocdPairs(destination);
+        migrateLegacySmash64SocdPairs(destination);
 
         if (source.has_buttonRemaps && source.buttonRemaps.size >= kPackedButtonRemapSize) {
             clearButtonRemaps(i + 1);
@@ -1160,6 +1418,73 @@ bool rgbColorForButton(uint8_t profileNumber, uint8_t button, uint32_t& color)
     return false;
 }
 
+const char* logicalSocdSlotLabel(uint8_t profileNumber, uint8_t slot)
+{
+    const ProfileState& profile = state(profileNumber);
+    if (profile.behaviorMode == GlyphProfiles::BehaviorSmash64 &&
+        slot == SocdLogicalSlotLeftAnalogHorizontal) {
+        return "LS + D-Pad Left/Right";
+    }
+
+    switch (slot) {
+        case SocdLogicalSlotDpadHorizontal: return "D-Pad Left/Right";
+        case SocdLogicalSlotDpadVertical: return "D-Pad Up/Down";
+        case SocdLogicalSlotLeftAnalogHorizontal: return "LS Left/Right";
+        case SocdLogicalSlotLeftAnalogVertical: return "LS Up/Down";
+        case SocdLogicalSlotRightAnalogHorizontal: return "RS Left/Right";
+        case SocdLogicalSlotRightAnalogVertical: return "RS Up/Down";
+        default: return "Unknown";
+    }
+}
+
+bool logicalSocdSlotVisible(uint8_t profileNumber, uint8_t slot)
+{
+    return logicalSocdSlotVisibleForProfile(state(profileNumber), slot);
+}
+
+SOCDMode logicalSocdMode(uint8_t profileNumber, uint8_t slot)
+{
+    const ProfileState& profile = state(profileNumber);
+    for (uint8_t index = 0; index < profile.socdPairCount; index++) {
+        if (pairMatchesLogicalSlot(profile, profile.socdPairs[index], slot)) {
+            return menuModeForSocdType(profile.socdPairs[index].socdType);
+        }
+    }
+
+    const GlyphProfiles::SocdPair canonical = canonicalSocdPairForSlot(profile, slot);
+    if (canonical.buttonDir1 == 0 || canonical.buttonDir2 == 0) {
+        return profile.socdMode;
+    }
+    return menuModeForSocdType(pairTypeForMode(canonical, profile.socdMode));
+}
+
+void setLogicalSocdMode(uint8_t profileNumber, uint8_t slot, SOCDMode mode)
+{
+    ensureMutableProfiles();
+    ProfileState& profile = mutableProfiles[clampProfile(profileNumber) - 1];
+    const GlyphProfiles::SocdPair canonical = canonicalSocdPairForSlot(profile, slot);
+
+    for (uint8_t index = 0; index < profile.socdPairCount; index++) {
+        if (!pairMatchesLogicalSlot(profile, profile.socdPairs[index], slot)) {
+            continue;
+        }
+        profile.socdPairs[index].socdType = pairTypeForMode(profile.socdPairs[index], mode);
+        return;
+    }
+
+    if (canonical.buttonDir1 == 0 || canonical.buttonDir2 == 0) {
+        return;
+    }
+    const SOCDMode fallbackMode = menuModeForSocdType(pairTypeForMode(canonical, profile.socdMode));
+    if (mode == fallbackMode || profile.socdPairCount >= MaxSocdPairs) {
+        return;
+    }
+
+    GlyphProfiles::SocdPair pair = canonical;
+    pair.socdType = pairTypeForMode(pair, mode);
+    profile.socdPairs[profile.socdPairCount++] = pair;
+}
+
 void clearSocdPairs(uint8_t profileNumber)
 {
     ensureMutableProfiles();
@@ -1170,7 +1495,7 @@ void addSocdPair(uint8_t profileNumber, uint8_t buttonDir1, uint8_t buttonDir2, 
 {
     ensureMutableProfiles();
     ProfileState& profile = mutableProfiles[clampProfile(profileNumber) - 1];
-    if (profile.socdPairCount >= MaxSocdPairs || buttonDir1 == 0 || buttonDir2 == 0 || socdType == 0) {
+    if (profile.socdPairCount >= MaxSocdPairs || buttonDir1 == 0 || buttonDir2 == 0) {
         return;
     }
     profile.socdPairs[profile.socdPairCount++] = {buttonDir1, buttonDir2, socdType};
