@@ -976,22 +976,6 @@ uint8_t clampProfile(uint8_t profileNumber)
     return (profileNumber >= 1 && profileNumber <= GlyphProfiles::count()) ? profileNumber : 1;
 }
 
-uint8_t rememberedModProfileForBehavior(uint32_t behaviorMode, uint8_t excludeProfile = 0)
-{
-    for (uint8_t profile = 1; profile <= GlyphProfiles::count(); profile++) {
-        if (profile == excludeProfile) {
-            continue;
-        }
-
-        const GlyphProfiles::ProfileState& state = mutableProfiles[profile - 1];
-        if (state.behaviorMode == behaviorMode) {
-            return state.modProfileId;
-        }
-    }
-
-    return MOD_PROFILE_DEFAULT;
-}
-
 const Action (&matrixForLayout(Layout layout))[GlyphProfiles::MatrixRows][GlyphProfiles::MatrixCols]
 {
     switch (layout) {
@@ -1434,9 +1418,7 @@ void setName(uint8_t profileNumber, const char* value)
 void setBehaviorMode(uint8_t profileNumber, uint32_t value)
 {
     ensureMutableProfiles();
-    ProfileState& profile = mutableProfiles[clampProfile(profileNumber) - 1];
-    profile.behaviorMode = value;
-    profile.modProfileId = rememberedModProfileForBehavior(value, profile.number);
+    mutableProfiles[clampProfile(profileNumber) - 1].behaviorMode = value;
 }
 
 void setLayout(uint8_t profileNumber, Layout value)
@@ -1462,15 +1444,7 @@ void setRgbConfig(uint8_t profileNumber, uint8_t value)
 void setModProfile(uint8_t profileNumber, uint8_t value)
 {
     ensureMutableProfiles();
-    const uint8_t targetProfile = clampProfile(profileNumber);
-    const uint8_t modProfileId = clampModProfile(value);
-    const uint32_t behaviorMode = mutableProfiles[targetProfile - 1].behaviorMode;
-
-    for (uint8_t profile = 1; profile <= GlyphProfiles::count(); profile++) {
-        if (mutableProfiles[profile - 1].behaviorMode == behaviorMode) {
-            mutableProfiles[profile - 1].modProfileId = modProfileId;
-        }
-    }
+    mutableProfiles[clampProfile(profileNumber) - 1].modProfileId = clampModProfile(value);
 }
 
 void setBackends(uint8_t profileNumber, uint16_t value)
