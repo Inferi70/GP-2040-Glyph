@@ -423,14 +423,23 @@ bool applyLegacyPlatformButton(
     GamepadState& state,
     LegacyPlatformProfile profile,
     const GlyphProfiles::ModProfileState& modProfile,
+    InputMode inputMode,
     uint8_t buttonId,
     bool dpadLayer,
     uint8_t& dpadOutput,
     uint8_t& leftAnalogOutput,
     uint8_t& rightAnalogOutput
 ) {
+    auto setButton = [&](uint32_t mask) {
+        const GlyphProfiles::Action translated = translateGlyphButtonsForInputMode(
+            {GlyphProfiles::Target::Button, mask},
+            inputMode
+        );
+        state.buttons |= translated.mask;
+    };
+
     auto setDigitalTriggerL = [&]() {
-        state.buttons |= GAMEPAD_MASK_L2;
+        setButton(GAMEPAD_MASK_L2);
         if (state.lt < 140) {
             state.lt = 140;
         }
@@ -438,7 +447,7 @@ bool applyLegacyPlatformButton(
     };
 
     auto setDigitalTriggerR = [&]() {
-        state.buttons |= GAMEPAD_MASK_R2;
+        setButton(GAMEPAD_MASK_R2);
         if (state.rt < 140) {
             state.rt = 140;
         }
@@ -447,16 +456,16 @@ bool applyLegacyPlatformButton(
 
     switch (buttonId) {
         case kGlyphButtonMB7:
-            state.buttons |= GAMEPAD_MASK_S2;
+            setButton(GAMEPAD_MASK_S2);
             return true;
         case kGlyphButtonMB6:
-            state.buttons |= GAMEPAD_MASK_S1;
+            setButton(GAMEPAD_MASK_S1);
             return true;
         case kGlyphButtonMB5:
             state.aux |= AUX_MASK_FUNCTION;
             return true;
         case kGlyphButtonMB4:
-            state.buttons |= GAMEPAD_MASK_A2;
+            setButton(GAMEPAD_MASK_A2);
             return true;
         default:
             break;
@@ -500,7 +509,7 @@ bool applyLegacyPlatformButton(
                             state.rt = modProfile.lightShield1;
                         }
                     } else if (profile == LegacyPlatformProfile::Rivals || profile == LegacyPlatformProfile::Rivals2) {
-                        state.buttons |= GAMEPAD_MASK_L3;
+                        setButton(GAMEPAD_MASK_L3);
                     } else {
                         dpadOutput |= GAMEPAD_MASK_DOWN;
                     }
@@ -511,7 +520,7 @@ bool applyLegacyPlatformButton(
                             state.rt = modProfile.lightShield2;
                         }
                     } else if (profile == LegacyPlatformProfile::Rivals || profile == LegacyPlatformProfile::Rivals2) {
-                        state.buttons |= GAMEPAD_MASK_R3;
+                        setButton(GAMEPAD_MASK_R3);
                     } else {
                         dpadOutput |= GAMEPAD_MASK_UP;
                     }
@@ -523,8 +532,9 @@ bool applyLegacyPlatformButton(
                         }
                         return true;
                     }
-                    if (profile == LegacyPlatformProfile::Rivals) {
-                        state.buttons |= GAMEPAD_MASK_L1;
+                    if (profile == LegacyPlatformProfile::Rivals ||
+                        profile == LegacyPlatformProfile::Rivals2) {
+                        setButton(GAMEPAD_MASK_L1);
                         return true;
                     }
                     return false;
@@ -551,16 +561,17 @@ bool applyLegacyPlatformButton(
                     return false;
                 case kGlyphButtonLT5:
                     if (profile == LegacyPlatformProfile::Rivals2) {
-                        state.buttons |= GAMEPAD_MASK_L1;
+                        // Local Rivals 2 uses the RoA button placement, so LT5
+                        // should not fall through to the generic platform matrix.
                         return true;
                     }
                     return false;
 
-                case kGlyphButtonRT1: state.buttons |= GAMEPAD_MASK_B1; return true;
-                case kGlyphButtonRF1: state.buttons |= GAMEPAD_MASK_B2; return true;
-                case kGlyphButtonRF2: state.buttons |= GAMEPAD_MASK_B3; return true;
-                case kGlyphButtonRF6: state.buttons |= GAMEPAD_MASK_B4; return true;
-                case kGlyphButtonRF3: state.buttons |= GAMEPAD_MASK_R1; return true;
+                case kGlyphButtonRT1: setButton(GAMEPAD_MASK_B1); return true;
+                case kGlyphButtonRF1: setButton(GAMEPAD_MASK_B2); return true;
+                case kGlyphButtonRF2: setButton(GAMEPAD_MASK_B3); return true;
+                case kGlyphButtonRF6: setButton(GAMEPAD_MASK_B4); return true;
+                case kGlyphButtonRF3: setButton(GAMEPAD_MASK_R1); return true;
                 case kGlyphButtonLF4: return setDigitalTriggerL();
                 case kGlyphButtonRF5: return setDigitalTriggerR();
                 default:
@@ -809,12 +820,12 @@ void GlyphMatrixInput::apply(GamepadState& state)
             continue;
         }
         const bool shouldPress = originalGlyphPressed[remap.physicalButton] ||
-                                 (remap.activates < sizeof(remappedGlyphPressed) && remappedGlyphPressed[remap.activates]);
+                                 (remap.targetButton < sizeof(remappedGlyphPressed) && remappedGlyphPressed[remap.targetButton]);
         remappedPhysical[remap.physicalButton] = true;
-        if (remap.activates > 0 && remap.activates < sizeof(remappedGlyphPressed)) {
-            remappedGlyphPressed[remap.activates] = shouldPress;
-            if (glyphButtonPressedAt[remap.activates] == 0) {
-                glyphButtonPressedAt[remap.activates] = glyphButtonPressedAt[remap.physicalButton];
+        if (remap.targetButton > 0 && remap.targetButton < sizeof(remappedGlyphPressed)) {
+            remappedGlyphPressed[remap.targetButton] = shouldPress;
+            if (glyphButtonPressedAt[remap.targetButton] == 0) {
+                glyphButtonPressedAt[remap.targetButton] = glyphButtonPressedAt[remap.physicalButton];
             }
         }
     }
@@ -851,6 +862,7 @@ void GlyphMatrixInput::apply(GamepadState& state)
                 state,
                 legacyPlatform,
                 modProfile,
+                inputMode,
                 buttonId,
                 modXPressed && modYPressed,
                 dpadOutput,

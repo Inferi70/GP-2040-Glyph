@@ -136,7 +136,7 @@ struct SocdPair {
 
 struct ButtonRemap {
     uint8_t physicalButton;
-    uint8_t activates;
+    uint8_t targetButton;
 };
 
 struct RgbColor {
@@ -192,6 +192,7 @@ bool logicalSocdSlotVisible(uint8_t profileNumber, uint8_t slot);
 SOCDMode logicalSocdMode(uint8_t profileNumber, uint8_t slot);
 void setLogicalSocdMode(uint8_t profileNumber, uint8_t slot, SOCDMode mode);
 void resetToDefaults();
+void restoreProfileDefaults(uint8_t profileNumber);
 void loadFromConfig(const GlyphOptions& options);
 void writeToConfig(GlyphOptions& options);
 void setName(uint8_t profileNumber, const char* value);
@@ -205,7 +206,7 @@ void setSocdPairType(uint8_t profileNumber, uint8_t index, uint8_t socdType);
 void clearSocdPairs(uint8_t profileNumber);
 void addSocdPair(uint8_t profileNumber, uint8_t buttonDir1, uint8_t buttonDir2, uint8_t socdType);
 void clearButtonRemaps(uint8_t profileNumber);
-void addButtonRemap(uint8_t profileNumber, uint8_t physicalButton, uint8_t activates);
+void addButtonRemap(uint8_t profileNumber, uint8_t physicalButton, uint8_t targetButton);
 void clearRgbColors(uint8_t profileNumber);
 void addRgbColor(uint8_t profileNumber, uint8_t button, uint32_t color);
 bool isVisibleProfile(uint8_t profileNumber);

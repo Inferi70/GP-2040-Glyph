@@ -532,6 +532,81 @@ constexpr GlyphProfiles::ButtonRemap kFgcRemaps[] = {
     {BTN_MB3, BTN_UNSPECIFIED},
 };
 
+constexpr GlyphProfiles::ButtonRemap kRivalsDefaultRemaps[] = {
+    {BTN_RF7, BTN_LF7},
+    {BTN_RF8, BTN_LT6},
+    {BTN_LF6, BTN_UNSPECIFIED},
+    {BTN_LF7, BTN_UNSPECIFIED},
+    {BTN_LF8, BTN_UNSPECIFIED},
+    {BTN_LT3, BTN_UNSPECIFIED},
+    {BTN_LT4, BTN_UNSPECIFIED},
+    {BTN_LT5, BTN_UNSPECIFIED},
+    {BTN_LT6, BTN_UNSPECIFIED},
+    {BTN_RF10, BTN_UNSPECIFIED},
+    {BTN_RF11, BTN_UNSPECIFIED},
+    {BTN_RF12, BTN_UNSPECIFIED},
+    {BTN_RF13, BTN_UNSPECIFIED},
+    {BTN_RF14, BTN_UNSPECIFIED},
+    {BTN_RF15, BTN_UNSPECIFIED},
+    {BTN_RF16, BTN_UNSPECIFIED},
+    {BTN_MB1, BTN_UNSPECIFIED},
+    {BTN_MB2, BTN_UNSPECIFIED},
+    {BTN_MB3, BTN_UNSPECIFIED},
+};
+
+constexpr GlyphProfiles::ButtonRemap kRivals2LegacyDefaultRemaps[] = {
+    {BTN_RF7, BTN_LF7},
+    {BTN_RF8, BTN_LT6},
+    {BTN_LF5, BTN_UNSPECIFIED},
+    {BTN_LF6, BTN_UNSPECIFIED},
+    {BTN_LF7, BTN_UNSPECIFIED},
+    {BTN_LF8, BTN_UNSPECIFIED},
+    {BTN_LT3, BTN_UNSPECIFIED},
+    {BTN_LT4, BTN_UNSPECIFIED},
+    {BTN_LT6, BTN_UNSPECIFIED},
+    {BTN_RF9, BTN_UNSPECIFIED},
+    {BTN_RF10, BTN_UNSPECIFIED},
+    {BTN_RF11, BTN_UNSPECIFIED},
+    {BTN_RF12, BTN_UNSPECIFIED},
+    {BTN_RF13, BTN_UNSPECIFIED},
+    {BTN_RF14, BTN_UNSPECIFIED},
+    {BTN_RF15, BTN_UNSPECIFIED},
+    {BTN_RF16, BTN_UNSPECIFIED},
+    {BTN_MB1, BTN_UNSPECIFIED},
+    {BTN_MB2, BTN_UNSPECIFIED},
+    {BTN_MB3, BTN_UNSPECIFIED},
+};
+
+template <size_t N>
+bool remapsMatch(const GlyphProfiles::ProfileState& profile, const GlyphProfiles::ButtonRemap (&expected)[N])
+{
+    if (profile.buttonRemapCount != N) {
+        return false;
+    }
+
+    for (uint8_t index = 0; index < profile.buttonRemapCount; index++) {
+        if (profile.buttonRemaps[index].physicalButton != expected[index].physicalButton ||
+            profile.buttonRemaps[index].targetButton != expected[index].targetButton) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void normalizeLegacyRivals2DefaultRemaps(GlyphProfiles::ProfileState& profile)
+{
+    if (profile.behaviorMode != GlyphProfiles::BehaviorRivals2 ||
+        !remapsMatch(profile, kRivals2LegacyDefaultRemaps)) {
+        return;
+    }
+
+    profile.buttonRemapCount = sizeof(kRivalsDefaultRemaps) / sizeof(kRivalsDefaultRemaps[0]);
+    for (uint8_t index = 0; index < profile.buttonRemapCount; index++) {
+        profile.buttonRemaps[index] = kRivalsDefaultRemaps[index];
+    }
+}
+
 constexpr Action kPlatformMatrix[GlyphProfiles::MatrixRows][GlyphProfiles::MatrixCols] = {
     {button(GAMEPAD_MASK_E1),  button(GAMEPAD_MASK_E2),  button(GAMEPAD_MASK_E3),  button(GAMEPAD_MASK_E4),  aux(AUX_MASK_FUNCTION), button(GAMEPAD_MASK_S1), button(GAMEPAD_MASK_S2), button(GAMEPAD_MASK_L2), button(GAMEPAD_MASK_E9), none(), none()},
     {dpad(GAMEPAD_MASK_LEFT),  dpad(GAMEPAD_MASK_DOWN),  button(GAMEPAD_MASK_E8),  button(GAMEPAD_MASK_E7),  button(GAMEPAD_MASK_E10), button(GAMEPAD_MASK_E11), button(GAMEPAD_MASK_E12), button(GAMEPAD_MASK_B3), button(GAMEPAD_MASK_B4), button(GAMEPAD_MASK_R1), button(GAMEPAD_MASK_L1)},
@@ -733,22 +808,22 @@ void ensureMutableProfiles()
     }
 
     for (const auto& remap : kMeleeRemaps) {
-        GlyphProfiles::addButtonRemap(1, remap.physicalButton, remap.activates);
+        GlyphProfiles::addButtonRemap(1, remap.physicalButton, remap.targetButton);
     }
     for (const auto& remap : kBrawlRemaps) {
-        GlyphProfiles::addButtonRemap(2, remap.physicalButton, remap.activates);
+        GlyphProfiles::addButtonRemap(2, remap.physicalButton, remap.targetButton);
     }
     for (const auto& remap : kUltimateRemaps) {
-        GlyphProfiles::addButtonRemap(3, remap.physicalButton, remap.activates);
+        GlyphProfiles::addButtonRemap(3, remap.physicalButton, remap.targetButton);
     }
     for (const auto& remap : kSmash64Remaps) {
-        GlyphProfiles::addButtonRemap(6, remap.physicalButton, remap.activates);
+        GlyphProfiles::addButtonRemap(6, remap.physicalButton, remap.targetButton);
     }
     for (const auto& remap : kSplitFgcRemaps) {
-        GlyphProfiles::addButtonRemap(4, remap.physicalButton, remap.activates);
+        GlyphProfiles::addButtonRemap(4, remap.physicalButton, remap.targetButton);
     }
     for (const auto& remap : kFgcRemaps) {
-        GlyphProfiles::addButtonRemap(5, remap.physicalButton, remap.activates);
+        GlyphProfiles::addButtonRemap(5, remap.physicalButton, remap.targetButton);
     }
 
     for (uint8_t profile = 1; profile <= GlyphProfiles::count(); profile++) {
@@ -1027,6 +1102,27 @@ void resetToDefaults()
     configuredProfileCount = kPresetProfileCount;
 }
 
+void restoreProfileDefaults(uint8_t profileNumber)
+{
+    ensureMutableProfiles();
+
+    const uint8_t profile = clampProfile(profileNumber);
+    const Profile& defaults = get(profile);
+    ProfileState& destination = mutableProfiles[profile - 1];
+
+    destination.number = profile;
+    copyName(destination.name, defaults.name);
+    destination.behaviorMode = defaults.behaviorMode;
+    destination.layout = defaults.layout;
+    destination.socdMode = defaults.socdMode;
+    destination.rgbConfig = defaults.rgbConfig;
+    destination.modProfileId = defaults.modProfileId;
+    destination.backends = defaults.backends;
+    destination.socdPairCount = 0;
+    destination.buttonRemapCount = 0;
+    destination.rgbColorCount = 0;
+}
+
 void loadFromConfig(const GlyphOptions& options)
 {
     resetToDefaults();
@@ -1181,6 +1277,7 @@ void loadFromConfig(const GlyphOptions& options)
                                source.buttonRemaps.bytes[offset + 1]);
             }
         }
+        normalizeLegacyRivals2DefaultRemaps(destination);
 
         if (source.has_rgbColors && source.rgbColors.size >= kPackedRgbColorSize) {
             clearRgbColors(i + 1);
@@ -1296,7 +1393,7 @@ void writeToConfig(GlyphOptions& options)
             }
             uint8_t* destinationRemap = &destination.buttonRemaps.bytes[destination.buttonRemaps.size];
             destinationRemap[0] = source.buttonRemaps[remap].physicalButton;
-            destinationRemap[1] = source.buttonRemaps[remap].activates;
+            destinationRemap[1] = source.buttonRemaps[remap].targetButton;
             destination.buttonRemaps.size += kPackedButtonRemapSize;
         }
         destination.has_rgbColors = true;
@@ -1507,14 +1604,14 @@ void clearButtonRemaps(uint8_t profileNumber)
     mutableProfiles[clampProfile(profileNumber) - 1].buttonRemapCount = 0;
 }
 
-void addButtonRemap(uint8_t profileNumber, uint8_t physicalButton, uint8_t activates)
+void addButtonRemap(uint8_t profileNumber, uint8_t physicalButton, uint8_t targetButton)
 {
     ensureMutableProfiles();
     ProfileState& profile = mutableProfiles[clampProfile(profileNumber) - 1];
     if (profile.buttonRemapCount >= MaxButtonRemaps || physicalButton == 0) {
         return;
     }
-    profile.buttonRemaps[profile.buttonRemapCount++] = {physicalButton, activates};
+    profile.buttonRemaps[profile.buttonRemapCount++] = {physicalButton, targetButton};
 }
 
 void clearRgbColors(uint8_t profileNumber)
@@ -1840,7 +1937,7 @@ bool buttonAvailable(uint8_t profileNumber, uint8_t buttonId)
     for (uint8_t index = 0; index < buttonRemapCount(profileNumber); index++) {
         const ButtonRemap& remap = buttonRemap(profileNumber, index);
         if (remap.physicalButton == buttonId) {
-            return remap.activates == BTN_UNSPECIFIED;
+            return remap.targetButton == BTN_UNSPECIFIED;
         }
     }
 
