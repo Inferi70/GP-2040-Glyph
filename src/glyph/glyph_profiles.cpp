@@ -111,9 +111,9 @@ constexpr Action aux(uint32_t mask)
 }
 
 constexpr Profile kProfiles[] = {
-    {1, "Melee",     GlyphProfiles::BehaviorMelee,    Layout::Platform, SOCD_MODE_SECOND_INPUT_PRIORITY, 1, MOD_PROFILE_MELEE,     kPlatformBackends},
-    {2, "Brawl",     GlyphProfiles::BehaviorProjectM, Layout::Platform, SOCD_MODE_SECOND_INPUT_PRIORITY, 2, MOD_PROFILE_PROJECT_M, kPlatformBackends},
-    {3, "Ultimate",  GlyphProfiles::BehaviorUltimate, Layout::Platform, SOCD_MODE_SECOND_INPUT_PRIORITY, 3, MOD_PROFILE_ULTIMATE,  kPlatformBackends},
+    {1, "Melee",     GlyphProfiles::BehaviorMelee,    Layout::Platform, SOCD_MODE_SECOND_INPUT_PRIORITY, 1, MOD_PROFILE_DEFAULT,   kPlatformBackends},
+    {2, "Brawl",     GlyphProfiles::BehaviorProjectM, Layout::Platform, SOCD_MODE_SECOND_INPUT_PRIORITY, 2, MOD_PROFILE_DEFAULT,   kPlatformBackends},
+    {3, "Ultimate",  GlyphProfiles::BehaviorUltimate, Layout::Platform, SOCD_MODE_SECOND_INPUT_PRIORITY, 3, MOD_PROFILE_DEFAULT,   kPlatformBackends},
     {4, "Split FGC", GlyphProfiles::BehaviorFgc,      Layout::SplitFgc, SOCD_MODE_NEUTRAL,               4, MOD_PROFILE_DEFAULT,   kModernBackends},
     {5, "FGC",       GlyphProfiles::BehaviorFgc,      Layout::Fgc,      SOCD_MODE_NEUTRAL,               5, MOD_PROFILE_DEFAULT,   kModernBackends},
     {6, "Smash64",   GlyphProfiles::BehaviorSmash64,  Layout::Platform, SOCD_MODE_NEUTRAL,               6, MOD_PROFILE_DEFAULT,   BackendN64},
@@ -910,7 +910,7 @@ bool validLayout(uint32_t value)
 
 uint8_t clampModProfile(uint8_t modProfileId)
 {
-    return (modProfileId >= 1 && modProfileId <= GlyphProfiles::MaxModProfiles) ? modProfileId : MOD_PROFILE_MELEE;
+    return (modProfileId >= 1 && modProfileId <= GlyphProfiles::MaxModProfiles) ? modProfileId : MOD_PROFILE_DEFAULT;
 }
 
 uint8_t firstVisibleModProfile()
@@ -920,7 +920,7 @@ uint8_t firstVisibleModProfile()
             return modProfile;
         }
     }
-    return MOD_PROFILE_MELEE;
+    return MOD_PROFILE_DEFAULT;
 }
 
 uint8_t clampModProfileValue(int16_t value)
@@ -958,11 +958,8 @@ void polarToCartesian(uint8_t magnitude, uint8_t angle, uint8_t& x, uint8_t& y)
 
 uint8_t defaultModProfileForLegacyProfile(uint8_t profileNumber)
 {
-    const uint8_t profile = (profileNumber >= 1 && profileNumber <= GlyphProfiles::count()) ? profileNumber : 1;
-    if (profile <= kPresetProfileCount) {
-        return kProfiles[profile - 1].modProfileId;
-    }
-    return MOD_PROFILE_MELEE;
+    (void)profileNumber;
+    return MOD_PROFILE_DEFAULT;
 }
 
 uint32_t defaultBehaviorForLegacyProfile(uint8_t profileNumber)
@@ -977,6 +974,22 @@ uint32_t defaultBehaviorForLegacyProfile(uint8_t profileNumber)
 uint8_t clampProfile(uint8_t profileNumber)
 {
     return (profileNumber >= 1 && profileNumber <= GlyphProfiles::count()) ? profileNumber : 1;
+}
+
+uint8_t rememberedModProfileForBehavior(uint32_t behaviorMode, uint8_t excludeProfile = 0)
+{
+    for (uint8_t profile = 1; profile <= GlyphProfiles::count(); profile++) {
+        if (profile == excludeProfile) {
+            continue;
+        }
+
+        const GlyphProfiles::ProfileState& state = mutableProfiles[profile - 1];
+        if (state.behaviorMode == behaviorMode) {
+            return state.modProfileId;
+        }
+    }
+
+    return MOD_PROFILE_DEFAULT;
 }
 
 const Action (&matrixForLayout(Layout layout))[GlyphProfiles::MatrixRows][GlyphProfiles::MatrixCols]
@@ -1421,7 +1434,9 @@ void setName(uint8_t profileNumber, const char* value)
 void setBehaviorMode(uint8_t profileNumber, uint32_t value)
 {
     ensureMutableProfiles();
-    mutableProfiles[clampProfile(profileNumber) - 1].behaviorMode = value;
+    ProfileState& profile = mutableProfiles[clampProfile(profileNumber) - 1];
+    profile.behaviorMode = value;
+    profile.modProfileId = rememberedModProfileForBehavior(value, profile.number);
 }
 
 void setLayout(uint8_t profileNumber, Layout value)
@@ -1447,7 +1462,15 @@ void setRgbConfig(uint8_t profileNumber, uint8_t value)
 void setModProfile(uint8_t profileNumber, uint8_t value)
 {
     ensureMutableProfiles();
-    mutableProfiles[clampProfile(profileNumber) - 1].modProfileId = clampModProfile(value);
+    const uint8_t targetProfile = clampProfile(profileNumber);
+    const uint8_t modProfileId = clampModProfile(value);
+    const uint32_t behaviorMode = mutableProfiles[targetProfile - 1].behaviorMode;
+
+    for (uint8_t profile = 1; profile <= GlyphProfiles::count(); profile++) {
+        if (mutableProfiles[profile - 1].behaviorMode == behaviorMode) {
+            mutableProfiles[profile - 1].modProfileId = modProfileId;
+        }
+    }
 }
 
 void setBackends(uint8_t profileNumber, uint16_t value)
@@ -1892,23 +1915,8 @@ void restoreModProfileDefaults(uint8_t modProfileId)
 
 uint8_t defaultModProfileForLegacyMode(uint32_t mode)
 {
-    switch (mode) {
-        case GlyphProfiles::BehaviorProjectM:
-            return MOD_PROFILE_PROJECT_M;
-        case GlyphProfiles::BehaviorUltimate:
-            return MOD_PROFILE_ULTIMATE;
-        case GlyphProfiles::BehaviorRivals:
-            return MOD_PROFILE_RIVALS;
-        case GlyphProfiles::BehaviorRivals2:
-            return MOD_PROFILE_RIVALS2;
-        case GlyphProfiles::BehaviorUnknown:
-        case GlyphProfiles::BehaviorFgc:
-        case GlyphProfiles::BehaviorSmash64:
-            return MOD_PROFILE_DEFAULT;
-        case GlyphProfiles::BehaviorMelee:
-        default:
-            return MOD_PROFILE_MELEE;
-    }
+    (void)mode;
+    return MOD_PROFILE_DEFAULT;
 }
 
 OutputIcon menuIcon(uint8_t profileNumber, uint8_t menuButtonIndex)
