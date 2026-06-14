@@ -462,7 +462,7 @@ bool applyLegacyPlatformButton(
             setButton(GAMEPAD_MASK_S1);
             return true;
         case kGlyphButtonMB5:
-            state.aux |= AUX_MASK_FUNCTION;
+            setButton(GAMEPAD_MASK_A1);
             return true;
         case kGlyphButtonMB4:
             setButton(GAMEPAD_MASK_A2);

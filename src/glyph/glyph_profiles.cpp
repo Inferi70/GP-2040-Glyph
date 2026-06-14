@@ -608,7 +608,7 @@ void normalizeLegacyRivals2DefaultRemaps(GlyphProfiles::ProfileState& profile)
 }
 
 constexpr Action kPlatformMatrix[GlyphProfiles::MatrixRows][GlyphProfiles::MatrixCols] = {
-    {button(GAMEPAD_MASK_E1),  button(GAMEPAD_MASK_E2),  button(GAMEPAD_MASK_E3),  button(GAMEPAD_MASK_E4),  aux(AUX_MASK_FUNCTION), button(GAMEPAD_MASK_S1), button(GAMEPAD_MASK_S2), button(GAMEPAD_MASK_L2), button(GAMEPAD_MASK_E9), none(), none()},
+    {button(GAMEPAD_MASK_E1),  button(GAMEPAD_MASK_E2),  button(GAMEPAD_MASK_E3),  button(GAMEPAD_MASK_E4),  button(GAMEPAD_MASK_A1), button(GAMEPAD_MASK_S1), button(GAMEPAD_MASK_S2), button(GAMEPAD_MASK_L2), button(GAMEPAD_MASK_E9), none(), none()},
     {dpad(GAMEPAD_MASK_LEFT),  dpad(GAMEPAD_MASK_DOWN),  button(GAMEPAD_MASK_E8),  button(GAMEPAD_MASK_E7),  button(GAMEPAD_MASK_E10), button(GAMEPAD_MASK_E11), button(GAMEPAD_MASK_E12), button(GAMEPAD_MASK_B3), button(GAMEPAD_MASK_B4), button(GAMEPAD_MASK_R1), button(GAMEPAD_MASK_L1)},
     {button(GAMEPAD_MASK_E5),  button(GAMEPAD_MASK_E6),  dpad(GAMEPAD_MASK_RIGHT), dpad(GAMEPAD_MASK_UP),    button(GAMEPAD_MASK_E10), button(GAMEPAD_MASK_E11), button(GAMEPAD_MASK_E12), button(GAMEPAD_MASK_B1), button(GAMEPAD_MASK_B2), button(GAMEPAD_MASK_R2), dpad(GAMEPAD_MASK_UP)},
     {button(GAMEPAD_MASK_A3),  button(GAMEPAD_MASK_A4),  button(GAMEPAD_MASK_A1),  button(GAMEPAD_MASK_A2),  button(GAMEPAD_MASK_L3), button(GAMEPAD_MASK_R3), button(GAMEPAD_MASK_E2), button(GAMEPAD_MASK_R3), button(GAMEPAD_MASK_R3), button(GAMEPAD_MASK_E3), button(GAMEPAD_MASK_E4)},

@@ -186,7 +186,7 @@ bool menuHintPressed(uint8_t menuButtonIndex, const GamepadState& state)
 {
     switch (menuButtonIndex) {
         case 1: return GlyphMatrixInput::glyphPhysicalButtonPressed(kGlyphMenuTurboButton);
-        case 4: return (state.aux & AUX_MASK_FUNCTION) != 0;
+        case 4: return (state.buttons & GAMEPAD_MASK_A1) != 0 || (state.aux & AUX_MASK_FUNCTION) != 0;
         case 5: return (state.buttons & GAMEPAD_MASK_S1) != 0;
         case 6: return (state.buttons & GAMEPAD_MASK_S2) != 0;
         default: return false;
@@ -230,6 +230,7 @@ const unsigned char* activeInputIcon(const GamepadState& state, InputMode mode)
     if (state.buttons & GAMEPAD_MASK_R2) return mode == INPUT_MODE_SWITCH ? Bitmap_ZR_16 : Bitmap_RT_16;
     if (state.buttons & GAMEPAD_MASK_S2) return mode == INPUT_MODE_SWITCH ? Bitmap_Plus_16 : Bitmap_XB_Start_16;
     if (state.buttons & GAMEPAD_MASK_S1) return mode == INPUT_MODE_SWITCH ? Bitmap_Minus_16 : Bitmap_XB_Back_16;
+    if (state.buttons & GAMEPAD_MASK_A1) return Bitmap_Home_16;
     if (state.aux & AUX_MASK_FUNCTION) return Bitmap_Home_16;
     if (state.buttons & GAMEPAD_MASK_L3) return Bitmap_LSClick_16;
     if (state.buttons & GAMEPAD_MASK_R3) return Bitmap_RSClick_16;
@@ -268,7 +269,7 @@ bool iconStillActive(const unsigned char* icon, const GamepadState& state, Input
     if (icon == Bitmap_RT_16 || icon == Bitmap_ZR_16) return (state.buttons & GAMEPAD_MASK_R2) != 0;
     if (icon == Bitmap_XB_Start_16 || icon == Bitmap_Plus_16) return (state.buttons & GAMEPAD_MASK_S2) != 0;
     if (icon == Bitmap_XB_Back_16 || icon == Bitmap_Minus_16) return (state.buttons & GAMEPAD_MASK_S1) != 0;
-    if (icon == Bitmap_Home_16) return (state.aux & AUX_MASK_FUNCTION) != 0;
+    if (icon == Bitmap_Home_16) return (state.buttons & GAMEPAD_MASK_A1) != 0 || (state.aux & AUX_MASK_FUNCTION) != 0;
     if (icon == Bitmap_LSClick_16) return (state.buttons & GAMEPAD_MASK_L3) != 0;
     if (icon == Bitmap_RSClick_16) return (state.buttons & GAMEPAD_MASK_R3) != 0;
 

@@ -316,7 +316,7 @@ ImportedTarget incomingLegacyPlatformTarget(uint32_t mode, uint8_t buttonId)
         case BTN_MB6: return importedButton(GAMEPAD_MASK_S1);
         case BTN_MB7: return importedButton(GAMEPAD_MASK_S2);
         case BTN_MB4: return importedButton(GAMEPAD_MASK_A2);
-        case BTN_MB5: return importedAux(AUX_MASK_FUNCTION);
+        case BTN_MB5: return importedButton(GAMEPAD_MASK_A1);
         case BTN_RF7: return importedButton(GAMEPAD_MASK_L3);
         case BTN_RF8: return importedButton(GAMEPAD_MASK_R3);
         case BTN_LF8: return importedDpad(GAMEPAD_MASK_LEFT);
@@ -355,13 +355,14 @@ uint8_t localLegacyRivalsButton(uint32_t behaviorMode, const GlyphProfiles::Acti
                 case GAMEPAD_MASK_R2: return BTN_RF5;
                 case GAMEPAD_MASK_S1: return BTN_MB6;
                 case GAMEPAD_MASK_S2: return BTN_MB7;
+                case GAMEPAD_MASK_A1: return BTN_MB5;
                 case GAMEPAD_MASK_L3: return BTN_RF7;
                 case GAMEPAD_MASK_R3: return BTN_RF8;
                 case GAMEPAD_MASK_A2: return BTN_MB4;
                 default: return BTN_UNSPECIFIED;
             }
         case GlyphProfiles::Target::Aux:
-            return action.mask == AUX_MASK_FUNCTION ? BTN_MB5 : BTN_UNSPECIFIED;
+            return BTN_UNSPECIFIED;
         case GlyphProfiles::Target::Dpad:
             switch (action.mask) {
                 case GAMEPAD_MASK_LEFT: return BTN_LF8;
