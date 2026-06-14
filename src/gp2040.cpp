@@ -48,6 +48,13 @@
 
 static const uint32_t REBOOT_HOTKEY_ACTIVATION_TIME_MS = 50;
 static const uint32_t REBOOT_HOTKEY_HOLD_TIME_MS = 4000;
+static constexpr uint8_t GLYPH_BUTTON_MB1 = 49;
+static constexpr uint8_t GLYPH_BUTTON_MB2 = 50;
+static constexpr uint8_t GLYPH_BUTTON_MB3 = 51;
+static constexpr uint8_t GLYPH_BUTTON_MB4 = 52;
+static constexpr uint8_t GLYPH_BUTTON_MB5 = 53;
+static constexpr uint8_t GLYPH_BUTTON_MB6 = 54;
+static constexpr uint8_t GLYPH_BUTTON_MB7 = 55;
 
 const static uint32_t rebootDelayMs = 500;
 static absolute_time_t rebootDelayTimeout = nil_time;
@@ -489,10 +496,31 @@ GP2040::RebootHotkeys::RebootHotkeys() :
 	noButtonsPressedTimeout(nil_time),
 	webConfigHotkeyMask(GAMEPAD_MASK_S2 | GAMEPAD_MASK_B3 | GAMEPAD_MASK_B4),
 	bootselHotkeyMask(GAMEPAD_MASK_S1 | GAMEPAD_MASK_B3 | GAMEPAD_MASK_B4),
-	rebootHotkeysHoldTimeout(nil_time) {
+	rebootHotkeysHoldTimeout(nil_time),
+	configExitPending(false) {
 }
 
 void GP2040::RebootHotkeys::process(Gamepad* gamepad, bool configMode) {
+	if (configMode) {
+		GlyphMatrixInput::refreshPhysicalStateForConfigMode();
+		const bool configExitPressed =
+			GlyphMatrixInput::glyphPhysicalButtonPressed(GLYPH_BUTTON_MB1) ||
+			GlyphMatrixInput::glyphPhysicalButtonPressed(GLYPH_BUTTON_MB2) ||
+			GlyphMatrixInput::glyphPhysicalButtonPressed(GLYPH_BUTTON_MB3) ||
+			GlyphMatrixInput::glyphPhysicalButtonPressed(GLYPH_BUTTON_MB4) ||
+			GlyphMatrixInput::glyphPhysicalButtonPressed(GLYPH_BUTTON_MB5) ||
+			GlyphMatrixInput::glyphPhysicalButtonPressed(GLYPH_BUTTON_MB6) ||
+			GlyphMatrixInput::glyphPhysicalButtonPressed(GLYPH_BUTTON_MB7);
+
+		if (configExitPressed) {
+			configExitPending = true;
+		} else if (configExitPending) {
+			configExitPending = false;
+			System::reboot(System::BootMode::GAMEPAD);
+			return;
+		}
+	}
+
 	// We only allow the hotkey to trigger after we observed no buttons pressed for a certain period of time.
 	// We do this to avoid detecting buttons that are held during the boot process. In particular we want to avoid
 	// oscillating between webconfig and default mode when the user keeps holding the hotkey buttons.

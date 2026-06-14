@@ -44,6 +44,7 @@ void ConfigScreen::drawScreen() {
         getRenderer()->drawText(0, 3, "WebSerial site");
         getRenderer()->drawText(0, 5, "Waiting for USB");
         getRenderer()->drawText(0, 6, "profile sync...");
+        getRenderer()->drawText(0, 7, "Menu btns exit cfg");
         return;
     }
 
@@ -54,5 +55,5 @@ void ConfigScreen::drawScreen() {
     getRenderer()->drawText(0, 4, " B1 > Button");
     getRenderer()->drawText(0, 5, " B2 > Splash");
     getRenderer()->drawText(0, 6, " R2 > GPIO Pin Viewer");
-    getRenderer()->drawText(0, 7, " L2 > Stats");
+    getRenderer()->drawText(0, 7, "Menu btns exit cfg");
 }

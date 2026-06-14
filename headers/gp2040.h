@@ -40,6 +40,7 @@ private:
         uint16_t webConfigHotkeyMask;
         uint16_t bootselHotkeyMask;
         absolute_time_t rebootHotkeysHoldTimeout;
+        bool configExitPending;
     };
     RebootHotkeys rebootHotkeys;
 

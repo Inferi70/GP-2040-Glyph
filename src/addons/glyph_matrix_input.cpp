@@ -732,6 +732,26 @@ bool GlyphMatrixInput::glyphPhysicalButtonPressed(uint8_t buttonId)
     return buttonId < sizeof(glyphPhysicalButtonPressedState) && glyphPhysicalButtonPressedState[buttonId];
 }
 
+void GlyphMatrixInput::refreshPhysicalStateForConfigMode()
+{
+    GlyphMatrixInput matrixInput;
+    matrixInput.scan();
+    memset(glyphPhysicalButtonPressedState, 0, sizeof(glyphPhysicalButtonPressedState));
+
+    for (uint8_t row = 0; row < kRows; row++) {
+        for (uint8_t col = 0; col < kCols; col++) {
+            if (!pressed[row][col]) {
+                continue;
+            }
+
+            const uint8_t buttonId = GlyphProfiles::matrixButton(row, col);
+            if (buttonId > 0 && buttonId < sizeof(glyphPhysicalButtonPressedState)) {
+                glyphPhysicalButtonPressedState[buttonId] = true;
+            }
+        }
+    }
+}
+
 bool GlyphMatrixInput::glyphModXPressed()
 {
     return glyphModXPressedState;

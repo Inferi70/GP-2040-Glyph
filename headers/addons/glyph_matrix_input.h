@@ -34,6 +34,7 @@ public:
 
     static bool glyphButtonPressed(uint8_t buttonId);
     static bool glyphPhysicalButtonPressed(uint8_t buttonId);
+    static void refreshPhysicalStateForConfigMode();
     static bool glyphModXPressed();
     static bool glyphModYPressed();
     static bool turboAvailable();
