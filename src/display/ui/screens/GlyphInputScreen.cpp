@@ -3,6 +3,10 @@
 #include "display/GPGFX_core.h"
 #include "addons/glyph_matrix_input.h"
 #include "drivermanager.h"
+#include "drivers/ps4/PS4Driver.h"
+#include "drivers/p5general/P5GeneralDriver.h"
+#include "drivers/xbone/XBOneDriver.h"
+#include "drivers/xinput/XInputDriver.h"
 #include "gamepad.h"
 #include "display/fonts/GP_Font_Standard.h"
 #include "glyph/assets/GlyphButtonBitmaps.h"
@@ -425,14 +429,28 @@ bool GlyphInputScreen::dotPressed(const ButtonDot& dot, const GamepadState& stat
 
 std::string GlyphInputScreen::inputModeName(InputMode mode) const
 {
+    GPDriver* driver = DriverManager::getInstance().getDriver();
+    const GamepadOptions& options = Storage::getInstance().getGamepadOptions();
+
     switch (mode) {
-        case INPUT_MODE_XINPUT: return "XInput";
+        case INPUT_MODE_XINPUT:
+            if (driver != nullptr && ((XInputDriver*)driver)->getAuthSent()) return "X:B360";
+            return options.xinputAuthType == INPUT_MODE_AUTH_TYPE_USB ? "X:AU" : "XInput";
         case INPUT_MODE_SWITCH: return "Switch";
         case INPUT_MODE_SWITCH_PRO: return "SW Pro";
         case INPUT_MODE_PS3: return "PS3";
-        case INPUT_MODE_PS4: return "PS4";
-        case INPUT_MODE_PS5: return "PS5";
-        case INPUT_MODE_XBONE: return "XBOne";
+        case INPUT_MODE_PS4:
+            if (driver != nullptr && ((PS4Driver*)driver)->getAuthSent()) return "PS4:AS";
+            return options.ps4AuthType == INPUT_MODE_AUTH_TYPE_USB ? "PS4:AU" : "PS4";
+        case INPUT_MODE_PS5:
+            if (driver != nullptr && ((PS4Driver*)driver)->getAuthSent()) return "PS5:AS";
+            return options.ps5AuthType == INPUT_MODE_AUTH_TYPE_USB ? "PS5:AU" : "PS5";
+        case INPUT_MODE_P5GENERAL:
+            if (driver != nullptr && ((P5GeneralDriver*)driver)->getAuthSent()) return "P5G:AS";
+            return options.ps5AuthType == INPUT_MODE_AUTH_TYPE_USB ? "P5G:AU" : "P5G";
+        case INPUT_MODE_XBONE:
+            if (driver != nullptr && ((XBOneDriver*)driver)->getAuthSent()) return "XBON:E";
+            return "XBON:*";
         case INPUT_MODE_KEYBOARD: return "HID-KB";
         case INPUT_MODE_CONFIG: return "Config";
         default: return "USB";
