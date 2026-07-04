@@ -45,6 +45,15 @@
 
 // USB Input Class Drivers
 #include "drivermanager.h"
+#include "drivers/legacy/GamecubeBackend.hpp"
+#include "drivers/legacy/GamepadInputSource.hpp"
+#include "drivers/legacy/PassthroughMode.hpp"
+
+#include <memory>
+
+#ifndef CONSOLE_JOYBUS_DATA_PIN
+#define CONSOLE_JOYBUS_DATA_PIN -1
+#endif
 
 static const uint32_t REBOOT_HOTKEY_ACTIVATION_TIME_MS = 50;
 static const uint32_t REBOOT_HOTKEY_HOLD_TIME_MS = 4000;
@@ -58,6 +67,52 @@ static constexpr uint8_t GLYPH_BUTTON_MB7 = 55;
 
 const static uint32_t rebootDelayMs = 500;
 static absolute_time_t rebootDelayTimeout = nil_time;
+
+namespace {
+class LegacyGamecubeRunner {
+public:
+	LegacyGamecubeRunner()
+		: inputSources{ &fastSource } {
+	}
+
+	void initialize() {
+		if (initialized) {
+			return;
+		}
+
+		if (CONSOLE_JOYBUS_DATA_PIN >= 0) {
+			backend = std::make_unique<GamecubeBackend>(inputs, inputSources, 1, CONSOLE_JOYBUS_DATA_PIN);
+			backend->SetGameMode(&passthroughMode);
+		}
+
+		initialized = true;
+	}
+
+	void setGamepad(Gamepad *gamepad) {
+		fastSource.setGamepad(gamepad);
+	}
+
+	void run() {
+		if (!backend) {
+			return;
+		}
+
+		// In explicit GameCube mode, old Glyph did not sit behind a separate
+		// Detect() gate. The backend owned the poll loop directly.
+		backend->SendReport();
+	}
+
+private:
+	InputState inputs = {};
+	GamepadInputSource fastSource { InputScanSpeed::FAST };
+	InputSource *inputSources[1];
+	PassthroughMode passthroughMode;
+	std::unique_ptr<GamecubeBackend> backend;
+	bool initialized = false;
+};
+
+LegacyGamecubeRunner legacyGamecubeRunner;
+}
 
 void GP2040::setup() {
 	Storage::getInstance().init();
@@ -292,10 +347,16 @@ void GP2040::debounceGpioGetAll() {
 void GP2040::run() {
 	bool configMode = DriverManager::getInstance().isConfigMode();
 	bool glyphConfigMode = DriverManager::getInstance().isGlyphConfigMode();
+	const InputMode inputMode = DriverManager::getInstance().getInputMode();
 	GPDriver * inputDriver = DriverManager::getInstance().getDriver();
 	Gamepad * gamepad = Storage::getInstance().GetGamepad();
 	Gamepad * processedGamepad = Storage::getInstance().GetProcessedGamepad();
 	GamepadState prevState;
+
+	if (!configMode && inputMode == INPUT_MODE_GAMECUBE) {
+		runGamecubeLoop();
+		return;
+	}
 
 	// Start the TinyUSB Device functionality
 	tud_init(TUD_OPT_RHPORT);
@@ -361,6 +422,41 @@ void GP2040::run() {
 		addons.PostprocessAddons(processed);
 
 		// Check if we have a pending save
+		checkSaveRebootState();
+	}
+}
+
+void GP2040::refreshGamecubeGamepad() {
+	Gamepad * gamepad = Storage::getInstance().GetGamepad();
+	Gamepad * processedGamepad = Storage::getInstance().GetProcessedGamepad();
+	GamepadState prevState;
+
+	this->getReinitGamepad(gamepad);
+	memcpy(&prevState, &gamepad->state, sizeof(GamepadState));
+
+	debounceGpioGetAll();
+	gamepad->read();
+	checkRawState(prevState, gamepad->state);
+
+	addons.PreprocessAddons();
+	gamepad->process();
+	addons.ProcessAddons();
+	gamepad->hotkey();
+	rebootHotkeys.process(gamepad, false);
+
+	checkProcessedState(processedGamepad->state, gamepad->state);
+	memcpy(&processedGamepad->state, &gamepad->state, sizeof(GamepadState));
+}
+
+void GP2040::runGamecubeLoop() {
+	Gamepad * processedGamepad = Storage::getInstance().GetProcessedGamepad();
+
+	legacyGamecubeRunner.initialize();
+
+	while (1) {
+		refreshGamecubeGamepad();
+		legacyGamecubeRunner.setGamepad(processedGamepad);
+		legacyGamecubeRunner.run();
 		checkSaveRebootState();
 	}
 }

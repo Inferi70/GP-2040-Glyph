@@ -22,6 +22,8 @@ public:
     ~GP2040(){}
     void setup();           // setup core0
     void run();             // loop core0
+    void refreshGamecubeGamepad();
+    void runGamecubeLoop();
 private:
     Gamepad snapshot;
     AddonManager addons;

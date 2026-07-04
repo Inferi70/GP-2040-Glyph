@@ -206,9 +206,17 @@ src/drivers/shared/xsm3/excrypt_sha.c
 src/drivers/shared/xsm3/usbdsec.c
 src/drivers/shared/xsm3/xsm3.c
 src/drivers/astro/AstroDriver.cpp
+src/drivers/console/GamecubeConsole.cpp
+src/drivers/console/joybus.c
 src/drivers/egret/EgretDriver.cpp
+src/drivers/gamecube/GameCubeDriver.cpp
 src/drivers/hid/HIDDriver.cpp
 src/drivers/keyboard/KeyboardDriver.cpp
+src/drivers/legacy/CommunicationBackend.cpp
+src/drivers/legacy/GamecubeBackend.cpp
+src/drivers/legacy/GamepadInputSource.cpp
+src/drivers/legacy/InputSourceManager.cpp
+src/drivers/legacy/PassthroughMode.cpp
 src/drivers/mdmini/MDMiniDriver.cpp
 src/drivers/neogeo/NeoGeoDriver.cpp
 src/drivers/net/NetDriver.cpp
@@ -313,6 +321,8 @@ ${PROTO_OUTPUT_DIR}/config.pb.c
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME}_${CMAKE_PROJECT_VERSION}_${GP2040_BOARDCONFIG})
+
+pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/src/drivers/console/joybus.pio)
 
 pico_set_program_name(GP2040-CE "GP2040-CE")
 pico_set_program_version(GP2040-CE ${GIT_REPO_VERSION})

@@ -445,6 +445,7 @@ std::string GlyphInputScreen::inputModeName(InputMode mode) const
         case INPUT_MODE_PS5:
             if (driver != nullptr && ((PS4Driver*)driver)->getAuthSent()) return "PS5:AS";
             return options.ps5AuthType == INPUT_MODE_AUTH_TYPE_USB ? "PS5:AU" : "PS5";
+        case INPUT_MODE_GAMECUBE: return "GC";
         case INPUT_MODE_P5GENERAL:
             if (driver != nullptr && ((P5GeneralDriver*)driver)->getAuthSent()) return "P5G:AS";
             return options.ps5AuthType == INPUT_MODE_AUTH_TYPE_USB ? "P5G:AU" : "P5G";

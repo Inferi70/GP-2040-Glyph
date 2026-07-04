@@ -1677,6 +1677,8 @@ bool allowsInputMode(uint8_t profileNumber, InputMode mode)
         case INPUT_MODE_PS5:
         case INPUT_MODE_P5GENERAL:
             return (mask & BackendPS5) != 0;
+        case INPUT_MODE_GAMECUBE:
+            return (mask & BackendGameCube) != 0;
         default:
             return (mask & BackendDInput) != 0;
     }
@@ -1685,12 +1687,15 @@ bool allowsInputMode(uint8_t profileNumber, InputMode mode)
 const char* backendSummary(uint8_t profileNumber)
 {
     const uint16_t mask = backends(profileNumber);
+    if (mask == BackendGameCube) {
+        return "GC";
+    }
     if (mask == BackendN64) {
         return "N64";
     }
     if ((mask & (BackendXInput | BackendDInput | BackendSwitch | BackendPS4 | BackendPS5 | BackendGameCube)) ==
         (BackendXInput | BackendDInput | BackendSwitch | BackendPS4 | BackendPS5 | BackendGameCube)) {
-        return "X/XB1/D/SW/PS";
+        return "X/XB1/D/SW/PS/GC";
     }
     if ((mask & (BackendXInput | BackendDInput | BackendSwitch | BackendPS4 | BackendPS5)) ==
         (BackendXInput | BackendDInput | BackendSwitch | BackendPS4 | BackendPS5)) {

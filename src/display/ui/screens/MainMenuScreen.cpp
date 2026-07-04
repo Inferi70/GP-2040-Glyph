@@ -399,6 +399,7 @@ void MainMenuScreen::populateGlyphBackendMenu()
         {"PS4",        INPUT_MODE_PS4},
         {"PS5",        INPUT_MODE_PS5},
         {"P5 General", INPUT_MODE_P5GENERAL},
+        {"GameCube",   INPUT_MODE_GAMECUBE},
     };
 
     for (const auto& mode : modes) {
@@ -425,6 +426,7 @@ void MainMenuScreen::populateGlyphBackendSupportMenu()
         {"Switch", GlyphProfiles::BackendSwitch},
         {"PS4", GlyphProfiles::BackendPS4},
         {"PS5", GlyphProfiles::BackendPS5},
+        {"GameCube", GlyphProfiles::BackendGameCube},
     };
 
     for (const auto& backend : backends) {

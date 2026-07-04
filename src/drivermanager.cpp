@@ -3,6 +3,7 @@
 #include "drivers/net/NetDriver.h"
 #include "drivers/astro/AstroDriver.h"
 #include "drivers/egret/EgretDriver.h"
+#include "drivers/gamecube/GameCubeDriver.h"
 #include "drivers/hid/HIDDriver.h"
 #include "drivers/keyboard/KeyboardDriver.h"
 #include "drivers/mdmini/MDMiniDriver.h"
@@ -38,6 +39,9 @@ void DriverManager::setup(InputMode mode, bool glyphConfig) {
             break;
         case INPUT_MODE_GENERIC:
             driver = new HIDDriver();
+            break;
+        case INPUT_MODE_GAMECUBE:
+            driver = new GameCubeDriver();
             break;
         case INPUT_MODE_MDMINI:
             driver = new MDMiniDriver();
