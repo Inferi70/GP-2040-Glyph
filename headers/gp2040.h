@@ -84,15 +84,15 @@ private:
     std::map<uint32_t, int32_t> bootActions;
 
     void checkSaveRebootState();
-    bool saveRequested = false;
-    bool forceSave = false;
+    volatile bool saveRequested = false;
+    volatile bool forceSave = false;
     bool saveSuccessful = false;
     void handleStorageSave(GPEvent* e);
 
-    bool rebootRequested = false;
+    volatile bool rebootRequested = false;
     void handleSystemReboot(GPEvent* e);
 
-    System::BootMode rebootMode = System::BootMode::DEFAULT;
+    volatile System::BootMode rebootMode = System::BootMode::DEFAULT;
 };
 
 #endif

@@ -454,8 +454,11 @@ void GP2040::runGamecubeLoop() {
 	legacyGamecubeRunner.initialize();
 
 	while (1) {
+		// Let pending save/restart requests preempt the blocking console path.
+		checkSaveRebootState();
 		refreshGamecubeGamepad();
 		legacyGamecubeRunner.setGamepad(processedGamepad);
+		checkSaveRebootState();
 		legacyGamecubeRunner.run();
 		checkSaveRebootState();
 	}
