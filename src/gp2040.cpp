@@ -69,27 +69,47 @@ const static uint32_t rebootDelayMs = 500;
 static absolute_time_t rebootDelayTimeout = nil_time;
 
 namespace {
+class LiveGamecubeInputSource : public GamepadInputSource {
+public:
+	LiveGamecubeInputSource() : GamepadInputSource(InputScanSpeed::FAST) {
+	}
+
+	void setOwner(GP2040 *owner) {
+		this->owner = owner;
+	}
+
+	void UpdateInputs(InputState &inputs) override {
+		if (owner != nullptr) {
+			owner->refreshGamecubeGamepad();
+			setGamepad(Storage::getInstance().GetProcessedGamepad());
+		}
+
+		GamepadInputSource::UpdateInputs(inputs);
+	}
+
+private:
+	GP2040 *owner = nullptr;
+};
+
 class LegacyGamecubeRunner {
 public:
 	LegacyGamecubeRunner()
 		: inputSources{ &fastSource } {
 	}
 
-	void initialize() {
+	void initialize(GP2040 *owner) {
 		if (initialized) {
 			return;
 		}
 
+		fastSource.setOwner(owner);
+
 		if (CONSOLE_JOYBUS_DATA_PIN >= 0) {
-			backend = std::make_unique<GamecubeBackend>(inputs, inputSources, 1, CONSOLE_JOYBUS_DATA_PIN);
+			backend = std::make_unique<GamecubeBackend>(inputs, inputSources, 1, CONSOLE_JOYBUS_DATA_PIN, pio1);
 			backend->SetGameMode(&passthroughMode);
 		}
 
 		initialized = true;
-	}
-
-	void setGamepad(Gamepad *gamepad) {
-		fastSource.setGamepad(gamepad);
 	}
 
 	void run() {
@@ -104,7 +124,7 @@ public:
 
 private:
 	InputState inputs = {};
-	GamepadInputSource fastSource { InputScanSpeed::FAST };
+	LiveGamecubeInputSource fastSource;
 	InputSource *inputSources[1];
 	PassthroughMode passthroughMode;
 	std::unique_ptr<GamecubeBackend> backend;
@@ -429,35 +449,30 @@ void GP2040::run() {
 void GP2040::refreshGamecubeGamepad() {
 	Gamepad * gamepad = Storage::getInstance().GetGamepad();
 	Gamepad * processedGamepad = Storage::getInstance().GetProcessedGamepad();
-	GamepadState prevState;
 
 	this->getReinitGamepad(gamepad);
-	memcpy(&prevState, &gamepad->state, sizeof(GamepadState));
 
 	debounceGpioGetAll();
 	gamepad->read();
-	checkRawState(prevState, gamepad->state);
 
 	addons.PreprocessAddons();
 	gamepad->process();
 	addons.ProcessAddons();
-	gamepad->hotkey();
-	rebootHotkeys.process(gamepad, false);
-
-	checkProcessedState(processedGamepad->state, gamepad->state);
 	memcpy(&processedGamepad->state, &gamepad->state, sizeof(GamepadState));
 }
 
 void GP2040::runGamecubeLoop() {
-	Gamepad * processedGamepad = Storage::getInstance().GetProcessedGamepad();
-
-	legacyGamecubeRunner.initialize();
+	legacyGamecubeRunner.initialize(this);
+	sleep_ms(10);
 
 	while (1) {
 		// Let pending save/restart requests preempt the blocking console path.
 		checkSaveRebootState();
-		refreshGamecubeGamepad();
-		legacyGamecubeRunner.setGamepad(processedGamepad);
+		if (Storage::getInstance().getGamepadOptions().inputMode != INPUT_MODE_GAMECUBE) {
+			Storage::getInstance().save(true);
+			System::reboot(System::BootMode::DEFAULT);
+			return;
+		}
 		checkSaveRebootState();
 		legacyGamecubeRunner.run();
 		checkSaveRebootState();
