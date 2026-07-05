@@ -22,6 +22,7 @@ public:
     ~GP2040(){}
     void setup();           // setup core0
     void run();             // loop core0
+    static bool requestGamecubeInputModeChange(InputMode inputMode);
     void refreshGamecubeGamepad();
     void runGamecubeLoop();
 private:
@@ -51,6 +52,7 @@ private:
         ENTER_WEBCONFIG_MODE,
         ENTER_GLYPH_CONFIG_MODE,
         ENTER_USB_MODE,
+        ENTER_RESCUE_XINPUT_MODE,
         SET_INPUT_MODE_SWITCH,
         SET_INPUT_MODE_XINPUT,
         SET_INPUT_MODE_KEYBOARD,

@@ -6,6 +6,8 @@
 
 class GamecubeBackend : public CommunicationBackend {
 public:
+    static constexpr uint32_t kNoPollYieldTimeoutUs = 5000;
+
     GamecubeBackend(
         InputState &inputs,
         InputSource **input_sources,
@@ -18,10 +20,12 @@ public:
     CommunicationBackendId BackendId() override;
     bool Detect() override;
     void SendReport() override;
+    bool sawPollLastCycle() const { return _sawPollLastCycle; }
 
 private:
     GamecubeConsole _gamecube;
     gc_report_t _report;
+    bool _sawPollLastCycle = false;
 };
 
 #endif

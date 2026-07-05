@@ -5,6 +5,8 @@
 #include "glyph/glyph_profiles.h"
 #include "glyph/glyph_usb_host.h"
 #include "display/ui/screens/GlyphInputScreen.h"
+#include "drivermanager.h"
+#include "gp2040.h"
 #include "hardware/watchdog.h"
 #include "system.h"
 
@@ -1533,7 +1535,14 @@ void MainMenuScreen::selectInputMode() {
 #ifdef GLYPH_DISPLAY_SCREEN
         if (prevInputMode != valueToSave) {
             Storage::getInstance().getGamepadOptions().inputMode = valueToSave;
-            EventManager::getInstance().triggerEvent(new GPStorageSaveEvent(true, true));
+            if (DriverManager::getInstance().getInputMode() == INPUT_MODE_GAMECUBE &&
+                GP2040::requestGamecubeInputModeChange(valueToSave)) {
+                // GameCube mode runs on its own core0 loop, so hand mode
+                // changes directly back to that loop instead of relying on the
+                // normal save/restart event path.
+            } else {
+                EventManager::getInstance().triggerEvent(new GPStorageSaveEvent(true, true));
+            }
             exitToScreen = DisplayMode::RESTART;
         } else {
             chooseAndReturn();

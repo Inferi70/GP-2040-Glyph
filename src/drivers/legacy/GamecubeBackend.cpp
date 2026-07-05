@@ -1,6 +1,7 @@
 #include "drivers/legacy/GamecubeBackend.hpp"
 
 #include <pico/multicore.h>
+#include <pico/time.h>
 
 GamecubeBackend::GamecubeBackend(
     InputState &inputs,
@@ -25,15 +26,19 @@ bool GamecubeBackend::Detect() {
 }
 
 void __no_inline_not_in_flash_func(GamecubeBackend::SendReport)() {
+    _sawPollLastCycle = false;
     ScanInputs(InputScanSpeed::SLOW);
     ScanInputs(InputScanSpeed::MEDIUM);
 
     bool pollTime = true;
+    const absolute_time_t noPollDeadline = make_timeout_time_us(kNoPollYieldTimeoutUs);
     while (pollTime == true) {
         ScanInputs(InputScanSpeed::FAST);
+        if (time_reached(noPollDeadline)) {
+            return;
+        }
         pollTime = _gamecube.WaitForPollStart();
     }
-
     multicore_lockout_start_blocking();
     UpdateOutputs();
 
@@ -58,6 +63,7 @@ void __no_inline_not_in_flash_func(GamecubeBackend::SendReport)() {
     _report.r_analog = _outputs.triggerRAnalog;
 
     if (_gamecube.WaitForPollEnd() != PollStatus::ERROR) {
+        _sawPollLastCycle = true;
         _gamecube.SendReport(&_report);
     }
     multicore_lockout_end_blocking();

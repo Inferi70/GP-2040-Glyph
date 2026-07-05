@@ -85,7 +85,8 @@ System::BootMode System::takeBootMode() {
     if (bootMode != BootMode::GAMEPAD &&
         bootMode != BootMode::WEBCONFIG &&
         bootMode != BootMode::GLYPH_CONFIG &&
-        bootMode != BootMode::USB) {
+        bootMode != BootMode::USB &&
+        bootMode != BootMode::RESCUE_XINPUT) {
         bootMode = BootMode::DEFAULT;
     }
 

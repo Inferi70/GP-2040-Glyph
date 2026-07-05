@@ -229,7 +229,9 @@ public:
     void handleSystemRestart(GPEvent* e);
     void handleMenuNavigation(GPEvent* e);
     void handleSystemError(GPEvent* e);
+    static bool queueMenuAction(GpioAction action);
 private:
+    void applyMenuNavigationAction(GpioAction action);
     bool updateDisplayScreen();
     void setMenuMappings();
     const DisplayOptions& getDisplayOptions();

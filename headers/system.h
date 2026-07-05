@@ -23,6 +23,7 @@ namespace System {
         WEBCONFIG = 0xe77784a5,
         GLYPH_CONFIG = 0x676c7970,
         USB = 0xf737e4e1,
+        RESCUE_XINPUT = 0x78494e50,
     };
 
     // Reboots the device and places the supplied BootMode value in a watchdog scratch register

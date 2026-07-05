@@ -1,7 +1,7 @@
 #include "addons/glyph_matrix_input.h"
 #include "addons/turbo.h"
 
-#include "eventmanager.h"
+#include "addons/display.h"
 #include "gamepad.h"
 #include "glyph/glyph_profiles.h"
 #include "helper.h"
@@ -65,6 +65,17 @@ constexpr uint8_t kFullAnalogMagnitude = 127;
 constexpr uint8_t kNoCAngleSlot = 0xff;
 constexpr uint8_t kTurboLedStateOff = 0;
 constexpr uint8_t kTurboLedStateOn = 1;
+bool glyphMatrixPinsInitialized = false;
+
+uint8_t axis8(uint16_t value)
+{
+    return static_cast<uint8_t>(value >> 8);
+}
+
+uint8_t invertAxis8(uint16_t value)
+{
+    return static_cast<uint8_t>(0xFF - axis8(value));
+}
 
 bool glyphTurboFlicker = false;
 uint32_t glyphTurboNextToggleMs = 0;
@@ -82,12 +93,82 @@ enum class LegacyPlatformProfile : uint8_t {
     Smash64,
 };
 
-void applyExactModOutput(GamepadState& state, uint8_t mask, bool rightStick, uint8_t xMagnitude, uint8_t yMagnitude);
+struct GlyphResolvedOutputState {
+    uint32_t buttons = 0;
+    uint32_t aux = 0;
+    uint8_t dpad = 0;
+    uint16_t lx = GAMEPAD_JOYSTICK_MID;
+    uint16_t ly = GAMEPAD_JOYSTICK_MID;
+    uint16_t rx = GAMEPAD_JOYSTICK_MID;
+    uint16_t ry = GAMEPAD_JOYSTICK_MID;
+    uint8_t lt = 0;
+    uint8_t rt = 0;
+};
+
+void applyExactModOutput(GlyphResolvedOutputState& state, uint8_t mask, bool rightStick, uint8_t xMagnitude, uint8_t yMagnitude);
+void resolveGlyphOutputs(GlyphResolvedOutputState& state);
+void ensureGlyphMatrixPinsInitialized();
 
 void setProfileLabel(char* dest, size_t len, const char* label)
 {
     strncpy(dest, label, len - 1);
     dest[len - 1] = '\0';
+}
+
+void resolvedOutputStateToGamepadState(
+    const GlyphResolvedOutputState& output,
+    GamepadState& state
+) {
+    state = {};
+    state.buttons = output.buttons;
+    state.aux = output.aux;
+    state.dpad = output.dpad;
+    state.lx = output.lx;
+    state.ly = output.ly;
+    state.rx = output.rx;
+    state.ry = output.ry;
+    state.lt = output.lt;
+    state.rt = output.rt;
+}
+
+void resolvedOutputStateToLegacyInputState(
+    const GlyphResolvedOutputState& output,
+    bool hasAnalogTriggers,
+    InputState& inputs
+) {
+    inputs = {};
+    inputs.a = (output.buttons & GAMEPAD_MASK_B1) != 0;
+    inputs.b = (output.buttons & GAMEPAD_MASK_B2) != 0;
+    inputs.x = (output.buttons & GAMEPAD_MASK_B3) != 0;
+    inputs.y = (output.buttons & GAMEPAD_MASK_B4) != 0;
+    inputs.buttonL = (output.buttons & GAMEPAD_MASK_L1) != 0;
+    inputs.buttonR = (output.buttons & GAMEPAD_MASK_R1) != 0;
+    inputs.triggerLDigital = (output.buttons & GAMEPAD_MASK_L2) != 0;
+    inputs.triggerRDigital = (output.buttons & GAMEPAD_MASK_R2) != 0;
+    inputs.start = (output.buttons & GAMEPAD_MASK_S2) != 0;
+    inputs.select = (output.buttons & GAMEPAD_MASK_S1) != 0;
+    inputs.home = (output.buttons & GAMEPAD_MASK_A1) != 0;
+    inputs.capture = (output.buttons & GAMEPAD_MASK_A2) != 0;
+    inputs.dpadUp = (output.dpad & GAMEPAD_MASK_UP) != 0;
+    inputs.dpadDown = (output.dpad & GAMEPAD_MASK_DOWN) != 0;
+    inputs.dpadLeft = (output.dpad & GAMEPAD_MASK_LEFT) != 0;
+    inputs.dpadRight = (output.dpad & GAMEPAD_MASK_RIGHT) != 0;
+    inputs.leftStickClick = (output.buttons & GAMEPAD_MASK_L3) != 0;
+    inputs.rightStickClick = (output.buttons & GAMEPAD_MASK_R3) != 0;
+    inputs.leftStickLeft = output.lx < GAMEPAD_JOYSTICK_MID;
+    inputs.leftStickRight = output.lx > GAMEPAD_JOYSTICK_MID;
+    inputs.leftStickUp = output.ly < GAMEPAD_JOYSTICK_MID;
+    inputs.leftStickDown = output.ly > GAMEPAD_JOYSTICK_MID;
+    inputs.rightStickLeft = output.rx < GAMEPAD_JOYSTICK_MID;
+    inputs.rightStickRight = output.rx > GAMEPAD_JOYSTICK_MID;
+    inputs.rightStickUp = output.ry < GAMEPAD_JOYSTICK_MID;
+    inputs.rightStickDown = output.ry > GAMEPAD_JOYSTICK_MID;
+    inputs.leftStickX = axis8(output.lx);
+    inputs.leftStickY = invertAxis8(output.ly);
+    inputs.rightStickX = axis8(output.rx);
+    inputs.rightStickY = invertAxis8(output.ry);
+    inputs.triggerLAnalog = hasAnalogTriggers ? output.lt : (inputs.triggerLDigital ? 0xFF : 0x00);
+    inputs.triggerRAnalog = hasAnalogTriggers ? output.rt : (inputs.triggerRDigital ? 0xFF : 0x00);
 }
 
 uint16_t analogValue(bool positive, uint8_t magnitude)
@@ -212,7 +293,7 @@ void resetGlyphVirtualTurboState()
     glyphTurboButtonsMask = 0;
 }
 
-void applyGlyphVirtualTurbo(GamepadState& state)
+void applyGlyphVirtualTurbo(GlyphResolvedOutputState& state)
 {
     Gamepad* gamepad = Storage::getInstance().GetGamepad();
     const TurboOptions& turboOptions = Storage::getInstance().getAddonOptions().turboOptions;
@@ -299,7 +380,7 @@ bool maskHasVertical(uint8_t mask)
 }
 
 void applyLegacyLeftStickModifier(
-    GamepadState& state,
+    GlyphResolvedOutputState& state,
     uint8_t mask,
     LegacyPlatformProfile profile,
     const GlyphProfiles::ModProfileState& modProfile,
@@ -349,7 +430,7 @@ void applyLegacyLeftStickModifier(
     applyExactModOutput(state, mask, false, xMagnitude, yMagnitude);
 }
 
-void applyExactModOutput(GamepadState& state, uint8_t mask, bool rightStick, uint8_t xMagnitude, uint8_t yMagnitude)
+void applyExactModOutput(GlyphResolvedOutputState& state, uint8_t mask, bool rightStick, uint8_t xMagnitude, uint8_t yMagnitude)
 {
     uint16_t& x = rightStick ? state.rx : state.lx;
     uint16_t& y = rightStick ? state.ry : state.ly;
@@ -372,7 +453,7 @@ void applyExactModOutput(GamepadState& state, uint8_t mask, bool rightStick, uin
     if (mask & GAMEPAD_MASK_DOWN) y = analogValue(true, yMagnitude);
 }
 
-void applyAnalogOutput(GamepadState& state, uint8_t mask, bool rightStick, const GlyphProfiles::ModProfileState& modProfile, uint8_t cAngleSlot, bool modX = false, bool modY = false)
+void applyAnalogOutput(GlyphResolvedOutputState& state, uint8_t mask, bool rightStick, const GlyphProfiles::ModProfileState& modProfile, uint8_t cAngleSlot, bool modX = false, bool modY = false)
 {
     if (modX) {
         if (cAngleSlot < 4) {
@@ -401,7 +482,7 @@ void applyAnalogOutput(GamepadState& state, uint8_t mask, bool rightStick, const
     if (mask & GAMEPAD_MASK_DOWN) y = analogValue(true, yMagnitude);
 }
 
-void applyDirectionalOutput(GamepadState& state, uint8_t dpadMask, DpadMode dpadMode, const GlyphProfiles::ModProfileState& modProfile, uint8_t cAngleSlot, bool modX, bool modY)
+void applyDirectionalOutput(GlyphResolvedOutputState& state, uint8_t dpadMask, DpadMode dpadMode, const GlyphProfiles::ModProfileState& modProfile, uint8_t cAngleSlot, bool modX, bool modY)
 {
     // GP2040 stick mode only redirects the main dpad target. Dedicated LS/RS
     // targets are handled separately and always write that stick directly.
@@ -420,7 +501,7 @@ void applyDirectionalOutput(GamepadState& state, uint8_t dpadMask, DpadMode dpad
 }
 
 bool applyLegacyPlatformButton(
-    GamepadState& state,
+    GlyphResolvedOutputState& state,
     LegacyPlatformProfile profile,
     const GlyphProfiles::ModProfileState& modProfile,
     InputMode inputMode,
@@ -642,18 +723,7 @@ bool GlyphMatrixInput::available()
 void GlyphMatrixInput::setup()
 {
     ensureProfiles();
-
-    for (uint8_t row = 0; row < kRows; row++) {
-        gpio_init(kRowPins[row]);
-        gpio_set_dir(kRowPins[row], GPIO_IN);
-        gpio_pull_up(kRowPins[row]);
-    }
-
-    for (uint8_t col = 0; col < kCols; col++) {
-        gpio_init(kColPins[col]);
-        gpio_set_dir(kColPins[col], GPIO_IN);
-        gpio_pull_up(kColPins[col]);
-    }
+    ensureGlyphMatrixPinsInitialized();
 }
 
 void GlyphMatrixInput::ensureProfiles()
@@ -734,13 +804,16 @@ bool GlyphMatrixInput::glyphPhysicalButtonPressed(uint8_t buttonId)
 
 void GlyphMatrixInput::refreshPhysicalStateForConfigMode()
 {
-    GlyphMatrixInput matrixInput;
-    matrixInput.scan();
+    ensureGlyphMatrixPinsInitialized();
     memset(glyphPhysicalButtonPressedState, 0, sizeof(glyphPhysicalButtonPressedState));
 
     for (uint8_t row = 0; row < kRows; row++) {
+        gpio_set_dir(kRowPins[row], GPIO_OUT);
+        gpio_put(kRowPins[row], 0);
+        sleep_us(5);
+
         for (uint8_t col = 0; col < kCols; col++) {
-            if (!pressed[row][col]) {
+            if (gpio_get(kColPins[col])) {
                 continue;
             }
 
@@ -749,6 +822,31 @@ void GlyphMatrixInput::refreshPhysicalStateForConfigMode()
                 glyphPhysicalButtonPressedState[buttonId] = true;
             }
         }
+
+        gpio_set_dir(kRowPins[row], GPIO_IN);
+        gpio_pull_up(kRowPins[row]);
+    }
+}
+
+void GlyphMatrixInput::pollConsoleInputs(InputState& inputs, GamepadState* processedState)
+{
+    GlyphMatrixInput matrixInput;
+    matrixInput.scan();
+    matrixInput.handleMenuControls();
+    matrixInput.applyProfileOptions();
+
+    GlyphResolvedOutputState output;
+    resolveGlyphOutputs(output);
+    Gamepad* gamepad = Storage::getInstance().GetGamepad();
+    const bool hasAnalogTriggers = gamepad != nullptr ? gamepad->hasAnalogTriggers : false;
+    resolvedOutputStateToLegacyInputState(output, hasAnalogTriggers, inputs);
+
+    if (gamepad != nullptr) {
+        resolvedOutputStateToGamepadState(output, gamepad->state);
+    }
+
+    if (processedState != nullptr) {
+        resolvedOutputStateToGamepadState(output, *processedState);
     }
 }
 
@@ -789,7 +887,29 @@ void GlyphMatrixInput::scan()
     }
 }
 
-void GlyphMatrixInput::apply(GamepadState& state)
+namespace {
+void ensureGlyphMatrixPinsInitialized()
+{
+    if (glyphMatrixPinsInitialized) {
+        return;
+    }
+
+    for (uint8_t row = 0; row < kRows; row++) {
+        gpio_init(kRowPins[row]);
+        gpio_set_dir(kRowPins[row], GPIO_IN);
+        gpio_pull_up(kRowPins[row]);
+    }
+
+    for (uint8_t col = 0; col < kCols; col++) {
+        gpio_init(kColPins[col]);
+        gpio_set_dir(kColPins[col], GPIO_IN);
+        gpio_pull_up(kColPins[col]);
+    }
+
+    glyphMatrixPinsInitialized = true;
+}
+
+void resolveGlyphOutputs(GlyphResolvedOutputState& state)
 {
     Gamepad* gamepad = Storage::getInstance().GetGamepad();
     const uint8_t profile = gamepad != nullptr ? gamepad->getOptions().profileNumber : 1;
@@ -952,6 +1072,14 @@ void GlyphMatrixInput::apply(GamepadState& state)
     applyAnalogOutput(state, rightAnalogOutput, true, modProfile, cAngleSlot, modXPressed, modYPressed);
     applyGlyphVirtualTurbo(state);
 }
+}
+
+void GlyphMatrixInput::apply(GamepadState& state)
+{
+    GlyphResolvedOutputState output;
+    resolveGlyphOutputs(output);
+    resolvedOutputStateToGamepadState(output, state);
+}
 
 void GlyphMatrixInput::handleMenuControls()
 {
@@ -978,7 +1106,7 @@ void GlyphMatrixInput::handleMenuControls()
         const bool canRepeat = actions[i] == GpioAction::MENU_NAVIGATION_UP ||
                                actions[i] == GpioAction::MENU_NAVIGATION_DOWN;
         if (!menuControlHeld[i] || (canRepeat && (now - menuControlLastSent[i]) >= kMenuRepeatMs)) {
-            EventManager::getInstance().triggerEvent(new GPMenuNavigateEvent(actions[i]));
+            DisplayAddon::queueMenuAction(actions[i]);
             menuControlHeld[i] = true;
             menuControlLastSent[i] = now;
         }

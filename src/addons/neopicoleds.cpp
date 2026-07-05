@@ -663,7 +663,9 @@ void NeoPicoLEDAddon::process() {
     // Get turbo options (turbo RGB led)
     const TurboOptions& turboOptions = Storage::getInstance().getAddonOptions().turboOptions;
     Gamepad * gamepad = Storage::getInstance().GetProcessedGamepad();
-    GamepadHotkey action = animationHotkeys(gamepad);
+    const bool gamecubeMode = gamepad->getOptions().inputMode == INPUT_MODE_GAMECUBE;
+    const uint32_t updateIntervalMs = gamecubeMode ? 25u : intervalMS;
+    GamepadHotkey action = gamecubeMode ? HOTKEY_LEDS_NONE : animationHotkeys(gamepad);
     if (ledOptions.pledType == PLED_TYPE_RGB) {
         if (gamepad->auxState.playerID.enabled && gamepad->auxState.playerID.active) {
             switch (gamepad->getOptions().inputMode) {
@@ -758,7 +760,9 @@ void NeoPicoLEDAddon::process() {
     // Case RGB LEDs for a single static color go here
 	if ( ledOptions.caseRGBIndex >= 0 &&
 		ledOptions.caseRGBCount > 0 ) {
-		ambientHotkeys(gamepad);
+		if (!gamecubeMode) {
+			ambientHotkeys(gamepad);
+		}
 		if ( ledOptions.caseRGBType == CASE_RGB_TYPE_AMBIENT ) {
 			this->ambientLightCustom();
 		} else if ( ledOptions.caseRGBType == CASE_RGB_TYPE_LINKED ) {
@@ -768,7 +772,7 @@ void NeoPicoLEDAddon::process() {
 
     neopico.SetFrame(frame);
     neopico.Show();
-    this->nextRunTime = make_timeout_time_ms(intervalMS);
+    this->nextRunTime = make_timeout_time_ms(updateIntervalMs);
 }
 
 std::vector<uint8_t> * NeoPicoLEDAddon::getLEDPositions(string button, std::vector<std::vector<uint8_t>> *positions)

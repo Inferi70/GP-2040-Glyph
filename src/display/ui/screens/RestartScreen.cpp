@@ -30,6 +30,10 @@ void RestartScreen::drawScreen() {
             getRenderer()->drawText(1, 6, "FW-Glyph Config");
             getRenderer()->drawText(4, 7, "Please Wait");
             break;
+        case System::BootMode::RESCUE_XINPUT:
+            getRenderer()->drawText(1, 6, "Rescue XInput");
+            getRenderer()->drawText(4, 7, "Please Wait");
+            break;
         case System::BootMode::GAMEPAD:
         case System::BootMode::DEFAULT:
             getRenderer()->drawText(4, 6, "Gamepad Mode");

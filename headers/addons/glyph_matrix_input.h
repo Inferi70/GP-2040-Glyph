@@ -1,6 +1,7 @@
 #ifndef _GLYPH_MATRIX_INPUT_H_
 #define _GLYPH_MATRIX_INPUT_H_
 
+#include "drivers/legacy/state.hpp"
 #include "gpaddon.h"
 #include "gamepad/GamepadState.h"
 
@@ -35,6 +36,7 @@ public:
     static bool glyphButtonPressed(uint8_t buttonId);
     static bool glyphPhysicalButtonPressed(uint8_t buttonId);
     static void refreshPhysicalStateForConfigMode();
+    static void pollConsoleInputs(InputState& inputs, GamepadState* processedState = nullptr);
     static bool glyphModXPressed();
     static bool glyphModYPressed();
     static bool turboAvailable();

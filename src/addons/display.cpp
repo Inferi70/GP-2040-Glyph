@@ -18,6 +18,13 @@
 #include "display/ui/screens/GlyphInputScreen.h"
 #endif
 
+namespace {
+constexpr uint8_t kQueuedMenuActionCount = 8;
+static volatile uint8_t queuedMenuActionHead = 0;
+static volatile uint8_t queuedMenuActionTail = 0;
+static GpioAction queuedMenuActions[kQueuedMenuActionCount] = {};
+}
+
 bool DisplayAddon::available() {
     const DisplayOptions& options = Storage::getInstance().getDisplayOptions();
     bool result = false;
@@ -218,6 +225,12 @@ void DisplayAddon::process() {
         updateDisplayScreen();
     }
 
+    while (queuedMenuActionTail != queuedMenuActionHead) {
+        const GpioAction action = queuedMenuActions[queuedMenuActionTail];
+        queuedMenuActionTail = static_cast<uint8_t>((queuedMenuActionTail + 1) % kQueuedMenuActionCount);
+        applyMenuNavigationAction(action);
+    }
+
     int8_t screenReturn = gpScreen->update();
 
     if (!configMode && screenReturn < 0) {
@@ -263,7 +276,22 @@ void DisplayAddon::handleSystemRestart(GPEvent* e) {
 }
 
 void DisplayAddon::handleMenuNavigation(GPEvent* e) {
-    if (((GPMenuNavigateEvent*)e)->menuAction == GpioAction::MENU_NAVIGATION_BACK && currDisplayMode == BUTTONS) {
+    applyMenuNavigationAction(((GPMenuNavigateEvent*)e)->menuAction);
+}
+
+bool DisplayAddon::queueMenuAction(GpioAction action) {
+    const uint8_t nextHead = static_cast<uint8_t>((queuedMenuActionHead + 1) % kQueuedMenuActionCount);
+    if (nextHead == queuedMenuActionTail) {
+        return false;
+    }
+
+    queuedMenuActions[queuedMenuActionHead] = action;
+    queuedMenuActionHead = nextHead;
+    return true;
+}
+
+void DisplayAddon::applyMenuNavigationAction(GpioAction action) {
+    if (action == GpioAction::MENU_NAVIGATION_BACK && currDisplayMode == BUTTONS) {
 #ifdef GLYPH_DISPLAY_SCREEN
         GlyphInputScreen::setInputViewerMode(false);
 #endif
@@ -272,7 +300,7 @@ void DisplayAddon::handleMenuNavigation(GPEvent* e) {
     }
 
     // Swap between main menu and buttons if we press toggle
-    if (((GPMenuNavigateEvent*)e)->menuAction == GpioAction::MENU_NAVIGATION_TOGGLE) {
+    if (action == GpioAction::MENU_NAVIGATION_TOGGLE) {
         if (currDisplayMode == BUTTONS) {
             nextDisplayMode = MAIN_MENU;
         } else if (currDisplayMode == MAIN_MENU) {
@@ -282,7 +310,7 @@ void DisplayAddon::handleMenuNavigation(GPEvent* e) {
             nextDisplayMode = BUTTONS;
         }
     } else if (currDisplayMode == MAIN_MENU) {
-        ((MainMenuScreen*)gpScreen)->updateEventMenuNavigation(((GPMenuNavigateEvent*)e)->menuAction);
+        ((MainMenuScreen*)gpScreen)->updateEventMenuNavigation(action);
     }
 }
 
