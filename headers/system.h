@@ -24,6 +24,15 @@ namespace System {
         GLYPH_CONFIG = 0x676c7970,
         USB = 0xf737e4e1,
         RESCUE_XINPUT = 0x78494e50,
+        INPUT_MODE_XINPUT = 0x78496d31,
+        INPUT_MODE_XBONE = 0x78626f31,
+        INPUT_MODE_GENERIC = 0x67656e31,
+        INPUT_MODE_SWITCH = 0x73776831,
+        INPUT_MODE_SWITCH_PRO = 0x73777031,
+        INPUT_MODE_PS4 = 0x70733431,
+        INPUT_MODE_PS5 = 0x70733531,
+        INPUT_MODE_P5GENERAL = 0x70356731,
+        INPUT_MODE_GAMECUBE = 0x67633131,
     };
 
     // Reboots the device and places the supplied BootMode value in a watchdog scratch register

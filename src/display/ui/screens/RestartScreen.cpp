@@ -34,6 +34,42 @@ void RestartScreen::drawScreen() {
             getRenderer()->drawText(1, 6, "Rescue XInput");
             getRenderer()->drawText(4, 7, "Please Wait");
             break;
+        case System::BootMode::INPUT_MODE_XINPUT:
+            getRenderer()->drawText(2, 6, "Booting XInput");
+            getRenderer()->drawText(4, 7, "Please Wait");
+            break;
+        case System::BootMode::INPUT_MODE_XBONE:
+            getRenderer()->drawText(1, 6, "Booting Xbox One");
+            getRenderer()->drawText(4, 7, "Please Wait");
+            break;
+        case System::BootMode::INPUT_MODE_GENERIC:
+            getRenderer()->drawText(2, 6, "Booting DInput");
+            getRenderer()->drawText(4, 7, "Please Wait");
+            break;
+        case System::BootMode::INPUT_MODE_SWITCH:
+            getRenderer()->drawText(2, 6, "Booting Switch");
+            getRenderer()->drawText(4, 7, "Please Wait");
+            break;
+        case System::BootMode::INPUT_MODE_SWITCH_PRO:
+            getRenderer()->drawText(1, 6, "Booting Sw Pro");
+            getRenderer()->drawText(4, 7, "Please Wait");
+            break;
+        case System::BootMode::INPUT_MODE_PS4:
+            getRenderer()->drawText(3, 6, "Booting PS4");
+            getRenderer()->drawText(4, 7, "Please Wait");
+            break;
+        case System::BootMode::INPUT_MODE_PS5:
+            getRenderer()->drawText(3, 6, "Booting PS5");
+            getRenderer()->drawText(4, 7, "Please Wait");
+            break;
+        case System::BootMode::INPUT_MODE_P5GENERAL:
+            getRenderer()->drawText(2, 6, "Booting P5G");
+            getRenderer()->drawText(4, 7, "Please Wait");
+            break;
+        case System::BootMode::INPUT_MODE_GAMECUBE:
+            getRenderer()->drawText(1, 6, "Booting GCube");
+            getRenderer()->drawText(4, 7, "Please Wait");
+            break;
         case System::BootMode::GAMEPAD:
         case System::BootMode::DEFAULT:
             getRenderer()->drawText(4, 6, "Gamepad Mode");

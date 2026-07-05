@@ -86,7 +86,16 @@ System::BootMode System::takeBootMode() {
         bootMode != BootMode::WEBCONFIG &&
         bootMode != BootMode::GLYPH_CONFIG &&
         bootMode != BootMode::USB &&
-        bootMode != BootMode::RESCUE_XINPUT) {
+        bootMode != BootMode::RESCUE_XINPUT &&
+        bootMode != BootMode::INPUT_MODE_XINPUT &&
+        bootMode != BootMode::INPUT_MODE_XBONE &&
+        bootMode != BootMode::INPUT_MODE_GENERIC &&
+        bootMode != BootMode::INPUT_MODE_SWITCH &&
+        bootMode != BootMode::INPUT_MODE_SWITCH_PRO &&
+        bootMode != BootMode::INPUT_MODE_PS4 &&
+        bootMode != BootMode::INPUT_MODE_PS5 &&
+        bootMode != BootMode::INPUT_MODE_P5GENERAL &&
+        bootMode != BootMode::INPUT_MODE_GAMECUBE) {
         bootMode = BootMode::DEFAULT;
     }
 

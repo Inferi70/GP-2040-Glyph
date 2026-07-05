@@ -174,6 +174,21 @@ const unsigned char* glyphLargeIcon(const std::string& label)
     return bitmap_about_large;
 }
 
+System::BootMode glyphBootModeForInputMode(InputMode inputMode)
+{
+    switch (inputMode) {
+        case INPUT_MODE_XINPUT: return System::BootMode::INPUT_MODE_XINPUT;
+        case INPUT_MODE_XBONE: return System::BootMode::INPUT_MODE_XBONE;
+        case INPUT_MODE_GENERIC: return System::BootMode::INPUT_MODE_GENERIC;
+        case INPUT_MODE_SWITCH: return System::BootMode::INPUT_MODE_SWITCH;
+        case INPUT_MODE_SWITCH_PRO: return System::BootMode::INPUT_MODE_SWITCH_PRO;
+        case INPUT_MODE_PS4: return System::BootMode::INPUT_MODE_PS4;
+        case INPUT_MODE_PS5: return System::BootMode::INPUT_MODE_PS5;
+        case INPUT_MODE_P5GENERAL: return System::BootMode::INPUT_MODE_P5GENERAL;
+        default: return System::BootMode::DEFAULT;
+    }
+}
+
 void drawGlyphBitmap(GPGFX* renderer, const unsigned char* bitmap, uint16_t width, uint16_t height, uint16_t x, uint16_t y)
 {
     renderer->drawSprite((uint8_t*)bitmap, width, height, 0, x, y, 1);
@@ -1534,13 +1549,16 @@ void MainMenuScreen::selectInputMode() {
 
 #ifdef GLYPH_DISPLAY_SCREEN
         if (prevInputMode != valueToSave) {
-            Storage::getInstance().getGamepadOptions().inputMode = valueToSave;
-            if (DriverManager::getInstance().getInputMode() == INPUT_MODE_GAMECUBE &&
-                GP2040::requestGamecubeInputModeChange(valueToSave)) {
-                // GameCube mode runs on its own core0 loop, so hand mode
-                // changes directly back to that loop instead of relying on the
-                // normal save/restart event path.
+            if (DriverManager::getInstance().getInputMode() == INPUT_MODE_GAMECUBE) {
+                const System::BootMode bootMode = glyphBootModeForInputMode(valueToSave);
+                if (bootMode != System::BootMode::DEFAULT) {
+                    EventManager::getInstance().triggerEvent(new GPRestartEvent(bootMode));
+                } else {
+                    Storage::getInstance().getGamepadOptions().inputMode = valueToSave;
+                    EventManager::getInstance().triggerEvent(new GPStorageSaveEvent(true, true));
+                }
             } else {
+                Storage::getInstance().getGamepadOptions().inputMode = valueToSave;
                 EventManager::getInstance().triggerEvent(new GPStorageSaveEvent(true, true));
             }
             exitToScreen = DisplayMode::RESTART;

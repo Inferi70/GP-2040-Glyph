@@ -73,18 +73,6 @@ constexpr int kGamecubeJoybusStateMachine = 3;
 constexpr uint32_t kGamecubeStartupDelayMs = 10;
 constexpr uint32_t kGamecubeEscapeComboSampleCount = 5;
 constexpr uint32_t kGamecubeEscapeComboSampleDelayMs = 5;
-static volatile bool gamecubeInputModeChangeRequested = false;
-static volatile InputMode requestedGamecubeInputMode = INPUT_MODE_GAMECUBE;
-
-bool takeRequestedGamecubeInputModeChange(InputMode &inputMode) {
-	if (!gamecubeInputModeChangeRequested) {
-		return false;
-	}
-
-	inputMode = requestedGamecubeInputMode;
-	gamecubeInputModeChangeRequested = false;
-	return true;
-}
 
 bool gamecubeEscapeComboHeld() {
 #if GLYPH_MATRIX_INPUT_ENABLED == 1
@@ -181,16 +169,6 @@ private:
 };
 
 LegacyGamecubeRunner legacyGamecubeRunner;
-}
-
-bool GP2040::requestGamecubeInputModeChange(InputMode inputMode) {
-	if (inputMode == INPUT_MODE_GAMECUBE) {
-		return false;
-	}
-
-	requestedGamecubeInputMode = inputMode;
-	gamecubeInputModeChangeRequested = true;
-	return true;
 }
 
 void GP2040::setup() {
@@ -532,13 +510,6 @@ void GP2040::runGamecubeLoop() {
 	while (1) {
 		// Let pending save/restart requests preempt the blocking console path.
 		checkSaveRebootState();
-		InputMode requestedInputMode = INPUT_MODE_GAMECUBE;
-		if (takeRequestedGamecubeInputModeChange(requestedInputMode)) {
-			Storage::getInstance().getGamepadOptions().inputMode = requestedInputMode;
-			Storage::getInstance().save(true);
-			System::reboot(System::BootMode::DEFAULT);
-			return;
-		}
 		if (Storage::getInstance().getGamepadOptions().inputMode != INPUT_MODE_GAMECUBE) {
 			Storage::getInstance().save(true);
 			System::reboot(System::BootMode::DEFAULT);
@@ -594,6 +565,15 @@ GP2040::BootAction GP2040::getBootAction() {
 		case System::BootMode::GLYPH_CONFIG: return BootAction::ENTER_GLYPH_CONFIG_MODE;
 		case System::BootMode::USB: return BootAction::ENTER_USB_MODE;
 		case System::BootMode::RESCUE_XINPUT: return BootAction::ENTER_RESCUE_XINPUT_MODE;
+		case System::BootMode::INPUT_MODE_XINPUT: return BootAction::SET_INPUT_MODE_XINPUT;
+		case System::BootMode::INPUT_MODE_XBONE: return BootAction::SET_INPUT_MODE_XBONE;
+		case System::BootMode::INPUT_MODE_GENERIC: return BootAction::SET_INPUT_MODE_GENERIC;
+		case System::BootMode::INPUT_MODE_SWITCH: return BootAction::SET_INPUT_MODE_SWITCH;
+		case System::BootMode::INPUT_MODE_SWITCH_PRO: return BootAction::SET_INPUT_MODE_SWITCH_PRO;
+		case System::BootMode::INPUT_MODE_PS4: return BootAction::SET_INPUT_MODE_PS4;
+		case System::BootMode::INPUT_MODE_PS5: return BootAction::SET_INPUT_MODE_PS5;
+		case System::BootMode::INPUT_MODE_P5GENERAL: return BootAction::SET_INPUT_MODE_P5GENERAL;
+		case System::BootMode::INPUT_MODE_GAMECUBE: return BootAction::NONE;
 		case System::BootMode::DEFAULT:
 			{
 				// Determine boot action based on gamepad state during boot
