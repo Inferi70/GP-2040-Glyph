@@ -797,6 +797,143 @@ void applyProjectMPlatformOverrides(
         state.rt = modProfile.lightShield1;
     }
 }
+
+void applyMeleePlatformOverrides(
+    GlyphResolvedOutputState& state,
+    const GlyphProfiles::ModProfileState& modProfile,
+    uint8_t leftAnalogOutput,
+    uint8_t rightAnalogOutput,
+    bool modXPressed,
+    bool modYPressed,
+    bool shieldButtonPressed,
+    bool rf1Pressed,
+    bool horizontalSocd,
+    uint8_t cAngleSlot
+) {
+    const bool horizontal = maskHasHorizontal(leftAnalogOutput);
+    const bool vertical = maskHasVertical(leftAnalogOutput);
+    const bool diagonal = horizontal && vertical;
+    const int8_t xDirection = maskHorizontalDirection(leftAnalogOutput);
+    const int8_t yDirection = maskVerticalDirection(leftAnalogOutput);
+
+    const bool cHorizontal = maskHasHorizontal(rightAnalogOutput);
+    const bool cVertical = maskHasVertical(rightAnalogOutput);
+    const int8_t cXDirection = maskHorizontalDirection(rightAnalogOutput);
+    const int8_t cYDirection = maskVerticalDirection(rightAnalogOutput);
+
+    if (!modXPressed && !modYPressed && diagonal) {
+        state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * 56);
+        state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * 56);
+        if (yDirection < 0 && shieldButtonPressed) {
+            state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * 56);
+            state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * 55);
+        }
+    }
+
+    if (modXPressed) {
+        if (horizontal) {
+            state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * modProfile.modXHorizontal);
+        }
+        if (vertical) {
+            state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * modProfile.modXVertical);
+        }
+
+        if (diagonal) {
+            if (shieldButtonPressed) {
+                state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * 51);
+                state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * 30);
+            } else {
+                if (rf1Pressed) {
+                    state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * 73);
+                    state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * 31);
+                    if (cAngleSlot == 3) {
+                        state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * 70);
+                        state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * 36);
+                    } else if (cAngleSlot == 2) {
+                        state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * 68);
+                        state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * 42);
+                    } else if (cAngleSlot == 1) {
+                        state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * 59);
+                        state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * 43);
+                    } else if (cAngleSlot == 0) {
+                        state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * 51);
+                        state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * 43);
+                    }
+                } else {
+                    state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * modProfile.modXDiagonalX);
+                    state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * modProfile.modXDiagonalY);
+                    if (cAngleSlot < 4) {
+                        state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * modProfile.modXX[cAngleSlot]);
+                        state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * modProfile.modXY[cAngleSlot]);
+                    }
+                }
+            }
+        }
+
+        if (cHorizontal) {
+            state.rx = analogSignedValue(static_cast<int16_t>(cXDirection) * 68);
+            state.ry = (yDirection == 0) ? GAMEPAD_JOYSTICK_MID
+                                         : analogSignedValue(static_cast<int16_t>(yDirection) * 42);
+        }
+    }
+
+    if (modYPressed) {
+        if (horizontal) {
+            state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * modProfile.modYHorizontal);
+        }
+        if (vertical) {
+            state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * modProfile.modYVertical);
+        }
+        if (rf1Pressed && xDirection != 0) {
+            state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * 80);
+        }
+
+        if (diagonal) {
+            if (shieldButtonPressed) {
+                state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * 38);
+                state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * 70);
+                if (yDirection < 0) {
+                    state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * 40);
+                    state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * 68);
+                }
+            } else {
+                if (rf1Pressed) {
+                    state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * 31);
+                    state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * 73);
+                    if (cAngleSlot == 3) {
+                        state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * 36);
+                        state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * 70);
+                    } else if (cAngleSlot == 2) {
+                        state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * 42);
+                        state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * 68);
+                    } else if (cAngleSlot == 1) {
+                        state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * 47);
+                        state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * 64);
+                    } else if (cAngleSlot == 0) {
+                        state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * 47);
+                        state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * 57);
+                    }
+                } else {
+                    state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * modProfile.modYDiagonalX);
+                    state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * modProfile.modYDiagonalY);
+                    if (cAngleSlot < 4) {
+                        state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * modProfile.modYX[cAngleSlot]);
+                        state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * modProfile.modYY[cAngleSlot]);
+                    }
+                }
+            }
+        }
+    }
+
+    if (cHorizontal && cVertical) {
+        state.rx = analogSignedValue(static_cast<int16_t>(cXDirection) * 42);
+        state.ry = analogSignedValue(static_cast<int16_t>(cYDirection) * 68);
+    }
+
+    if (horizontalSocd && !vertical && xDirection != 0) {
+        state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * 80);
+    }
+}
 }
 
 static GlyphMatrixInput::DebounceState debounce[kRows][kCols] = {};
@@ -1138,10 +1275,13 @@ void resolveGlyphOutputs(GlyphResolvedOutputState& state)
     glyphModXPressedState = modXPressed;
     glyphModYPressedState = modYPressed;
 
-    const bool horizontalSocd = (leftAnalogOutput & (GAMEPAD_MASK_LEFT | GAMEPAD_MASK_RIGHT)) ==
-                                (GAMEPAD_MASK_LEFT | GAMEPAD_MASK_RIGHT);
+    const bool horizontalSocd = legacyPlatform == LegacyPlatformProfile::Melee
+        ? (glyphPressed[kGlyphButtonLF3] && glyphPressed[kGlyphButtonLF1])
+        : (leftAnalogOutput & (GAMEPAD_MASK_LEFT | GAMEPAD_MASK_RIGHT)) == (GAMEPAD_MASK_LEFT | GAMEPAD_MASK_RIGHT);
 
-    if (legacyPlatform != LegacyPlatformProfile::None && legacyPlatform != LegacyPlatformProfile::ProjectM &&
+    if (legacyPlatform != LegacyPlatformProfile::None &&
+        legacyPlatform != LegacyPlatformProfile::ProjectM &&
+        legacyPlatform != LegacyPlatformProfile::Melee &&
         leftAnalogOutput != 0 && cAngleSlot == kNoCAngleSlot &&
         (modXPressed || modYPressed)) {
         applyLegacyLeftStickModifier(state, leftAnalogOutput, legacyPlatform, modProfile, modXPressed, modYPressed);
@@ -1186,6 +1326,21 @@ void resolveGlyphOutputs(GlyphResolvedOutputState& state)
             glyphPressed[kGlyphButtonRF3],
             glyphPressed[kGlyphButtonRF5],
             glyphPressed[kGlyphButtonRF9],
+            horizontalSocd,
+            cAngleSlot
+        );
+    } else if (legacyPlatform == LegacyPlatformProfile::Melee) {
+        const bool shieldButtonPressed = glyphPressed[kGlyphButtonLF4] || glyphPressed[kGlyphButtonRF5] ||
+                                         glyphPressed[kGlyphButtonRF7] || glyphPressed[kGlyphButtonRF8];
+        applyMeleePlatformOverrides(
+            state,
+            modProfile,
+            leftAnalogOutput,
+            rightAnalogOutput,
+            modXPressed,
+            modYPressed,
+            shieldButtonPressed,
+            glyphPressed[kGlyphButtonRF1],
             horizontalSocd,
             cAngleSlot
         );
