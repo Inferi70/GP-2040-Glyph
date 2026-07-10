@@ -109,6 +109,20 @@ void applyExactModOutput(GlyphResolvedOutputState& state, uint8_t mask, bool rig
 void resolveGlyphOutputs(GlyphResolvedOutputState& state);
 void ensureGlyphMatrixPinsInitialized();
 
+int8_t maskHorizontalDirection(uint8_t mask)
+{
+    if (mask & GAMEPAD_MASK_LEFT) return -1;
+    if (mask & GAMEPAD_MASK_RIGHT) return 1;
+    return 0;
+}
+
+int8_t maskVerticalDirection(uint8_t mask)
+{
+    if (mask & GAMEPAD_MASK_UP) return -1;
+    if (mask & GAMEPAD_MASK_DOWN) return 1;
+    return 0;
+}
+
 void setProfileLabel(char* dest, size_t len, const char* label)
 {
     strncpy(dest, label, len - 1);
@@ -506,6 +520,7 @@ bool applyLegacyPlatformButton(
     const GlyphProfiles::ModProfileState& modProfile,
     InputMode inputMode,
     uint8_t buttonId,
+    bool modXPressed,
     bool dpadLayer,
     uint8_t& dpadOutput,
     uint8_t& leftAnalogOutput,
@@ -652,7 +667,13 @@ bool applyLegacyPlatformButton(
                 case kGlyphButtonRF1: setButton(GAMEPAD_MASK_B2); return true;
                 case kGlyphButtonRF2: setButton(GAMEPAD_MASK_B3); return true;
                 case kGlyphButtonRF6: setButton(GAMEPAD_MASK_B4); return true;
-                case kGlyphButtonRF3: setButton(GAMEPAD_MASK_R1); return true;
+                case kGlyphButtonRF3:
+                    if (profile == LegacyPlatformProfile::ProjectM) {
+                        setButton(modXPressed ? GAMEPAD_MASK_R1 : GAMEPAD_MASK_B1);
+                    } else {
+                        setButton(GAMEPAD_MASK_R1);
+                    }
+                    return true;
                 case kGlyphButtonLF4: return setDigitalTriggerL();
                 case kGlyphButtonRF5: return setDigitalTriggerR();
                 default:
@@ -697,6 +718,83 @@ bool applyLegacyPlatformButton(
         case LegacyPlatformProfile::None:
         default:
             return false;
+    }
+}
+
+void applyProjectMPlatformOverrides(
+    GlyphResolvedOutputState& state,
+    const GlyphProfiles::ModProfileState& modProfile,
+    uint8_t leftAnalogOutput,
+    uint8_t rightAnalogOutput,
+    bool modXPressed,
+    bool modYPressed,
+    bool shieldButtonPressed,
+    bool rf1Pressed,
+    bool rf3Pressed,
+    bool rf5Pressed,
+    bool rf9Pressed,
+    bool horizontalSocd,
+    uint8_t cAngleSlot
+) {
+    const bool horizontal = maskHasHorizontal(leftAnalogOutput);
+    const bool vertical = maskHasVertical(leftAnalogOutput);
+    const bool diagonal = horizontal && vertical;
+    const int8_t xDirection = maskHorizontalDirection(leftAnalogOutput);
+    const int8_t yDirection = maskVerticalDirection(leftAnalogOutput);
+
+    const bool cHorizontal = maskHasHorizontal(rightAnalogOutput);
+    const bool cDown = (rightAnalogOutput & GAMEPAD_MASK_DOWN) != 0;
+    const int8_t cXDirection = maskHorizontalDirection(rightAnalogOutput);
+
+    if (!modXPressed && !modYPressed && diagonal && yDirection > 0) {
+        state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * 83);
+        state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * 93);
+    }
+
+    if (modXPressed) {
+        if (cHorizontal) {
+            state.rx = analogSignedValue(static_cast<int16_t>(cXDirection) * 65);
+            state.ry = (yDirection == 0) ? GAMEPAD_JOYSTICK_MID
+                                         : analogSignedValue(static_cast<int16_t>(yDirection) * 23);
+        }
+
+        if (diagonal && cAngleSlot == kNoCAngleSlot) {
+            if (rf1Pressed) {
+                state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * 85);
+                state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * 31);
+            }
+
+            if (rf5Pressed) {
+                state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * 82);
+                state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * 35);
+            }
+        }
+    }
+
+    if (modYPressed && diagonal && cAngleSlot == kNoCAngleSlot) {
+        if (rf1Pressed) {
+            state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * 28);
+            state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * 85);
+        }
+
+        if (rf5Pressed) {
+            state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * 51);
+            state.ly = analogSignedValue(static_cast<int16_t>(yDirection) * 82);
+        }
+    }
+
+    // C-stick ASDI slideoff overrides other c-stick modifiers for c-left/right + c-down.
+    if (cHorizontal && cDown) {
+        state.rx = analogSignedValue(static_cast<int16_t>(cXDirection) * 35);
+        state.ry = analogSignedValue(98);
+    }
+
+    if (horizontalSocd && !vertical && !shieldButtonPressed && xDirection != 0) {
+        state.lx = analogSignedValue(static_cast<int16_t>(xDirection) * 100);
+    }
+
+    if ((rf9Pressed || (rf3Pressed && !modXPressed)) && state.rt < modProfile.lightShield1) {
+        state.rt = modProfile.lightShield1;
     }
 }
 }
@@ -929,8 +1027,6 @@ void resolveGlyphOutputs(GlyphResolvedOutputState& state)
     uint8_t dpadOutput = 0;
     uint8_t leftAnalogOutput = 0;
     uint8_t rightAnalogOutput = 0;
-    bool modXPressed = false;
-    bool modYPressed = false;
     uint8_t cAngleSlot = kNoCAngleSlot;
 
     if (glyphSocdProfile != profile) {
@@ -975,6 +1071,9 @@ void resolveGlyphOutputs(GlyphResolvedOutputState& state)
                                  (originalGlyphPressed[buttonId] && !remappedPhysical[buttonId]);
     }
 
+    bool modXPressed = layout == GlyphProfiles::Layout::Platform && glyphPressed[kGlyphButtonLT1];
+    bool modYPressed = layout == GlyphProfiles::Layout::Platform && glyphPressed[kGlyphButtonLT2];
+
     memcpy(glyphButtonPressedState, glyphPressed, sizeof(glyphButtonPressedState));
     memcpy(glyphPhysicalButtonPressedState, originalGlyphPressed, sizeof(glyphPhysicalButtonPressedState));
     cAngleSlot = activeCAngleSlot(glyphPressed);
@@ -988,11 +1087,9 @@ void resolveGlyphOutputs(GlyphResolvedOutputState& state)
         // layouts; they are not emitted as controller buttons.
         if (layout == GlyphProfiles::Layout::Platform) {
             if (buttonId == kGlyphButtonLT1) {
-                modXPressed = true;
                 continue;
             }
             if (buttonId == kGlyphButtonLT2) {
-                modYPressed = true;
                 continue;
             }
         }
@@ -1004,6 +1101,7 @@ void resolveGlyphOutputs(GlyphResolvedOutputState& state)
                 modProfile,
                 inputMode,
                 buttonId,
+                modXPressed,
                 modXPressed && modYPressed,
                 dpadOutput,
                 leftAnalogOutput,
@@ -1040,7 +1138,11 @@ void resolveGlyphOutputs(GlyphResolvedOutputState& state)
     glyphModXPressedState = modXPressed;
     glyphModYPressedState = modYPressed;
 
-    if (legacyPlatform != LegacyPlatformProfile::None && leftAnalogOutput != 0 && cAngleSlot == kNoCAngleSlot &&
+    const bool horizontalSocd = (leftAnalogOutput & (GAMEPAD_MASK_LEFT | GAMEPAD_MASK_RIGHT)) ==
+                                (GAMEPAD_MASK_LEFT | GAMEPAD_MASK_RIGHT);
+
+    if (legacyPlatform != LegacyPlatformProfile::None && legacyPlatform != LegacyPlatformProfile::ProjectM &&
+        leftAnalogOutput != 0 && cAngleSlot == kNoCAngleSlot &&
         (modXPressed || modYPressed)) {
         applyLegacyLeftStickModifier(state, leftAnalogOutput, legacyPlatform, modProfile, modXPressed, modYPressed);
         leftAnalogOutput = 0;
@@ -1070,6 +1172,24 @@ void resolveGlyphOutputs(GlyphResolvedOutputState& state)
     }
     applyAnalogOutput(state, leftAnalogOutput, false, modProfile, cAngleSlot, modXPressed, modYPressed);
     applyAnalogOutput(state, rightAnalogOutput, true, modProfile, cAngleSlot, modXPressed, modYPressed);
+    if (legacyPlatform == LegacyPlatformProfile::ProjectM) {
+        const bool shieldButtonPressed = glyphPressed[kGlyphButtonLF4] || glyphPressed[kGlyphButtonRF5];
+        applyProjectMPlatformOverrides(
+            state,
+            modProfile,
+            leftAnalogOutput,
+            rightAnalogOutput,
+            modXPressed,
+            modYPressed,
+            shieldButtonPressed,
+            glyphPressed[kGlyphButtonRF1],
+            glyphPressed[kGlyphButtonRF3],
+            glyphPressed[kGlyphButtonRF5],
+            glyphPressed[kGlyphButtonRF9],
+            horizontalSocd,
+            cAngleSlot
+        );
+    }
     applyGlyphVirtualTurbo(state);
 }
 }
