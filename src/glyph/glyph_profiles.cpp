@@ -80,6 +80,22 @@ constexpr uint8_t MOD_PROFILE_RIVALS = 4;
 constexpr uint8_t MOD_PROFILE_RIVALS2 = 5;
 constexpr uint8_t MOD_PROFILE_DEFAULT = 6;
 
+constexpr uint8_t defaultModProfileForBehavior(uint32_t behaviorMode)
+{
+    switch (behaviorMode) {
+        case GlyphProfiles::BehaviorMelee: return MOD_PROFILE_MELEE;
+        case GlyphProfiles::BehaviorProjectM: return MOD_PROFILE_PROJECT_M;
+        case GlyphProfiles::BehaviorUltimate: return MOD_PROFILE_ULTIMATE;
+        case GlyphProfiles::BehaviorRivals: return MOD_PROFILE_RIVALS;
+        case GlyphProfiles::BehaviorRivals2: return MOD_PROFILE_RIVALS2;
+        case GlyphProfiles::BehaviorFgc:
+        case GlyphProfiles::BehaviorSmash64:
+        case GlyphProfiles::BehaviorUnknown:
+        default:
+            return MOD_PROFILE_DEFAULT;
+    }
+}
+
 constexpr Action none()
 {
     return {Target::None, 0};
@@ -111,9 +127,9 @@ constexpr Action aux(uint32_t mask)
 }
 
 constexpr Profile kProfiles[] = {
-    {1, "Melee",     GlyphProfiles::BehaviorMelee,    Layout::Platform, SOCD_MODE_SECOND_INPUT_PRIORITY, 1, MOD_PROFILE_DEFAULT,   kPlatformBackends},
-    {2, "Brawl",     GlyphProfiles::BehaviorProjectM, Layout::Platform, SOCD_MODE_SECOND_INPUT_PRIORITY, 2, MOD_PROFILE_DEFAULT,   kPlatformBackends},
-    {3, "Ultimate",  GlyphProfiles::BehaviorUltimate, Layout::Platform, SOCD_MODE_SECOND_INPUT_PRIORITY, 3, MOD_PROFILE_DEFAULT,   kPlatformBackends},
+    {1, "Melee",     GlyphProfiles::BehaviorMelee,    Layout::Platform, SOCD_MODE_SECOND_INPUT_PRIORITY, 1, MOD_PROFILE_MELEE,     kPlatformBackends},
+    {2, "Brawl",     GlyphProfiles::BehaviorProjectM, Layout::Platform, SOCD_MODE_SECOND_INPUT_PRIORITY, 2, MOD_PROFILE_PROJECT_M, kPlatformBackends},
+    {3, "Ultimate",  GlyphProfiles::BehaviorUltimate, Layout::Platform, SOCD_MODE_SECOND_INPUT_PRIORITY, 3, MOD_PROFILE_ULTIMATE,  kPlatformBackends},
     {4, "Split FGC", GlyphProfiles::BehaviorFgc,      Layout::SplitFgc, SOCD_MODE_NEUTRAL,               4, MOD_PROFILE_DEFAULT,   kModernBackends},
     {5, "FGC",       GlyphProfiles::BehaviorFgc,      Layout::Fgc,      SOCD_MODE_NEUTRAL,               5, MOD_PROFILE_DEFAULT,   kModernBackends},
     {6, "Smash64",   GlyphProfiles::BehaviorSmash64,  Layout::Platform, SOCD_MODE_NEUTRAL,               6, MOD_PROFILE_DEFAULT,   BackendN64},
@@ -958,7 +974,9 @@ void polarToCartesian(uint8_t magnitude, uint8_t angle, uint8_t& x, uint8_t& y)
 
 uint8_t defaultModProfileForLegacyProfile(uint8_t profileNumber)
 {
-    (void)profileNumber;
+    if (profileNumber >= 1 && profileNumber <= kPresetProfileCount) {
+        return kProfiles[profileNumber - 1].modProfileId;
+    }
     return MOD_PROFILE_DEFAULT;
 }
 
@@ -1245,7 +1263,21 @@ void loadFromConfig(const GlyphOptions& options)
         }
         destination.socdMode = source.socdMode;
         destination.rgbConfig = static_cast<uint8_t>(source.rgbConfig);
-        destination.modProfileId = source.has_modProfile ? clampModProfile(static_cast<uint8_t>(source.modProfile)) : defaultModProfileForLegacyProfile(i + 1);
+        destination.modProfileId = source.has_modProfile
+            ? clampModProfile(static_cast<uint8_t>(source.modProfile))
+            : defaultModProfileForBehavior(destination.behaviorMode);
+        if (source.has_modProfile && destination.modProfileId == MOD_PROFILE_DEFAULT && i < kPresetProfileCount) {
+            const Profile& preset = kProfiles[i];
+            const uint8_t intendedModProfile = defaultModProfileForBehavior(destination.behaviorMode);
+            if (intendedModProfile != MOD_PROFILE_DEFAULT &&
+                destination.behaviorMode == preset.behaviorMode &&
+                destination.layout == preset.layout &&
+                destination.socdMode == preset.socdMode &&
+                destination.rgbConfig == preset.rgbConfig &&
+                destination.backends == preset.backends) {
+                destination.modProfileId = intendedModProfile;
+            }
+        }
         destination.backends = static_cast<uint16_t>(source.backends);
 
         if (source.has_socdPairs && source.socdPairs.size >= kPackedSocdPairSize) {
@@ -1894,8 +1926,7 @@ void restoreModProfileDefaults(uint8_t modProfileId)
 
 uint8_t defaultModProfileForLegacyMode(uint32_t mode)
 {
-    (void)mode;
-    return MOD_PROFILE_DEFAULT;
+    return defaultModProfileForBehavior(mode);
 }
 
 OutputIcon menuIcon(uint8_t profileNumber, uint8_t menuButtonIndex)
