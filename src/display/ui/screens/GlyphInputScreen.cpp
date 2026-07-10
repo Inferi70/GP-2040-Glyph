@@ -450,8 +450,8 @@ std::string GlyphInputScreen::inputModeName(InputMode mode) const
             if (driver != nullptr && ((P5GeneralDriver*)driver)->getAuthSent()) return "P5G:AS";
             return options.ps5AuthType == INPUT_MODE_AUTH_TYPE_USB ? "P5G:AU" : "P5G";
         case INPUT_MODE_XBONE:
-            if (driver != nullptr && ((XBOneDriver*)driver)->getAuthSent()) return "XBON:E";
-            return "XBON:*";
+            if (driver != nullptr && ((XBOneDriver*)driver)->getAuthSent()) return "XBOne:N";
+            return "XBOne:*";
         case INPUT_MODE_KEYBOARD: return "HID-KB";
         case INPUT_MODE_CONFIG: return "Config";
         default: return "USB";

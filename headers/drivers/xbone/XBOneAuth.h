@@ -19,6 +19,14 @@ public:
     }
 
     void setBuffer(uint8_t * inData, uint16_t inLen, uint8_t inSeq, uint8_t inType) {
+        reset();
+
+        if (inLen == 0) {
+            sequence = inSeq;
+            type = inType;
+            return;
+        }
+
         data = new uint8_t[inLen];
         length = inLen;
         sequence = inSeq;

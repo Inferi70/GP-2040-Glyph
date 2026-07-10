@@ -42,6 +42,7 @@ constexpr int32_t kGlyphModProfileActionEditModXMagnitudes = -121;
 constexpr int32_t kGlyphModProfileActionEditModYMagnitudes = -122;
 constexpr int32_t kGlyphSocdPairMenuBase = 1000;
 constexpr int32_t kGlyphSocdMenuPairsAction = 2000;
+bool g_startupLimitedMenu = false;
 const char* socdModeLabel(SOCDMode mode)
 {
     switch (mode) {
@@ -283,7 +284,14 @@ std::string glyphMenuLabelText(const std::string& label, bool selected, size_t m
 }
 #endif
 
+void MainMenuScreen::requestStartupLimitedMenu(bool enabled) {
+    g_startupLimitedMenu = enabled;
+}
+
 void MainMenuScreen::init() {
+    const bool startupLimitedMenu = g_startupLimitedMenu;
+    g_startupLimitedMenu = false;
+
     getRenderer()->clearScreen();
     currentMenu = &mainMenu;
     previousMenu = nullptr;
@@ -384,12 +392,26 @@ void MainMenuScreen::init() {
 
 #ifdef GLYPH_DISPLAY_SCREEN
     populateGlyphBackendMenu();
-    populateGlyphBackendSupportMenu();
-    populateGlyphModProfileMenu();
-    populateGlyphSocdMenus();
+    if (!startupLimitedMenu) {
+        populateGlyphBackendSupportMenu();
+        populateGlyphModProfileMenu();
+        populateGlyphSocdMenus();
+    }
 #endif
 
-    setMenuHome();
+    if (startupLimitedMenu) {
+        currentMenu = &limitedMainMenu;
+        previousMenu = nullptr;
+        menuHistory.clear();
+        exitToScreen = -1;
+        prevValues = Storage::getInstance().GetGamepad()->debouncedGpio;
+        isMenuReady = true;
+        gpMenu->setMenuData(currentMenu);
+        gpMenu->setMenuTitle(MAIN_MENU_NAME);
+        gpMenu->setIndex(0);
+    } else {
+        setMenuHome();
+    }
 }
 
 void MainMenuScreen::shutdown() {

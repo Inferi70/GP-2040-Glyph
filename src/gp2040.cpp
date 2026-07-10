@@ -71,20 +71,20 @@ static absolute_time_t rebootDelayTimeout = nil_time;
 namespace {
 constexpr int kGamecubeJoybusStateMachine = 3;
 constexpr uint32_t kGamecubeStartupDelayMs = 10;
-constexpr uint32_t kGamecubeEscapeComboSampleCount = 5;
-constexpr uint32_t kGamecubeEscapeComboSampleDelayMs = 5;
+constexpr uint32_t kRescueEscapeComboSampleCount = 5;
+constexpr uint32_t kRescueEscapeComboSampleDelayMs = 5;
 
-bool gamecubeEscapeComboHeld() {
+bool rescueEscapeComboHeld() {
 #if GLYPH_MATRIX_INPUT_ENABLED == 1
-	for (uint32_t sample = 0; sample < kGamecubeEscapeComboSampleCount; sample++) {
+	for (uint32_t sample = 0; sample < kRescueEscapeComboSampleCount; sample++) {
 		GlyphMatrixInput::refreshPhysicalStateForConfigMode();
 		if (GlyphMatrixInput::glyphPhysicalButtonPressed(GLYPH_BUTTON_MB6) &&
 			GlyphMatrixInput::glyphPhysicalButtonPressed(GLYPH_BUTTON_MB7)) {
 			return true;
 		}
 
-		if (sample + 1 < kGamecubeEscapeComboSampleCount) {
-			sleep_ms(kGamecubeEscapeComboSampleDelayMs);
+		if (sample + 1 < kRescueEscapeComboSampleCount) {
+			sleep_ms(kRescueEscapeComboSampleDelayMs);
 		}
 	}
 #endif
@@ -603,8 +603,9 @@ GP2040::BootAction GP2040::getBootAction() {
 
 				if (gamepad->pressedS1() && gamepad->pressedS2() && gamepad->pressedUp()) {
 					return BootAction::ENTER_USB_MODE;
-				} else if (Storage::getInstance().getGamepadOptions().inputMode == INPUT_MODE_GAMECUBE &&
-						   gamecubeEscapeComboHeld()) {
+				} else if ((Storage::getInstance().getGamepadOptions().inputMode == INPUT_MODE_GAMECUBE ||
+                            Storage::getInstance().getGamepadOptions().inputMode == INPUT_MODE_XBONE) &&
+                           rescueEscapeComboHeld()) {
 					return BootAction::SET_INPUT_MODE_XINPUT;
 				} else if (!webConfigLocked && gamepad->pressedS2()) {
 					return BootAction::ENTER_WEBCONFIG_MODE;

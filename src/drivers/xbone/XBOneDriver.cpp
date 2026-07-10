@@ -25,6 +25,7 @@
 // Check report queue every 35 milliseconds
 static uint32_t lastReportQueue = 0;
 #define REPORT_QUEUE_INTERVAL 35
+static constexpr size_t XBONE_REPORT_QUEUE_MAX = 32;
 
 typedef enum {
     READY_ANNOUNCE,
@@ -213,6 +214,14 @@ static uint16_t xbone_open(uint8_t rhport, tusb_desc_interface_t const *itf_desc
 }
 
 static void queue_xbone_report(void *report, uint16_t report_size) {
+    if (report == nullptr || report_size == 0 || report_size > XBONE_ENDPOINT_SIZE) {
+        return;
+    }
+
+    while (report_queue.size() >= XBONE_REPORT_QUEUE_MAX) {
+        report_queue.pop();
+    }
+
     report_queue_t item;
     memcpy(item.report, report, report_size);
     item.len = report_size;
@@ -391,6 +400,12 @@ bool XBOneDriver::process(Gamepad * gamepad) {
         return false;
     }
 
+    // Run Xbox One auth host work on core0 so the Glyph display/menu loop on core1
+    // stays responsive even when the dongle path stalls or retries.
+    if ( authDriver != nullptr && authDriver->available() ) {
+        ((XBOneAuth*)authDriver)->process();
+    }
+
     uint16_t xboneReportSize = 0;
 
     // Perform update
@@ -527,9 +542,8 @@ bool XBOneDriver::process(Gamepad * gamepad) {
 }
 
 void XBOneDriver::processAux() {
-    if ( authDriver != nullptr && authDriver->available() ) {
-        ((XBOneAuth*)authDriver)->process();
-    }
+    // Intentionally empty: Xbox One auth host work runs on core0 in process()
+    // to avoid stalling the Glyph display/menu loop on core1.
 }
 
 bool XBOneDriver::getAuthSent() {
@@ -692,9 +706,10 @@ void XBOneDriver::process_report_queue(uint32_t now) {
             memcpy(last_report, &report_queue.front().report, report_queue.front().len);
             report_queue.pop();
             lastReportQueue = now;
-        } else {
-            // THIS IS REQUIRED FOR TIMING ON PC / CONSOLE
-            sleep_ms(REPORT_QUEUE_INTERVAL); // sleep while we wait, never happens during input only auth
+        }
+        else {
+            // Yield immediately; blocking core0 here adds latency and doesn't help the queue drain.
+            lastReportQueue = now;
         }
     }
 }

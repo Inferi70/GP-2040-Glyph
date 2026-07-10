@@ -200,11 +200,11 @@ void ButtonLayoutScreen::generateHeader() {
                     statusBar += "   ";
                 break;
             case INPUT_MODE_XBONE:
-                statusBar += "XBON";
+                statusBar += "XBOne";
                 if(((XBOneDriver*)DriverManager::getInstance().getDriver())->getAuthSent() == true )
-                    statusBar += "E";
+                    statusBar += ":N";
                 else
-                    statusBar += "*";
+                    statusBar += ":*";
                 break;
             case INPUT_MODE_XINPUT:
                 statusBar += "X";

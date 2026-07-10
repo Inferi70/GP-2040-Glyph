@@ -8,6 +8,7 @@
 #include "enums.h"
 #include "storagemanager.h"
 #include "pico/stdlib.h"
+#include "pico/sync.h"
 
 #include "drivermanager.h"
 #include "usbdriver.h"
@@ -23,6 +24,20 @@ constexpr uint8_t kQueuedMenuActionCount = 8;
 static volatile uint8_t queuedMenuActionHead = 0;
 static volatile uint8_t queuedMenuActionTail = 0;
 static GpioAction queuedMenuActions[kQueuedMenuActionCount] = {};
+static critical_section_t queuedMenuActionLock;
+static bool queuedMenuActionLockInitialized = false;
+
+static void ensureQueuedMenuActionLockInitialized() {
+    if (!queuedMenuActionLockInitialized) {
+        critical_section_init(&queuedMenuActionLock);
+        queuedMenuActionLockInitialized = true;
+    }
+}
+
+bool shouldUseInputModeOnlyMenu()
+{
+    return Storage::getInstance().GetGamepad()->getOptions().inputMode == INPUT_MODE_XBONE;
+}
 }
 
 bool DisplayAddon::available() {
@@ -95,6 +110,7 @@ void DisplayAddon::setup() {
     gpScreen = nullptr;
     updateDisplayScreen();
     setMenuMappings();
+    ensureQueuedMenuActionLockInitialized();
 
     EventManager::getInstance().registerEventHandler(GP_EVENT_PROFILE_CHANGE, GPEVENT_CALLBACK(this->handleProfileChange(event)));
     EventManager::getInstance().registerEventHandler(GP_EVENT_RESTART, GPEVENT_CALLBACK(this->handleSystemRestart(event)));
@@ -225,9 +241,17 @@ void DisplayAddon::process() {
         updateDisplayScreen();
     }
 
-    while (queuedMenuActionTail != queuedMenuActionHead) {
+    while (true) {
+        ensureQueuedMenuActionLockInitialized();
+        critical_section_enter_blocking(&queuedMenuActionLock);
+        if (queuedMenuActionTail == queuedMenuActionHead) {
+            critical_section_exit(&queuedMenuActionLock);
+            break;
+        }
+
         const GpioAction action = queuedMenuActions[queuedMenuActionTail];
         queuedMenuActionTail = static_cast<uint8_t>((queuedMenuActionTail + 1) % kQueuedMenuActionCount);
+        critical_section_exit(&queuedMenuActionLock);
         applyMenuNavigationAction(action);
     }
 
@@ -238,6 +262,7 @@ void DisplayAddon::process() {
         if (prevValues != values) {
             if ((values & mapMenuToggle->pinMask) || (values & mapMenuSelect->pinMask)) {
                 if (currDisplayMode != DisplayMode::MAIN_MENU) {
+                    MainMenuScreen::requestStartupLimitedMenu(shouldUseInputModeOnlyMenu());
                     screenReturn = DisplayMode::MAIN_MENU;
                 }
             }
@@ -280,13 +305,17 @@ void DisplayAddon::handleMenuNavigation(GPEvent* e) {
 }
 
 bool DisplayAddon::queueMenuAction(GpioAction action) {
+    ensureQueuedMenuActionLockInitialized();
+    critical_section_enter_blocking(&queuedMenuActionLock);
     const uint8_t nextHead = static_cast<uint8_t>((queuedMenuActionHead + 1) % kQueuedMenuActionCount);
     if (nextHead == queuedMenuActionTail) {
+        critical_section_exit(&queuedMenuActionLock);
         return false;
     }
 
     queuedMenuActions[queuedMenuActionHead] = action;
     queuedMenuActionHead = nextHead;
+    critical_section_exit(&queuedMenuActionLock);
     return true;
 }
 
@@ -295,6 +324,7 @@ void DisplayAddon::applyMenuNavigationAction(GpioAction action) {
 #ifdef GLYPH_DISPLAY_SCREEN
         GlyphInputScreen::setInputViewerMode(false);
 #endif
+        MainMenuScreen::requestStartupLimitedMenu(shouldUseInputModeOnlyMenu());
         nextDisplayMode = MAIN_MENU;
         return;
     }
@@ -302,6 +332,7 @@ void DisplayAddon::applyMenuNavigationAction(GpioAction action) {
     // Swap between main menu and buttons if we press toggle
     if (action == GpioAction::MENU_NAVIGATION_TOGGLE) {
         if (currDisplayMode == BUTTONS) {
+            MainMenuScreen::requestStartupLimitedMenu(shouldUseInputModeOnlyMenu());
             nextDisplayMode = MAIN_MENU;
         } else if (currDisplayMode == MAIN_MENU) {
 #ifdef GLYPH_DISPLAY_SCREEN

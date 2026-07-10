@@ -109,6 +109,7 @@ class MainMenuScreen : public GPScreen {
         void chooseAndReturn();
 
         void setMenuHome();
+        static void requestStartupLimitedMenu(bool enabled);
     protected:
         virtual void drawScreen();
     private:
@@ -238,6 +239,12 @@ class MainMenuScreen : public GPScreen {
             {"Turbo",      NULL, &turboModeMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
             {"Configurator", NULL, nullptr,       std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::rebootGlyphConfig, this)},
             {"FW Update",   NULL, nullptr,        std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::rebootBootsel, this)},
+        };
+
+        std::vector<MenuEntry> limitedMainMenu = {
+            {"Profiles",   NULL, &profilesMenu,  std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
+            {"USB Mode",   NULL, &inputModeMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
+            {"USB Host",   NULL, &usbHostMenu,   std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
         };
 
         std::vector<MenuEntry> saveMenu = {
