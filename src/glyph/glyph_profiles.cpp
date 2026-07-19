@@ -127,12 +127,14 @@ constexpr Action aux(uint32_t mask)
 }
 
 constexpr Profile kProfiles[] = {
-    {1, "Melee",     GlyphProfiles::BehaviorMelee,    Layout::Platform, SOCD_MODE_SECOND_INPUT_PRIORITY, 1, MOD_PROFILE_MELEE,     kPlatformBackends},
+    {1, "Melee",     GlyphProfiles::BehaviorMelee,    Layout::Platform, SOCD_MODE_NEUTRAL,               1, MOD_PROFILE_MELEE,     kPlatformBackends},
     {2, "Brawl",     GlyphProfiles::BehaviorProjectM, Layout::Platform, SOCD_MODE_SECOND_INPUT_PRIORITY, 2, MOD_PROFILE_PROJECT_M, kPlatformBackends},
     {3, "Ultimate",  GlyphProfiles::BehaviorUltimate, Layout::Platform, SOCD_MODE_SECOND_INPUT_PRIORITY, 3, MOD_PROFILE_ULTIMATE,  kPlatformBackends},
     {4, "Split FGC", GlyphProfiles::BehaviorFgc,      Layout::SplitFgc, SOCD_MODE_NEUTRAL,               4, MOD_PROFILE_DEFAULT,   kModernBackends},
     {5, "FGC",       GlyphProfiles::BehaviorFgc,      Layout::Fgc,      SOCD_MODE_NEUTRAL,               5, MOD_PROFILE_DEFAULT,   kModernBackends},
     {6, "Smash64",   GlyphProfiles::BehaviorSmash64,  Layout::Platform, SOCD_MODE_NEUTRAL,               6, MOD_PROFILE_DEFAULT,   BackendN64},
+    {7, "RoA",       GlyphProfiles::BehaviorRivals,   Layout::Platform, SOCD_MODE_NEUTRAL,               7, MOD_PROFILE_RIVALS,    kModernBackends},
+    {8, "RoA2",      GlyphProfiles::BehaviorRivals2,  Layout::Platform, SOCD_MODE_NEUTRAL,               8, MOD_PROFILE_RIVALS2,   kModernBackends},
 };
 constexpr uint8_t kPresetProfileCount = sizeof(kProfiles) / sizeof(kProfiles[0]);
 
@@ -141,7 +143,7 @@ constexpr ModProfile kModProfiles[] = {
     {MOD_PROFILE_PROJECT_M, "Project M", 70, 60, 70, 34, 35, 70, 28, 58, 49, 94, true,  {72, 77, 84, 82}, {61, 55, 50, 36}, {62, 55, 40, 34}, {72, 77, 84, 82}},
     {MOD_PROFILE_ULTIMATE,  "Ultimate",  53, 44, 53, 35, 35, 53, 35, 53, 49, 94, false, {53, 53, 53, 53}, {28, 31, 39, 43}, {28, 31, 49, 43}, {53, 53, 53, 53}},
     {MOD_PROFILE_RIVALS,    "Rivals",    66, 44, 59, 23, 44, 67, 44, 113, 49, 94, false, {51, 49, 52, 49}, {43, 35, 31, 24}, {47, 45, 44, 44}, {57, 63, 74, 90}},
-    {MOD_PROFILE_RIVALS2,   "Rivals 2",  92, 72, 92, 42, 76, 71, 51, 84, 49, 94, false, {69, 78, 88, 78}, {59, 57, 55, 41}, {71, 57, 55, 41}, {85, 78, 88, 78}},
+    {MOD_PROFILE_RIVALS2,   "Rivals 2", 106, 96, 82, 44, 66, 92, 65, 127, 49, 94, false, {74, 71, 75, 71}, {65, 56, 52, 44}, {70, 67, 66, 66}, {81, 87, 99, 116}},
     {MOD_PROFILE_DEFAULT,   "Default",   53, 35, 53, 35, 35, 53, 35, 53, 49, 94, false, {53, 53, 53, 53}, {35, 35, 35, 35}, {35, 35, 35, 35}, {53, 53, 53, 53}},
 };
 constexpr uint8_t kModProfileCount = sizeof(kModProfiles) / sizeof(kModProfiles[0]);
@@ -623,6 +625,33 @@ void normalizeLegacyRivals2DefaultRemaps(GlyphProfiles::ProfileState& profile)
     }
 }
 
+void normalizeLegacyRivalsPresetName(uint8_t profileNumber, GlyphProfiles::ProfileState& profile)
+{
+    if (profileNumber == 7 &&
+        strcmp(profile.name, "Rivals") == 0 &&
+        profile.behaviorMode == GlyphProfiles::BehaviorRivals &&
+        profile.layout == Layout::Platform &&
+        profile.socdMode == SOCD_MODE_NEUTRAL &&
+        profile.rgbConfig == 7 &&
+        profile.modProfileId == MOD_PROFILE_RIVALS &&
+        profile.backends == kModernBackends) {
+        strncpy(profile.name, "RoA", sizeof(profile.name) - 1);
+        profile.name[sizeof(profile.name) - 1] = '\0';
+    }
+
+    if (profileNumber == 8 &&
+        strcmp(profile.name, "Rivals 2") == 0 &&
+        profile.behaviorMode == GlyphProfiles::BehaviorRivals2 &&
+        profile.layout == Layout::Platform &&
+        profile.socdMode == SOCD_MODE_NEUTRAL &&
+        profile.rgbConfig == 8 &&
+        profile.modProfileId == MOD_PROFILE_RIVALS2 &&
+        profile.backends == kModernBackends) {
+        strncpy(profile.name, "RoA2", sizeof(profile.name) - 1);
+        profile.name[sizeof(profile.name) - 1] = '\0';
+    }
+}
+
 constexpr Action kPlatformMatrix[GlyphProfiles::MatrixRows][GlyphProfiles::MatrixCols] = {
     {button(GAMEPAD_MASK_E1),  button(GAMEPAD_MASK_E2),  button(GAMEPAD_MASK_E3),  button(GAMEPAD_MASK_E4),  button(GAMEPAD_MASK_A1), button(GAMEPAD_MASK_S1), button(GAMEPAD_MASK_S2), button(GAMEPAD_MASK_L2), button(GAMEPAD_MASK_E9), none(), none()},
     {dpad(GAMEPAD_MASK_LEFT),  dpad(GAMEPAD_MASK_DOWN),  button(GAMEPAD_MASK_E8),  button(GAMEPAD_MASK_E7),  button(GAMEPAD_MASK_E10), button(GAMEPAD_MASK_E11), button(GAMEPAD_MASK_E12), button(GAMEPAD_MASK_B3), button(GAMEPAD_MASK_B4), button(GAMEPAD_MASK_R1), button(GAMEPAD_MASK_L1)},
@@ -807,7 +836,6 @@ void ensureMutableProfiles()
     }
 
     for (const auto& pair : kPlatformSocdPairs) {
-        GlyphProfiles::addSocdPair(1, pair.buttonDir1, pair.buttonDir2, pair.socdType);
         GlyphProfiles::addSocdPair(2, pair.buttonDir1, pair.buttonDir2, pair.socdType);
     }
     for (const auto& pair : kUltimateSocdPairs) {
@@ -840,6 +868,10 @@ void ensureMutableProfiles()
     }
     for (const auto& remap : kFgcRemaps) {
         GlyphProfiles::addButtonRemap(5, remap.physicalButton, remap.targetButton);
+    }
+    for (const auto& remap : kRivalsDefaultRemaps) {
+        GlyphProfiles::addButtonRemap(7, remap.physicalButton, remap.targetButton);
+        GlyphProfiles::addButtonRemap(8, remap.physicalButton, remap.targetButton);
     }
 
     for (uint8_t profile = 1; profile <= GlyphProfiles::count(); profile++) {
@@ -1307,6 +1339,7 @@ void loadFromConfig(const GlyphOptions& options)
             }
         }
         normalizeLegacyRivals2DefaultRemaps(destination);
+        normalizeLegacyRivalsPresetName(i + 1, destination);
 
         if (source.has_rgbColors && source.rgbColors.size >= kPackedRgbColorSize) {
             clearRgbColors(i + 1);
