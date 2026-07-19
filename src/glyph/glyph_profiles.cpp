@@ -128,8 +128,8 @@ constexpr Action aux(uint32_t mask)
 
 constexpr Profile kProfiles[] = {
     {1, "Melee",     GlyphProfiles::BehaviorMelee,    Layout::Platform, SOCD_MODE_NEUTRAL,               1, MOD_PROFILE_MELEE,     kPlatformBackends},
-    {2, "Brawl",     GlyphProfiles::BehaviorProjectM, Layout::Platform, SOCD_MODE_SECOND_INPUT_PRIORITY, 2, MOD_PROFILE_PROJECT_M, kPlatformBackends},
-    {3, "Ultimate",  GlyphProfiles::BehaviorUltimate, Layout::Platform, SOCD_MODE_SECOND_INPUT_PRIORITY, 3, MOD_PROFILE_ULTIMATE,  kPlatformBackends},
+    {2, "Brawl",     GlyphProfiles::BehaviorProjectM, Layout::Platform, SOCD_MODE_NEUTRAL,               2, MOD_PROFILE_PROJECT_M, kPlatformBackends},
+    {3, "Ultimate",  GlyphProfiles::BehaviorUltimate, Layout::Platform, SOCD_MODE_NEUTRAL,               3, MOD_PROFILE_ULTIMATE,  kPlatformBackends},
     {4, "Split FGC", GlyphProfiles::BehaviorFgc,      Layout::SplitFgc, SOCD_MODE_NEUTRAL,               4, MOD_PROFILE_DEFAULT,   kModernBackends},
     {5, "FGC",       GlyphProfiles::BehaviorFgc,      Layout::Fgc,      SOCD_MODE_NEUTRAL,               5, MOD_PROFILE_DEFAULT,   kModernBackends},
     {6, "Smash64",   GlyphProfiles::BehaviorSmash64,  Layout::Platform, SOCD_MODE_NEUTRAL,               6, MOD_PROFILE_DEFAULT,   BackendN64},
@@ -510,6 +510,43 @@ void migrateLegacySmash64SocdPairs(GlyphProfiles::ProfileState& profile)
     }
 }
 
+bool matchesLegacyDefaultSocdPairs(const GlyphProfiles::ProfileState& profile, const GlyphProfiles::SocdPair* expectedPairs, uint8_t expectedCount)
+{
+    if (profile.socdPairCount != expectedCount) {
+        return false;
+    }
+
+    for (uint8_t index = 0; index < expectedCount; index++) {
+        if (!pairMatchesButtons(profile.socdPairs[index], expectedPairs[index].buttonDir1, expectedPairs[index].buttonDir2)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void migrateLegacyPlatformPresetSocdPairs(uint8_t profileNumber, GlyphProfiles::ProfileState& profile)
+{
+    if (profileNumber == 2 &&
+        profile.behaviorMode == GlyphProfiles::BehaviorProjectM &&
+        profile.layout == Layout::Platform &&
+        profile.socdMode == SOCD_MODE_SECOND_INPUT_PRIORITY &&
+        matchesLegacyDefaultSocdPairs(profile, kPlatformSocdPairs, sizeof(kPlatformSocdPairs) / sizeof(kPlatformSocdPairs[0]))) {
+        profile.socdMode = SOCD_MODE_NEUTRAL;
+        profile.socdPairCount = 0;
+        return;
+    }
+
+    if (profileNumber == 3 &&
+        profile.behaviorMode == GlyphProfiles::BehaviorUltimate &&
+        profile.layout == Layout::Platform &&
+        profile.socdMode == SOCD_MODE_SECOND_INPUT_PRIORITY &&
+        matchesLegacyDefaultSocdPairs(profile, kUltimateSocdPairs, sizeof(kUltimateSocdPairs) / sizeof(kUltimateSocdPairs[0]))) {
+        profile.socdMode = SOCD_MODE_NEUTRAL;
+        profile.socdPairCount = 0;
+    }
+}
+
 constexpr GlyphProfiles::ButtonRemap kMeleeRemaps[] = {
     {BTN_MB1, BTN_UNSPECIFIED},
     {BTN_MB2, BTN_UNSPECIFIED},
@@ -722,7 +759,7 @@ constexpr OutputIcon kDefaultMenuIcons[7] = {
     OutputIcon::None,
     OutputIcon::None,
     OutputIcon::None,
-    OutputIcon::None,
+    OutputIcon::Touchpad,
     OutputIcon::Home,
     OutputIcon::XboxBack,
     OutputIcon::Start,
@@ -835,12 +872,6 @@ void ensureMutableProfiles()
         mutableProfiles[i].rgbColorCount = 0;
     }
 
-    for (const auto& pair : kPlatformSocdPairs) {
-        GlyphProfiles::addSocdPair(2, pair.buttonDir1, pair.buttonDir2, pair.socdType);
-    }
-    for (const auto& pair : kUltimateSocdPairs) {
-        GlyphProfiles::addSocdPair(3, pair.buttonDir1, pair.buttonDir2, pair.socdType);
-    }
     for (const auto& pair : kSmash64SocdPairs) {
         GlyphProfiles::addSocdPair(6, pair.buttonDir1, pair.buttonDir2, pair.socdType);
     }
@@ -1326,6 +1357,7 @@ void loadFromConfig(const GlyphOptions& options)
         }
         migrateLegacyFgcSocdPairs(destination);
         migrateLegacySmash64SocdPairs(destination);
+        migrateLegacyPlatformPresetSocdPairs(i + 1, destination);
 
         if (source.has_buttonRemaps && source.buttonRemaps.size >= kPackedButtonRemapSize) {
             clearButtonRemaps(i + 1);

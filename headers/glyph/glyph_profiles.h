@@ -51,6 +51,7 @@ enum BackendMask : uint16_t {
 enum class OutputIcon : uint8_t {
     None,
     Home,
+    Touchpad,
     XboxBack,
     Start,
     Turbo,
