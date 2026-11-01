@@ -1,5 +1,12 @@
 #include <sys/lock.h>
 
+// Newlib's retargetable lock API intentionally leaves this type opaque.
+// The lock hooks below are no-ops; this placeholder only supplies storage
+// for Newlib's lock handles.
+struct __lock {
+    int unused;
+};
+
 struct __lock __lock___sinit_recursive_mutex;
 struct __lock __lock___sfp_recursive_mutex;
 struct __lock __lock___atexit_recursive_mutex;
