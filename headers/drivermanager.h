@@ -15,13 +15,15 @@ public:
         return instance;
     }
     GPDriver * getDriver() { return driver; }
-    void setup(InputMode);
+    void setup(InputMode, bool glyphConfig = false);
     InputMode getInputMode(){ return inputMode; }
     bool isConfigMode(){ return (inputMode == INPUT_MODE_CONFIG); }
+    bool isGlyphConfigMode(){ return glyphConfigMode; }
 private:
     DriverManager() {}
     GPDriver * driver;
     InputMode inputMode;
+    bool glyphConfigMode = false;
 };
 
 #endif

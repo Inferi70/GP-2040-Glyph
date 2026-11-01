@@ -23,6 +23,7 @@
 #define INPUT_MODE_PS5_NAME "PS5"
 #define INPUT_MODE_GENERIC_NAME "Generic HID"
 #define INPUT_MODE_P5GENERAL_NAME "P5 General"
+#define INPUT_MODE_GAMECUBE_NAME "GameCube"
 #define INPUT_MODE_SWITCH_PRO_NAME "Nintendo Switch Pro"
 #define INPUT_MODE_CONFIG_NAME "Web Config"
 
@@ -36,7 +37,11 @@
 #define DPAD_MODE_LEFT_ANALOG_NAME "Left Analog"
 #define DPAD_MODE_RIGHT_ANALOG_NAME "Right Analog"
 
+#ifdef GLYPH_DISPLAY_SCREEN
+#define MAIN_MENU_NAME "Glyph Menu"
+#else
 #define MAIN_MENU_NAME "GP2040-CE Mini Menu"
+#endif
 
 class MainMenuScreen : public GPScreen {
     public:
@@ -51,10 +56,36 @@ class MainMenuScreen : public GPScreen {
         void testMenu() {}
         void saveAndExit();
         void exitOnly();
+        void openInputViewer();
+        void rebootBootsel();
+        void rebootGlyphConfig();
         int32_t modeValue();
 
         void selectInputMode();
         int32_t currentInputMode();
+
+#ifdef GLYPH_DISPLAY_SCREEN
+        void populateGlyphBackendMenu();
+        void populateGlyphBackendSupportMenu();
+        void populateGlyphModProfileMenu();
+        void populateGlyphModAngleMenus();
+        void populateGlyphModCoordinateMenu();
+        void populateGlyphLightShieldMenu();
+        void populateGlyphBaseValueMenu();
+        void populateGlyphModSingleValueMenu();
+        void populateGlyphSocdMenus();
+        void selectGlyphAnalogTriggers();
+        int32_t currentGlyphAnalogTriggers();
+        void selectGlyphSocdPairMode();
+        int32_t currentGlyphSocdPairMode();
+        void toggleGlyphBackendSupport();
+        int32_t currentGlyphBackendSupport();
+        void selectGlyphModProfile();
+        int32_t currentGlyphModProfile();
+        void refreshGlyphUsbHostMenuLabels();
+        void toggleGlyphUsbHostOption();
+        int32_t currentGlyphUsbHostOption();
+#endif
 
         void selectDPadMode();
         int32_t currentDpadMode();
@@ -71,18 +102,32 @@ class MainMenuScreen : public GPScreen {
         void selectTurboMode();
         int32_t currentTurboMode();
 
+        void selectRgbBrightness();
+        int32_t currentRgbBrightness();
+
         void updateMenuNavigation(GpioAction action);
         void updateEventMenuNavigation(GpioAction action);
         void chooseAndReturn();
 
         void setMenuHome();
+        static void requestStartupLimitedMenu(bool enabled);
     protected:
         virtual void drawScreen();
     private:
+#ifdef GLYPH_DISPLAY_SCREEN
+        void drawGlyphMenu();
+        void drawGlyphTopMenu();
+        void drawGlyphListMenu();
+        void drawGlyphControls();
+        bool handleGlyphModProfileNavigation(GpioAction action);
+        int32_t currentGlyphModCoordinateValue();
+        int32_t currentGlyphModSingleValue();
+#endif
         bool isPressed = false;
         uint32_t checkDebounce;
         std::vector<MenuEntry>* currentMenu;
         std::vector<MenuEntry>* previousMenu;
+        std::vector<std::vector<MenuEntry>*> menuHistory;
         uint16_t prevButtonState = 0;
         uint8_t prevDpadState = 0;
         Mask_t prevValues;
@@ -121,6 +166,27 @@ class MainMenuScreen : public GPScreen {
         InputMode prevInputMode;
         InputMode updateInputMode;
 
+        std::vector<MenuEntry> backendSupportMenu = {};
+        std::vector<MenuEntry> modProfileMenu = {};
+        std::vector<MenuEntry> analogTriggersMenu = {};
+        std::vector<MenuEntry> lightShieldMenu = {};
+        std::vector<MenuEntry> baseValueMenu = {};
+        std::vector<MenuEntry> modSingleValueMenu = {};
+        std::vector<MenuEntry> socdPairsMenu = {};
+        std::vector<MenuEntry> socdPairModeMenu = {};
+        std::vector<MenuEntry> modXAngleMenu = {};
+        std::vector<MenuEntry> modYAngleMenu = {};
+        std::vector<MenuEntry> modMagnitudeMenu = {};
+        std::vector<MenuEntry> modCoordinateMenu = {};
+        std::vector<MenuEntry> usbHostMenu = {};
+        bool modMagnitudeMenuIsModX = true;
+        bool modCoordinateMenuIsModX = true;
+        uint8_t modCoordinateMenuSlot = 0;
+        bool modCoordinateEditing = false;
+        bool modSingleValueEditing = false;
+        int32_t modSingleValueSource = 0;
+        std::string modSingleValueTitle = "";
+
         std::vector<MenuEntry> dpadModeMenu = {
             DpadMode_VALUELIST(DPAD_MODE_ENTRIES)
         };
@@ -132,6 +198,7 @@ class MainMenuScreen : public GPScreen {
         };
         SOCDMode prevSocdMode;
         SOCDMode updateSocdMode;
+        uint8_t currentSocdPairIndex = 0;
 
         std::vector<MenuEntry> profilesMenu = {};
         uint8_t prevProfile;
@@ -151,14 +218,35 @@ class MainMenuScreen : public GPScreen {
         bool prevTurbo;
         bool updateTurbo;
 
+        std::vector<MenuEntry> rgbBrightnessMenu = {
+            {"Off",        NULL, nullptr,        std::bind(&MainMenuScreen::currentRgbBrightness, this), std::bind(&MainMenuScreen::selectRgbBrightness, this), 0},
+            {"1",          NULL, nullptr,        std::bind(&MainMenuScreen::currentRgbBrightness, this), std::bind(&MainMenuScreen::selectRgbBrightness, this), 1},
+            {"2",          NULL, nullptr,        std::bind(&MainMenuScreen::currentRgbBrightness, this), std::bind(&MainMenuScreen::selectRgbBrightness, this), 2},
+            {"3",          NULL, nullptr,        std::bind(&MainMenuScreen::currentRgbBrightness, this), std::bind(&MainMenuScreen::selectRgbBrightness, this), 3},
+            {"4",          NULL, nullptr,        std::bind(&MainMenuScreen::currentRgbBrightness, this), std::bind(&MainMenuScreen::selectRgbBrightness, this), 4},
+            {"5",          NULL, nullptr,        std::bind(&MainMenuScreen::currentRgbBrightness, this), std::bind(&MainMenuScreen::selectRgbBrightness, this), 5},
+        };
+
         std::vector<MenuEntry> mainMenu = {
-            {"Input Mode", NULL, &inputModeMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
+            {"Input Viewer", NULL, nullptr,      std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::openInputViewer, this)},
+            {"Profiles",   NULL, &profilesMenu,  std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
+            {"Mod Profile", NULL, &modProfileMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
+            {"USB Mode",   NULL, &inputModeMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
+            {"USB Host",   NULL, &usbHostMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
+            {"USB Support",NULL, &backendSupportMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
             {"D-Pad Mode", NULL, &dpadModeMenu,  std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
             {"SOCD Mode",  NULL, &socdModeMenu,  std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
-            {"Profile",    NULL, &profilesMenu,  std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
+            {"RGB Brightness", NULL, &rgbBrightnessMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
             /*{"Focus Mode", NULL, &focusModeMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},*/
             {"Turbo",      NULL, &turboModeMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
-            {"Exit",       NULL, &saveMenu,      std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
+            {"Configurator", NULL, nullptr,       std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::rebootGlyphConfig, this)},
+            {"FW Update",   NULL, nullptr,        std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::rebootBootsel, this)},
+        };
+
+        std::vector<MenuEntry> limitedMainMenu = {
+            {"Profiles",   NULL, &profilesMenu,  std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
+            {"USB Mode",   NULL, &inputModeMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
+            {"USB Host",   NULL, &usbHostMenu,   std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)},
         };
 
         std::vector<MenuEntry> saveMenu = {

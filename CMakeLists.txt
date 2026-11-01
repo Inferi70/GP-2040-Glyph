@@ -193,6 +193,9 @@ src/gp2040.cpp
 src/gp2040aux.cpp
 src/gamepad.cpp
 src/gamepad/GamepadState.cpp
+src/glyph/glyph_profiles.cpp
+src/glyph/glyph_usb_host.cpp
+src/glyph/glyph_webserial.cpp
 src/addonmanager.cpp
 src/playerleds.cpp
 src/drivers/shared/xinput_host.cpp
@@ -203,9 +206,17 @@ src/drivers/shared/xsm3/excrypt_sha.c
 src/drivers/shared/xsm3/usbdsec.c
 src/drivers/shared/xsm3/xsm3.c
 src/drivers/astro/AstroDriver.cpp
+src/drivers/console/GamecubeConsole.cpp
+src/drivers/console/joybus.c
 src/drivers/egret/EgretDriver.cpp
+src/drivers/gamecube/GameCubeDriver.cpp
 src/drivers/hid/HIDDriver.cpp
 src/drivers/keyboard/KeyboardDriver.cpp
+src/drivers/legacy/CommunicationBackend.cpp
+src/drivers/legacy/GamecubeBackend.cpp
+src/drivers/legacy/GamepadInputSource.cpp
+src/drivers/legacy/InputSourceManager.cpp
+src/drivers/legacy/PassthroughMode.cpp
 src/drivers/mdmini/MDMiniDriver.cpp
 src/drivers/neogeo/NeoGeoDriver.cpp
 src/drivers/net/NetDriver.cpp
@@ -253,6 +264,7 @@ src/display/ui/screens/StatsScreen.cpp
 src/display/ui/screens/SplashScreen.cpp
 src/display/ui/screens/DisplaySaverScreen.cpp
 src/display/ui/screens/SystemErrorScreen.cpp
+src/display/ui/screens/GlyphInputScreen.cpp
 src/display/GPGFX.cpp
 src/display/GPGFX_UI.cpp
 src/drivermanager.cpp
@@ -293,6 +305,8 @@ src/addons/tilt.cpp
 src/addons/spi_analog_ads1256.cpp
 src/addons/gamepad_usb_host.cpp
 src/addons/gamepad_usb_host_listener.cpp
+src/addons/glyph_matrix_input.cpp
+src/addons/glyph_newlib_lock_stubs.c
 src/addons/tg16_input.cpp
 src/animationstation/animation.cpp
 src/animationstation/animationstation.cpp
@@ -307,6 +321,8 @@ ${PROTO_OUTPUT_DIR}/config.pb.c
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${PROJECT_NAME}_${CMAKE_PROJECT_VERSION}_${GP2040_BOARDCONFIG})
+
+pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/src/drivers/console/joybus.pio)
 
 pico_set_program_name(GP2040-CE "GP2040-CE")
 pico_set_program_version(GP2040-CE ${GIT_REPO_VERSION})
@@ -379,7 +395,7 @@ install(FILES
     DESTINATION .
 )
 
-if (NOT (DEFINED ENV(CI)) AND (EXISTS ${CMAKE_SOURCE_DIR}/modules/Custom.cmake))
+if (NOT DEFINED ENV{CI} AND EXISTS "${CMAKE_SOURCE_DIR}/modules/Custom.cmake")
   message(STATUS "Found custom script.")
 	include(${CMAKE_SOURCE_DIR}/modules/Custom.cmake)
 endif()

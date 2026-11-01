@@ -43,6 +43,7 @@ public:
 	AddonOptions& getAddonOptions() { return config.addonOptions; }
 	AnimationOptions& getAnimationOptions() { return config.animationOptions; }
 	ProfileOptions& getProfileOptions() { return config.profileOptions; }
+	GlyphOptions& getGlyphOptions() { return config.glyphOptions; }
 	GpioMappingInfo* getProfilePinMappings() { return functionalPinMappings; }
 	PeripheralOptions& getPeripheralOptions() { return config.peripheralOptions; }
 

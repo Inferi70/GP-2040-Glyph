@@ -30,6 +30,7 @@
 #include "addons/i2c_gpio_pcf8575.h"
 #include "addons/gamepad_usb_host.h"
 #include "addons/he_trigger.h"
+#include "addons/glyph_matrix_input.h"
 #include "addons/tg16_input.h"
 
 // Pico includes
@@ -44,12 +45,131 @@
 
 // USB Input Class Drivers
 #include "drivermanager.h"
+#include "drivers/legacy/GamecubeBackend.hpp"
+#include "drivers/legacy/GamepadInputSource.hpp"
+#include "drivers/legacy/PassthroughMode.hpp"
+
+#include <memory>
+
+#ifndef CONSOLE_JOYBUS_DATA_PIN
+#define CONSOLE_JOYBUS_DATA_PIN -1
+#endif
 
 static const uint32_t REBOOT_HOTKEY_ACTIVATION_TIME_MS = 50;
 static const uint32_t REBOOT_HOTKEY_HOLD_TIME_MS = 4000;
+static constexpr uint8_t GLYPH_BUTTON_MB1 = 49;
+static constexpr uint8_t GLYPH_BUTTON_MB2 = 50;
+static constexpr uint8_t GLYPH_BUTTON_MB3 = 51;
+static constexpr uint8_t GLYPH_BUTTON_MB4 = 52;
+static constexpr uint8_t GLYPH_BUTTON_MB5 = 53;
+static constexpr uint8_t GLYPH_BUTTON_MB6 = 54;
+static constexpr uint8_t GLYPH_BUTTON_MB7 = 55;
 
 const static uint32_t rebootDelayMs = 500;
 static absolute_time_t rebootDelayTimeout = nil_time;
+
+namespace {
+constexpr int kGamecubeJoybusStateMachine = 3;
+constexpr uint32_t kGamecubeStartupDelayMs = 10;
+constexpr uint32_t kRescueEscapeComboSampleCount = 5;
+constexpr uint32_t kRescueEscapeComboSampleDelayMs = 5;
+
+bool rescueEscapeComboHeld() {
+#if GLYPH_MATRIX_INPUT_ENABLED == 1
+	for (uint32_t sample = 0; sample < kRescueEscapeComboSampleCount; sample++) {
+		GlyphMatrixInput::refreshPhysicalStateForConfigMode();
+		if (GlyphMatrixInput::glyphPhysicalButtonPressed(GLYPH_BUTTON_MB6) &&
+			GlyphMatrixInput::glyphPhysicalButtonPressed(GLYPH_BUTTON_MB7)) {
+			return true;
+		}
+
+		if (sample + 1 < kRescueEscapeComboSampleCount) {
+			sleep_ms(kRescueEscapeComboSampleDelayMs);
+		}
+	}
+#endif
+	return false;
+}
+
+class LiveGamecubeInputSource : public GamepadInputSource {
+public:
+	LiveGamecubeInputSource() : GamepadInputSource(InputScanSpeed::FAST) {
+	}
+
+	void setOwner(GP2040 *owner) {
+		this->owner = owner;
+	}
+
+	void UpdateInputs(InputState &inputs) override {
+		if (owner == nullptr) {
+			return;
+		}
+
+#if GLYPH_MATRIX_INPUT_ENABLED == 1
+		Gamepad *processedGamepad = Storage::getInstance().GetProcessedGamepad();
+		GlyphMatrixInput::pollConsoleInputs(inputs, processedGamepad ? &processedGamepad->state : nullptr);
+		return;
+#else
+		owner->refreshGamecubeGamepad();
+		setGamepad(Storage::getInstance().GetProcessedGamepad());
+		GamepadInputSource::UpdateInputs(inputs);
+#endif
+	}
+
+private:
+	GP2040 *owner = nullptr;
+};
+
+class LegacyGamecubeRunner {
+public:
+	LegacyGamecubeRunner()
+		: inputSources{ &fastSource } {
+	}
+
+	void initialize(GP2040 *owner) {
+		if (initialized) {
+			return;
+		}
+
+		fastSource.setOwner(owner);
+
+		if (CONSOLE_JOYBUS_DATA_PIN >= 0) {
+			backend = std::make_unique<GamecubeBackend>(
+				inputs,
+				inputSources,
+				1,
+				CONSOLE_JOYBUS_DATA_PIN,
+				pio1,
+				kGamecubeJoybusStateMachine
+			);
+			backend->SetGameMode(&passthroughMode);
+		}
+
+		initialized = true;
+	}
+
+	bool run() {
+		if (!backend) {
+			return false;
+		}
+
+		// In explicit GameCube mode, old Glyph did not sit behind a separate
+		// Detect() gate. The backend owned the poll loop directly.
+		backend->SendReport();
+		return backend->sawPollLastCycle();
+	}
+
+private:
+	InputState inputs = {};
+	LiveGamecubeInputSource fastSource;
+	InputSource *inputSources[1];
+	PassthroughMode passthroughMode;
+	std::unique_ptr<GamecubeBackend> backend;
+	bool initialized = false;
+};
+
+LegacyGamecubeRunner legacyGamecubeRunner;
+}
 
 void GP2040::setup() {
 	Storage::getInstance().init();
@@ -120,6 +240,7 @@ void GP2040::setup() {
 	addons.LoadAddon(new RotaryEncoderInput());
 	addons.LoadAddon(new PCF8575Addon());
 	addons.LoadAddon(new TG16padInput());
+	addons.LoadAddon(new GlyphMatrixInput());
 
 	// Input override addons
 	addons.LoadAddon(new ReverseInput());
@@ -128,13 +249,18 @@ void GP2040::setup() {
 
 	InputMode inputMode = gamepad->getOptions().inputMode;
 	const BootAction bootAction = getBootAction();
+	const bool glyphConfigMode = (bootAction == BootAction::ENTER_GLYPH_CONFIG_MODE);
 	switch (bootAction) {
 		case BootAction::ENTER_WEBCONFIG_MODE:
+		case BootAction::ENTER_GLYPH_CONFIG_MODE:
 			inputMode = INPUT_MODE_CONFIG;
 			break;
 		case BootAction::ENTER_USB_MODE:
 			reset_usb_boot(0, 0);
 			return;
+		case BootAction::ENTER_RESCUE_XINPUT_MODE:
+			inputMode = INPUT_MODE_XINPUT;
+			break;
 		case BootAction::SET_INPUT_MODE_SWITCH:
 			inputMode = INPUT_MODE_SWITCH;
 			break;
@@ -192,11 +318,13 @@ void GP2040::setup() {
 	}
 
 	// Setup USB Driver
-	DriverManager::getInstance().setup(inputMode);
+	DriverManager::getInstance().setup(inputMode, glyphConfigMode);
 
 	// save to match user expectations on choosing mode at boot, and this is
 	// before USB host will be used so we can force it to ignore the check
-	if (inputMode != INPUT_MODE_CONFIG && inputMode != gamepad->getOptions().inputMode) {
+	if (bootAction != BootAction::ENTER_RESCUE_XINPUT_MODE &&
+		inputMode != INPUT_MODE_CONFIG &&
+		inputMode != gamepad->getOptions().inputMode) {
 		gamepad->setInputMode(inputMode);
 		Storage::getInstance().save(true);
 	}
@@ -280,10 +408,17 @@ void GP2040::debounceGpioGetAll() {
 
 void GP2040::run() {
 	bool configMode = DriverManager::getInstance().isConfigMode();
+	bool glyphConfigMode = DriverManager::getInstance().isGlyphConfigMode();
+	const InputMode inputMode = DriverManager::getInstance().getInputMode();
 	GPDriver * inputDriver = DriverManager::getInstance().getDriver();
 	Gamepad * gamepad = Storage::getInstance().GetGamepad();
 	Gamepad * processedGamepad = Storage::getInstance().GetProcessedGamepad();
 	GamepadState prevState;
+
+	if (!configMode && inputMode == INPUT_MODE_GAMECUBE) {
+		runGamecubeLoop();
+		return;
+	}
 
 	// Start the TinyUSB Device functionality
 	tud_init(TUD_OPT_RHPORT);
@@ -291,7 +426,7 @@ void GP2040::run() {
 	// Initialize our USB manager
 	USBHostManager::getInstance().start();
 
-	if (configMode == true ) {
+	if (configMode == true && glyphConfigMode == false) {
 		rndis_init();
 	}
 
@@ -313,6 +448,7 @@ void GP2040::run() {
 		// Config Loop (Web-Config skips Core0 add-ons)
 		if (configMode == true) {
 			inputDriver->process(gamepad);
+			tud_task();
 			rebootHotkeys.process(gamepad, configMode);
 			checkSaveRebootState();
 			continue;
@@ -348,6 +484,39 @@ void GP2040::run() {
 		addons.PostprocessAddons(processed);
 
 		// Check if we have a pending save
+		checkSaveRebootState();
+	}
+}
+
+void GP2040::refreshGamecubeGamepad() {
+	Gamepad * gamepad = Storage::getInstance().GetGamepad();
+	Gamepad * processedGamepad = Storage::getInstance().GetProcessedGamepad();
+
+	this->getReinitGamepad(gamepad);
+
+	debounceGpioGetAll();
+	gamepad->read();
+
+	addons.PreprocessAddons();
+	gamepad->process();
+	addons.ProcessAddons();
+	memcpy(&processedGamepad->state, &gamepad->state, sizeof(GamepadState));
+}
+
+void GP2040::runGamecubeLoop() {
+	legacyGamecubeRunner.initialize(this);
+	sleep_ms(kGamecubeStartupDelayMs);
+
+	while (1) {
+		// Let pending save/restart requests preempt the blocking console path.
+		checkSaveRebootState();
+		if (Storage::getInstance().getGamepadOptions().inputMode != INPUT_MODE_GAMECUBE) {
+			Storage::getInstance().save(true);
+			System::reboot(System::BootMode::DEFAULT);
+			return;
+		}
+		checkSaveRebootState();
+		legacyGamecubeRunner.run();
 		checkSaveRebootState();
 	}
 }
@@ -393,7 +562,18 @@ GP2040::BootAction GP2040::getBootAction() {
 	switch (System::takeBootMode()) {
 		case System::BootMode::GAMEPAD: return BootAction::NONE;
 		case System::BootMode::WEBCONFIG: return BootAction::ENTER_WEBCONFIG_MODE;
+		case System::BootMode::GLYPH_CONFIG: return BootAction::ENTER_GLYPH_CONFIG_MODE;
 		case System::BootMode::USB: return BootAction::ENTER_USB_MODE;
+		case System::BootMode::RESCUE_XINPUT: return BootAction::ENTER_RESCUE_XINPUT_MODE;
+		case System::BootMode::INPUT_MODE_XINPUT: return BootAction::SET_INPUT_MODE_XINPUT;
+		case System::BootMode::INPUT_MODE_XBONE: return BootAction::SET_INPUT_MODE_XBONE;
+		case System::BootMode::INPUT_MODE_GENERIC: return BootAction::SET_INPUT_MODE_GENERIC;
+		case System::BootMode::INPUT_MODE_SWITCH: return BootAction::SET_INPUT_MODE_SWITCH;
+		case System::BootMode::INPUT_MODE_SWITCH_PRO: return BootAction::SET_INPUT_MODE_SWITCH_PRO;
+		case System::BootMode::INPUT_MODE_PS4: return BootAction::SET_INPUT_MODE_PS4;
+		case System::BootMode::INPUT_MODE_PS5: return BootAction::SET_INPUT_MODE_PS5;
+		case System::BootMode::INPUT_MODE_P5GENERAL: return BootAction::SET_INPUT_MODE_P5GENERAL;
+		case System::BootMode::INPUT_MODE_GAMECUBE: return BootAction::NONE;
 		case System::BootMode::DEFAULT:
 			{
 				// Determine boot action based on gamepad state during boot
@@ -414,18 +594,22 @@ GP2040::BootAction GP2040::getBootAction() {
 				// Copy Processed Gamepad for Core1 (race condition otherwise)
 				memcpy(&processedGamepad->state, &gamepad->state, sizeof(GamepadState));
 
-                const ForcedSetupOptions& forcedSetupOptions = Storage::getInstance().getForcedSetupOptions();
-                bool modeSwitchLocked = forcedSetupOptions.mode == FORCED_SETUP_MODE_LOCK_MODE_SWITCH ||
-                                        forcedSetupOptions.mode == FORCED_SETUP_MODE_LOCK_BOTH;
+				const ForcedSetupOptions& forcedSetupOptions = Storage::getInstance().getForcedSetupOptions();
+				bool modeSwitchLocked = forcedSetupOptions.mode == FORCED_SETUP_MODE_LOCK_MODE_SWITCH ||
+										forcedSetupOptions.mode == FORCED_SETUP_MODE_LOCK_BOTH;
 
                 bool webConfigLocked  = forcedSetupOptions.mode == FORCED_SETUP_MODE_LOCK_WEB_CONFIG ||
                                         forcedSetupOptions.mode == FORCED_SETUP_MODE_LOCK_BOTH;
 
 				if (gamepad->pressedS1() && gamepad->pressedS2() && gamepad->pressedUp()) {
 					return BootAction::ENTER_USB_MODE;
+				} else if ((Storage::getInstance().getGamepadOptions().inputMode == INPUT_MODE_GAMECUBE ||
+                            Storage::getInstance().getGamepadOptions().inputMode == INPUT_MODE_XBONE) &&
+                           rescueEscapeComboHeld()) {
+					return BootAction::SET_INPUT_MODE_XINPUT;
 				} else if (!webConfigLocked && gamepad->pressedS2()) {
 					return BootAction::ENTER_WEBCONFIG_MODE;
-                } else {
+				} else {
                     if (!modeSwitchLocked) {
                         if (auto search = bootActions.find(gamepad->state.buttons); search != bootActions.end()) {
                             switch (search->second) {
@@ -482,10 +666,31 @@ GP2040::RebootHotkeys::RebootHotkeys() :
 	noButtonsPressedTimeout(nil_time),
 	webConfigHotkeyMask(GAMEPAD_MASK_S2 | GAMEPAD_MASK_B3 | GAMEPAD_MASK_B4),
 	bootselHotkeyMask(GAMEPAD_MASK_S1 | GAMEPAD_MASK_B3 | GAMEPAD_MASK_B4),
-	rebootHotkeysHoldTimeout(nil_time) {
+	rebootHotkeysHoldTimeout(nil_time),
+	configExitPending(false) {
 }
 
 void GP2040::RebootHotkeys::process(Gamepad* gamepad, bool configMode) {
+	if (configMode) {
+		GlyphMatrixInput::refreshPhysicalStateForConfigMode();
+		const bool configExitPressed =
+			GlyphMatrixInput::glyphPhysicalButtonPressed(GLYPH_BUTTON_MB1) ||
+			GlyphMatrixInput::glyphPhysicalButtonPressed(GLYPH_BUTTON_MB2) ||
+			GlyphMatrixInput::glyphPhysicalButtonPressed(GLYPH_BUTTON_MB3) ||
+			GlyphMatrixInput::glyphPhysicalButtonPressed(GLYPH_BUTTON_MB4) ||
+			GlyphMatrixInput::glyphPhysicalButtonPressed(GLYPH_BUTTON_MB5) ||
+			GlyphMatrixInput::glyphPhysicalButtonPressed(GLYPH_BUTTON_MB6) ||
+			GlyphMatrixInput::glyphPhysicalButtonPressed(GLYPH_BUTTON_MB7);
+
+		if (configExitPressed) {
+			configExitPending = true;
+		} else if (configExitPending) {
+			configExitPending = false;
+			System::reboot(System::BootMode::GAMEPAD);
+			return;
+		}
+	}
+
 	// We only allow the hotkey to trigger after we observed no buttons pressed for a certain period of time.
 	// We do this to avoid detecting buttons that are held during the boot process. In particular we want to avoid
 	// oscillating between webconfig and default mode when the user keeps holding the hotkey buttons.

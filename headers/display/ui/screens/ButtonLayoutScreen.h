@@ -18,7 +18,7 @@
 #define INPUT_HISTORY_MAX_MODES 12
 
 // Static to ensure memory is never doubled
-static const char * displayNames[INPUT_HISTORY_MAX_MODES][INPUT_HISTORY_MAX_INPUTS] = {
+[[maybe_unused]] static const char * displayNames[INPUT_HISTORY_MAX_MODES][INPUT_HISTORY_MAX_INPUTS] = {
     {		// PS3 - 0
             CHAR_UP, CHAR_DOWN, CHAR_LEFT, CHAR_RIGHT,
             CHAR_UL, CHAR_UR, CHAR_DL, CHAR_DR,
@@ -130,6 +130,7 @@ class ButtonLayoutScreen : public GPScreen {
         const std::map<uint16_t, uint16_t> displayModeLookup = {
             {INPUT_MODE_PS3, 0},
             {INPUT_MODE_SWITCH, 1},
+            {INPUT_MODE_GAMECUBE, 1},
             {INPUT_MODE_XINPUT, 2},
             {INPUT_MODE_XBONE, 2},
             {INPUT_MODE_KEYBOARD, 3},

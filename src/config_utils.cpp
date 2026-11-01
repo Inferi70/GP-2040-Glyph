@@ -19,6 +19,7 @@
 #include "addons/focus_mode.h"
 #include "addons/i2canalog1219.h"
 #include "addons/display.h"
+#include "glyph/glyph_usb_host.h"
 #include "addons/keyboard_host.h"
 #include "addons/neopicoleds.h"
 #include "addons/pleds.h"
@@ -1166,7 +1167,6 @@ void gpioMappingsMigrationCore(Config& config)
     PeripheralOptions& peripheralOptions = config.peripheralOptions;
     KeyboardHostOptions& keyboardHostOptions = config.addonOptions.keyboardHostOptions;
     PSPassthroughOptions& psPassthroughOptions = config.addonOptions.psPassthroughOptions;
-    TurboOptions& turboOptions = config.addonOptions.turboOptions;
     TiltOptions& tiltOptions = config.addonOptions.tiltOptions;
     FocusModeOptions& focusModeOptions = config.addonOptions.focusModeOptions;
     ReverseOptions& reverseOptions = config.addonOptions.reverseOptions;
@@ -1738,6 +1738,12 @@ void migrateAuthenticationMethods(Config& config) {
     }
 }
 
+void migrateGlyphUsbHostSafety(Config& config) {
+#ifdef GLYPH_DISPLAY_SCREEN
+    GlyphUsbHost::sanitizeConfig(config);
+#endif
+}
+
 // enable profiles that have real data in them (profile 1 is always enabled)
 // note that profiles 2-4 are no longer populated with profile 1's data on a fresh
 // config, and this is checking previous configs with non-copy mappings to enable them
@@ -1953,6 +1959,8 @@ void ConfigUtils::load(Config& config)
     migrateTurboPinToGpio(config);
     // Migrate PS4/PS5/XBone authentication methods to new organization
     migrateAuthenticationMethods(config);
+    // Keep Glyph boards recoverable if an earlier build saved USB host on.
+    migrateGlyphUsbHostSafety(config);
     // Macro pins to gpio
     migrateMacroPinsToGpio(config);
     // Migrate old JS slider add-on to core

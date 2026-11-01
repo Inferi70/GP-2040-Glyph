@@ -21,6 +21,7 @@ typedef struct {
 static std::queue<report_queue_t> report_queue;
 static uint32_t lastReportQueue = 0;
 #define REPORT_QUEUE_INTERVAL 15
+static constexpr size_t XBONE_HOST_REPORT_QUEUE_MAX = 32;
 
 void XBOneAuthUSBListener::setup() {
     xboxOneAuthData = nullptr;
@@ -91,7 +92,6 @@ void XBOneAuthUSBListener::report_received(uint8_t dev_addr, uint8_t instance, u
 
     incomingXGIP.parse(report, len);
     if ( incomingXGIP.validate() == false ) {
-        sleep_ms(50); // First packet is invalid, drop and wait for dongle to boot
         incomingXGIP.reset();
         return;
     }
@@ -150,6 +150,14 @@ void XBOneAuthUSBListener::report_received(uint8_t dev_addr, uint8_t instance, u
 }
 
 void XBOneAuthUSBListener::queue_host_report(void* report, uint16_t len) {
+    if (report == nullptr || len == 0 || len > XBONE_ENDPOINT_SIZE) {
+        return;
+    }
+
+    while (report_queue.size() >= XBONE_HOST_REPORT_QUEUE_MAX) {
+        report_queue.pop();
+    }
+
     report_queue_t new_queue;
     memcpy(new_queue.report, report, len);
     new_queue.len = len;
@@ -162,8 +170,10 @@ void XBOneAuthUSBListener::process_report_queue() {
         if ( tuh_xinput_send_report(xbone_dev_addr, xbone_instance, report_queue.front().report, report_queue.front().len) ) {
 			report_queue.pop();
             lastReportQueue = now; // last time we checked report queue
-        } else {
-            sleep_ms(REPORT_QUEUE_INTERVAL);
+        }
+        else {
+            // Keep the UI responsive on core1 while we wait for the host path to free up.
+            lastReportQueue = now;
         }
 	}
 }

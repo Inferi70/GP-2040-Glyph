@@ -1,4 +1,5 @@
 #include "ConfigScreen.h"
+#include "drivermanager.h"
 #include "version.h"
 
 void ConfigScreen::init() {
@@ -36,6 +37,17 @@ int8_t ConfigScreen::update() {
 }
 
 void ConfigScreen::drawScreen() {
+    if (DriverManager::getInstance().isGlyphConfigMode()) {
+        getRenderer()->drawText(1, 0, "[FW-Glyph Config]");
+        getRenderer()->drawText(0, 1, version);
+        getRenderer()->drawText(0, 2, "Use FW-Glyph");
+        getRenderer()->drawText(0, 3, "WebSerial site");
+        getRenderer()->drawText(0, 5, "Waiting for USB");
+        getRenderer()->drawText(0, 6, "profile sync...");
+        getRenderer()->drawText(0, 7, "Menu btns exit cfg");
+        return;
+    }
+
     getRenderer()->drawText(2, 0, "[Web Config Mode]");
     getRenderer()->drawText(0, 1, version);
     getRenderer()->drawText(0, 2, "[http://192.168.7.1]");
@@ -43,5 +55,5 @@ void ConfigScreen::drawScreen() {
     getRenderer()->drawText(0, 4, " B1 > Button");
     getRenderer()->drawText(0, 5, " B2 > Splash");
     getRenderer()->drawText(0, 6, " R2 > GPIO Pin Viewer");
-    getRenderer()->drawText(0, 7, " L2 > Stats");
+    getRenderer()->drawText(0, 7, "Menu btns exit cfg");
 }

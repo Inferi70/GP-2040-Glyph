@@ -1,4 +1,5 @@
 #include "ButtonLayoutScreen.h"
+#include "addons/glyph_matrix_input.h"
 #include "buttonlayouts.h"
 #include "drivermanager.h"
 #include "drivers/ps4/PS4Driver.h"
@@ -75,7 +76,7 @@ void ButtonLayoutScreen::init() {
 
     // determine which fields will be displayed on the status bar
     showInputMode = Storage::getInstance().getDisplayOptions().inputMode;
-    showTurboMode = Storage::getInstance().getDisplayOptions().turboMode && hasTurboAssigned;
+    showTurboMode = Storage::getInstance().getDisplayOptions().turboMode && (hasTurboAssigned || GlyphMatrixInput::turboAvailable());
     showDpadMode = Storage::getInstance().getDisplayOptions().dpadMode;
     showSocdMode = Storage::getInstance().getDisplayOptions().socdMode;
     showMacroMode = Storage::getInstance().getDisplayOptions().macroMode;
@@ -168,6 +169,7 @@ void ButtonLayoutScreen::generateHeader() {
             case INPUT_MODE_PS3:    statusBar += "PS3"; break;
             case INPUT_MODE_GENERIC: statusBar += "USBHID"; break;
             case INPUT_MODE_SWITCH: statusBar += "SWITCH"; break;
+            case INPUT_MODE_GAMECUBE: statusBar += "GC"; break;
             case INPUT_MODE_MDMINI: statusBar += "GEN/MD"; break;
             case INPUT_MODE_NEOGEO: statusBar += "NGMINI"; break;
             case INPUT_MODE_PCEMINI: statusBar += "PCE/TG"; break;
@@ -198,11 +200,11 @@ void ButtonLayoutScreen::generateHeader() {
                     statusBar += "   ";
                 break;
             case INPUT_MODE_XBONE:
-                statusBar += "XBON";
+                statusBar += "XBOne";
                 if(((XBOneDriver*)DriverManager::getInstance().getDriver())->getAuthSent() == true )
-                    statusBar += "E";
+                    statusBar += ":N";
                 else
-                    statusBar += "*";
+                    statusBar += ":*";
                 break;
             case INPUT_MODE_XINPUT:
                 statusBar += "X";
@@ -227,8 +229,6 @@ void ButtonLayoutScreen::generateHeader() {
             statusBar += "    "; // no turbo, don't show Txx setting
         }
     }
-
-	const GamepadOptions & options = gamepad->getOptions();
 
     if (showDpadMode) {
         switch (gamepad->getActiveDpadMode())
@@ -551,7 +551,6 @@ void ButtonLayoutScreen::handleProfileChange(GPEvent* e) {
 }
 
 void ButtonLayoutScreen::handleUSB(GPEvent* e) {
-    GPUSBHostEvent* event = (GPUSBHostEvent*)e;
     bannerDelayStart = getMillis();
     prevProfileNumber = profileNumber;
 
@@ -564,6 +563,7 @@ void ButtonLayoutScreen::handleUSB(GPEvent* e) {
 }
 
 void ButtonLayoutScreen::trim(std::string &s) {
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(),
-            std::not1(std::ptr_fun<int, int>(std::isspace))));
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }));
 }

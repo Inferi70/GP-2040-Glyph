@@ -22,6 +22,8 @@ public:
     ~GP2040(){}
     void setup();           // setup core0
     void run();             // loop core0
+    void refreshGamecubeGamepad();
+    void runGamecubeLoop();
 private:
     Gamepad snapshot;
     AddonManager addons;
@@ -40,13 +42,16 @@ private:
         uint16_t webConfigHotkeyMask;
         uint16_t bootselHotkeyMask;
         absolute_time_t rebootHotkeysHoldTimeout;
+        bool configExitPending;
     };
     RebootHotkeys rebootHotkeys;
 
     enum class BootAction {
         NONE,
         ENTER_WEBCONFIG_MODE,
+        ENTER_GLYPH_CONFIG_MODE,
         ENTER_USB_MODE,
+        ENTER_RESCUE_XINPUT_MODE,
         SET_INPUT_MODE_SWITCH,
         SET_INPUT_MODE_XINPUT,
         SET_INPUT_MODE_KEYBOARD,
@@ -80,15 +85,15 @@ private:
     std::map<uint32_t, int32_t> bootActions;
 
     void checkSaveRebootState();
-    bool saveRequested = false;
-    bool forceSave = false;
+    volatile bool saveRequested = false;
+    volatile bool forceSave = false;
     bool saveSuccessful = false;
     void handleStorageSave(GPEvent* e);
 
-    bool rebootRequested = false;
+    volatile bool rebootRequested = false;
     void handleSystemReboot(GPEvent* e);
 
-    System::BootMode rebootMode = System::BootMode::DEFAULT;
+    volatile System::BootMode rebootMode = System::BootMode::DEFAULT;
 };
 
 #endif

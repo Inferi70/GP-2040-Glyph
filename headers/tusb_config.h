@@ -138,9 +138,12 @@
 #endif
 
 //------------- CLASS -------------//
-#define CFG_TUD_CDC              0
+#define CFG_TUD_CDC              1
 #define CFG_TUD_ECM_RNDIS        1
 #define CFG_TUD_HID              2
+#define CFG_TUD_CDC_RX_BUFSIZE   256
+#define CFG_TUD_CDC_TX_BUFSIZE   256
+#define CFG_TUD_CDC_EP_BUFSIZE   64
 
 //--------------------------------------------------------------------
 // HOST CONFIGURATION

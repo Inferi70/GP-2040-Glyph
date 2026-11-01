@@ -272,6 +272,8 @@ private:
     uint8_t remainderOfButtonLedsCount;
 
     uint8_t alLinkageStartIndex;
+    uint8_t currentAnimationMode = 0xff;
+    uint8_t currentBrightness = 0xff;
 };
 
 #endif

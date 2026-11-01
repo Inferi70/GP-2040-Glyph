@@ -12,6 +12,7 @@
 #include "gp2040.h"
 #include "addons/neopicoleds.h"
 #include "addons/pleds.h"
+#include "glyph/glyph_profiles.h"
 #include "usbdriver.h"
 #include "enums.h"
 #include "helper.h"
@@ -22,6 +23,97 @@
 #define AL_STATIC_COLOR_COUNT	14
 #define AL_EFFECT_MODE_MAX 5
 #define CHASE_LIGHTS_TURN_ON 4
+
+namespace {
+constexpr uint8_t BTN_LF1 = 1;
+constexpr uint8_t BTN_LF2 = 2;
+constexpr uint8_t BTN_LF3 = 3;
+constexpr uint8_t BTN_LF4 = 4;
+constexpr uint8_t BTN_LF5 = 5;
+constexpr uint8_t BTN_LF6 = 6;
+constexpr uint8_t BTN_LF7 = 7;
+constexpr uint8_t BTN_LF8 = 8;
+constexpr uint8_t BTN_RF1 = 17;
+constexpr uint8_t BTN_RF2 = 18;
+constexpr uint8_t BTN_RF3 = 19;
+constexpr uint8_t BTN_RF4 = 20;
+constexpr uint8_t BTN_RF5 = 21;
+constexpr uint8_t BTN_RF6 = 22;
+constexpr uint8_t BTN_RF7 = 23;
+constexpr uint8_t BTN_RF8 = 24;
+constexpr uint8_t BTN_RF9 = 25;
+constexpr uint8_t BTN_RF10 = 26;
+constexpr uint8_t BTN_RF11 = 27;
+constexpr uint8_t BTN_RF12 = 28;
+constexpr uint8_t BTN_RF13 = 29;
+constexpr uint8_t BTN_RF14 = 30;
+constexpr uint8_t BTN_RF15 = 31;
+constexpr uint8_t BTN_RF16 = 32;
+constexpr uint8_t BTN_LT1 = 33;
+constexpr uint8_t BTN_LT2 = 34;
+constexpr uint8_t BTN_LT3 = 35;
+constexpr uint8_t BTN_LT4 = 36;
+constexpr uint8_t BTN_LT5 = 37;
+constexpr uint8_t BTN_LT6 = 38;
+constexpr uint8_t BTN_RT1 = 41;
+constexpr uint8_t BTN_RT2 = 42;
+constexpr uint8_t BTN_RT3 = 43;
+constexpr uint8_t BTN_RT4 = 44;
+constexpr uint8_t BTN_RT5 = 45;
+constexpr uint8_t BTN_MB1 = 49;
+
+constexpr uint8_t glyphPixelButtons[76] = {
+	BTN_MB1, BTN_MB1,
+	BTN_LF4, BTN_LF4,
+	BTN_LF3, BTN_LF3,
+	BTN_LF5, BTN_LF5,
+	BTN_LF2, BTN_LF2,
+	BTN_LF1, BTN_LF1,
+	BTN_LF8, BTN_LF8,
+	BTN_LF7, BTN_LF7,
+	BTN_LF6, BTN_LF6,
+	BTN_RF13, BTN_RF13,
+	BTN_RF14, BTN_RF14,
+	BTN_RF15, BTN_RF15,
+	BTN_RF5, BTN_RF5,
+	BTN_RF6, BTN_RF6,
+	BTN_RF7, BTN_RF7,
+	BTN_RF8, BTN_RF8,
+	BTN_RF4, BTN_RF4,
+	BTN_RF3, BTN_RF3,
+	BTN_RF2, BTN_RF2,
+	BTN_RF9, BTN_RF9,
+	BTN_RF1, BTN_RF1,
+	BTN_RF12, BTN_RF12,
+	BTN_RF11, BTN_RF11,
+	BTN_RF16, BTN_RF16,
+	BTN_RF10, BTN_RF10,
+	BTN_RT3, BTN_RT3,
+	BTN_RT4, BTN_RT4,
+	BTN_RT5, BTN_RT5,
+	BTN_RT1, BTN_RT1,
+	BTN_RT1, BTN_RT1,
+	BTN_RT2, BTN_RT2,
+	BTN_LT6, BTN_LT6,
+	BTN_LT3, BTN_LT3,
+	BTN_LT4, BTN_LT4,
+	BTN_LT5, BTN_LT5,
+	BTN_LT1, BTN_LT1,
+	BTN_LT1, BTN_LT1,
+	BTN_LT2, BTN_LT2,
+};
+
+float clampedBrightness(float brightness)
+{
+	if (brightness < 0.0f) {
+		return 0.0f;
+	}
+	if (brightness > 1.0f) {
+		return 1.0f;
+	}
+	return brightness;
+}
+}
 
 const RGB alCustomStaticTheme[AL_ROW][AL_COL] = 
 									  {{ColorRed, ColorOrange, ColorYellow, ColorGreen, ColorBlue, ColorIndigo, ColorViolet, ColorWhite},
@@ -240,13 +332,38 @@ PLEDAnimationState getSwitchProAnimationNEOPICO(uint16_t ledState)
 }
 
 bool NeoPicoLEDAddon::available() {
-    const LEDOptions& ledOptions = Storage::getInstance().getLedOptions();
+    LEDOptions& ledOptions = Storage::getInstance().getLedOptions();
+#if GLYPH_MATRIX_INPUT_ENABLED == 1
+    if (!isValidPin(ledOptions.dataPin)) {
+        ledOptions.dataPin = BOARD_LEDS_PIN;
+    }
+    if (ledOptions.caseRGBType == CASE_RGB_TYPE_NONE) {
+        ledOptions.caseRGBType = CASE_RGB_TYPE_AMBIENT;
+        ledOptions.caseRGBIndex = 0;
+        ledOptions.caseRGBCount = LED_COUNT;
+    }
+#endif
     return isValidPin(ledOptions.dataPin);
 }
 
 void NeoPicoLEDAddon::setup() {
     // Set Default LED Options
-    const LEDOptions& ledOptions = Storage::getInstance().getLedOptions();
+    LEDOptions& ledOptions = Storage::getInstance().getLedOptions();
+
+#if GLYPH_MATRIX_INPUT_ENABLED == 1
+    if (!isValidPin(ledOptions.dataPin)) {
+        ledOptions.dataPin = BOARD_LEDS_PIN;
+    }
+    if (ledOptions.caseRGBType == CASE_RGB_TYPE_NONE) {
+        ledOptions.caseRGBType = CASE_RGB_TYPE_AMBIENT;
+    }
+    if (ledOptions.caseRGBIndex < 0) {
+        ledOptions.caseRGBIndex = 0;
+    }
+    if (ledOptions.caseRGBCount == 0) {
+        ledOptions.caseRGBCount = LED_COUNT;
+    }
+#endif
 
 	// Setup our aux state player ID sensors
     Gamepad * gamepad = Storage::getInstance().GetProcessedGamepad();
@@ -291,6 +408,8 @@ void NeoPicoLEDAddon::setup() {
 	as.SetMatrix(matrix);
     as.SetMode(animationOptions.baseAnimationIndex);
 	as.SetBrightness(animationOptions.brightness);
+    currentAnimationMode = animationOptions.baseAnimationIndex;
+    currentBrightness = animationOptions.brightness;
 
 	// Next Run
     nextRunTime = make_timeout_time_ms(0); // Reset timeout
@@ -314,8 +433,13 @@ void NeoPicoLEDAddon::setup() {
 	chaseLightIndex = ledOptions.caseRGBIndex;
 	chaseLightMaxIndexPos = ledCount;
 
-	multipleOfButtonLedsCount = (ledOptions.caseRGBCount) / (buttonLedCount);
-	remainderOfButtonLedsCount = (ledOptions.caseRGBCount) % (buttonLedCount);
+    if (buttonLedCount > 0) {
+	    multipleOfButtonLedsCount = (ledOptions.caseRGBCount) / (buttonLedCount);
+	    remainderOfButtonLedsCount = (ledOptions.caseRGBCount) % (buttonLedCount);
+    } else {
+        multipleOfButtonLedsCount = 0;
+        remainderOfButtonLedsCount = 0;
+    }
 
     alLinkageStartIndex = ledOptions.caseRGBIndex;
 }
@@ -331,11 +455,29 @@ void NeoPicoLEDAddon::ambientLightCustom() {
 	if ( maxFrame > FRAME_MAX - alStartIndex )
 		maxFrame = FRAME_MAX - alStartIndex; // make sure we don't go over 100 and overflow frame[]
 
+	const float globalBrightness = clampedBrightness(as.GetBrightnessX());
+	auto scaledBrightness = [globalBrightness](float value) {
+		return clampedBrightness(value * globalBrightness);
+	};
+
+	if (ledOptions.dataPin == 11 && ledOptions.caseRGBCount == 76) {
+		const GamepadOptions& gamepadOptions = Storage::getInstance().getGamepadOptions();
+		const uint8_t profileNumber = gamepadOptions.profileNumber >= 1 ? gamepadOptions.profileNumber : 1;
+		const int glyphFrameCount = maxFrame < 76 ? maxFrame : 76;
+		for (int i = 0; i < glyphFrameCount; i++) {
+			uint32_t color = 0;
+			frame[alStartIndex + i] = GlyphProfiles::rgbColorForButton(profileNumber, glyphPixelButtons[i], color)
+				? RGB(color).value(Animation::format, globalBrightness)
+				: 0x0;
+		}
+		return;
+	}
+
 	// Start-up Animations in Haute were here
 	switch(options.ambientLightEffectsCountIndex) {
 		case AL_CUSTOM_EFFECT_STATIC_COLOR: 
 			for(int i = 0; i < maxFrame; i++) {
-				frame[alStartIndex + i] = alCustomStaticColors[options.alCustomStaticColorIndex].value(Animation::format, options.alStaticColorBrightnessCustomX);
+				frame[alStartIndex + i] = alCustomStaticColors[options.alCustomStaticColorIndex].value(Animation::format, scaledBrightness(options.alStaticColorBrightnessCustomX));
 			}
 			break;
 
@@ -372,7 +514,7 @@ void NeoPicoLEDAddon::ambientLightCustom() {
 			}
 			// Fill Frame
 			for(int i = 0; i < maxFrame; i++){
-				frame[alStartIndex + i] = ambientLight.value(Animation::format, options.alGradientBrightnessCustomX);
+				frame[alStartIndex + i] = ambientLight.value(Animation::format, scaledBrightness(options.alGradientBrightnessCustomX));
 			}
 			break;
 		case AL_CUSTOM_EFFECT_CHASE: 
@@ -418,12 +560,12 @@ void NeoPicoLEDAddon::ambientLightCustom() {
 			}
 			// Fill up to four pixels forward
 			for(int i = 0; i < CHASE_LIGHTS_TURN_ON && chaseLightIndex + i < chaseLightMaxIndexPos; i++) {
-				frame[chaseLightIndex + i] = ambientLight.value(Animation::format, options.alChaseBrightnessCustomX);
+				frame[chaseLightIndex + i] = ambientLight.value(Animation::format, scaledBrightness(options.alChaseBrightnessCustomX));
 			}
 			// Fill up to 3 pixels in the beginning of our casergb (wrap-around)
 			if ( chaseLightIndex + CHASE_LIGHTS_TURN_ON > chaseLightMaxIndexPos ) {
 				for(int i = 0; i < (chaseLightIndex + CHASE_LIGHTS_TURN_ON) - chaseLightMaxIndexPos; i++) {
-					frame[alStartIndex + i] = ambientLight.value(Animation::format, options.alChaseBrightnessCustomX);
+					frame[alStartIndex + i] = ambientLight.value(Animation::format, scaledBrightness(options.alChaseBrightnessCustomX));
 				}
 			}
 			break;
@@ -465,7 +607,7 @@ void NeoPicoLEDAddon::ambientLightCustom() {
 			}
 			// Fill Frame
 			for(int i = 0; i < maxFrame; i++) {
-				frame[alStartIndex + i] = ambientLight.value(Animation::format, alBrightnessBreathX);
+				frame[alStartIndex + i] = ambientLight.value(Animation::format, scaledBrightness(alBrightnessBreathX));
 			}
 			break;
 		case AL_CUSTOM_EFFECT_STATIC_THEME:
@@ -474,12 +616,12 @@ void NeoPicoLEDAddon::ambientLightCustom() {
 			// Fill frame with extras on remainder
 			for(int i = 0; i < multipleOfCustomStaticThemeCount; i++){
 				for(int j = 0; j < AL_COL; j++){
-					frame[alStartIndex + i*AL_COL + j] = alCustomStaticTheme[options.alCustomStaticThemeIndex][j].value(Animation::format, options.alStaticBrightnessCustomThemeX);
+					frame[alStartIndex + i*AL_COL + j] = alCustomStaticTheme[options.alCustomStaticThemeIndex][j].value(Animation::format, scaledBrightness(options.alStaticBrightnessCustomThemeX));
 				}
 			}
 			if(remainderOfCustomStaticThemeCount != 0){
 				for(int k = 0; k < remainderOfCustomStaticThemeCount; k++){
-					frame[alStartIndex + multipleOfCustomStaticThemeCount * AL_COL + k] = alCustomStaticTheme[options.alCustomStaticThemeIndex][k].value(Animation::format, options.alStaticBrightnessCustomThemeX);
+					frame[alStartIndex + multipleOfCustomStaticThemeCount * AL_COL + k] = alCustomStaticTheme[options.alCustomStaticThemeIndex][k].value(Animation::format, scaledBrightness(options.alStaticBrightnessCustomThemeX));
 				}
 			}
 			break;
@@ -508,10 +650,22 @@ void NeoPicoLEDAddon::process() {
     if (!isValidPin(ledOptions.dataPin) || !time_reached(this->nextRunTime))
         return;
 
+    AnimationOptions& animationOptions = Storage::getInstance().getAnimationOptions();
+    if (currentAnimationMode != animationOptions.baseAnimationIndex) {
+        as.SetMode(animationOptions.baseAnimationIndex);
+        currentAnimationMode = animationOptions.baseAnimationIndex;
+    }
+    if (currentBrightness != animationOptions.brightness) {
+        as.SetBrightness(animationOptions.brightness);
+        currentBrightness = animationOptions.brightness;
+    }
+
     // Get turbo options (turbo RGB led)
     const TurboOptions& turboOptions = Storage::getInstance().getAddonOptions().turboOptions;
     Gamepad * gamepad = Storage::getInstance().GetProcessedGamepad();
-    GamepadHotkey action = animationHotkeys(gamepad);
+    const bool gamecubeMode = gamepad->getOptions().inputMode == INPUT_MODE_GAMECUBE;
+    const uint32_t updateIntervalMs = gamecubeMode ? 25u : intervalMS;
+    GamepadHotkey action = gamecubeMode ? HOTKEY_LEDS_NONE : animationHotkeys(gamepad);
     if (ledOptions.pledType == PLED_TYPE_RGB) {
         if (gamepad->auxState.playerID.enabled && gamepad->auxState.playerID.active) {
             switch (gamepad->getOptions().inputMode) {
@@ -544,6 +698,8 @@ void NeoPicoLEDAddon::process() {
 
     if ( action != HOTKEY_LEDS_NONE ) {
         as.HandleEvent(action);
+        currentAnimationMode = Storage::getInstance().getAnimationOptions().baseAnimationIndex;
+        currentBrightness = Storage::getInstance().getAnimationOptions().brightness;
     }
 
     uint32_t buttonState = gamepad->state.dpad << 16 | gamepad->state.buttons;
@@ -604,7 +760,9 @@ void NeoPicoLEDAddon::process() {
     // Case RGB LEDs for a single static color go here
 	if ( ledOptions.caseRGBIndex >= 0 &&
 		ledOptions.caseRGBCount > 0 ) {
-		ambientHotkeys(gamepad);
+		if (!gamecubeMode) {
+			ambientHotkeys(gamepad);
+		}
 		if ( ledOptions.caseRGBType == CASE_RGB_TYPE_AMBIENT ) {
 			this->ambientLightCustom();
 		} else if ( ledOptions.caseRGBType == CASE_RGB_TYPE_LINKED ) {
@@ -614,7 +772,7 @@ void NeoPicoLEDAddon::process() {
 
     neopico.SetFrame(frame);
     neopico.Show();
-    this->nextRunTime = make_timeout_time_ms(intervalMS);
+    this->nextRunTime = make_timeout_time_ms(updateIntervalMs);
 }
 
 std::vector<uint8_t> * NeoPicoLEDAddon::getLEDPositions(string button, std::vector<std::vector<uint8_t>> *positions)

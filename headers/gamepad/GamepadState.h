@@ -152,6 +152,12 @@ struct GamepadState
 	float ema_2_y {GAMEPAD_JOYSTICK_MID};
 };
 
+struct SOCDHistory
+{
+	DpadDirection lastUD {DIRECTION_NONE};
+	DpadDirection lastLR {DIRECTION_NONE};
+};
+
 // Convert the horizontal GamepadState dpad axis value into an analog value
 uint16_t dpadToAnalogX(uint8_t dpad);
 
@@ -180,3 +186,14 @@ uint8_t filterToFourWayMode(uint8_t dpad);
  * @return uint8_t The clean D-pad value.
  */
 uint8_t runSOCDCleaner(SOCDMode mode, uint8_t dpad);
+
+/**
+ * @brief Run SOCD cleaning with separate vertical and horizontal modes.
+ *
+ * @param verticalMode The SOCD cleaning mode for U/D.
+ * @param horizontalMode The SOCD cleaning mode for L/R.
+ * @param dpad The GamepadState.dpad-like bitmask value.
+ * @param history Per-target SOCD history state.
+ * @return uint8_t The clean directional mask.
+ */
+uint8_t runSOCDCleaner(SOCDMode verticalMode, SOCDMode horizontalMode, uint8_t dpad, SOCDHistory& history);
