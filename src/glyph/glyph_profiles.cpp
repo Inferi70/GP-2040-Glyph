@@ -79,6 +79,7 @@ constexpr uint8_t MOD_PROFILE_ULTIMATE = 3;
 constexpr uint8_t MOD_PROFILE_RIVALS = 4;
 constexpr uint8_t MOD_PROFILE_RIVALS2 = 5;
 constexpr uint8_t MOD_PROFILE_DEFAULT = 6;
+constexpr uint8_t kDefaultBaseValue = 127;
 
 constexpr uint8_t defaultModProfileForBehavior(uint32_t behaviorMode)
 {
@@ -765,7 +766,7 @@ constexpr OutputIcon kDefaultMenuIcons[7] = {
     OutputIcon::Start,
 };
 
-constexpr uint32_t kGlyphOptionsVersion = 12;
+constexpr uint32_t kGlyphOptionsVersion = 13;
 constexpr uint8_t kPackedSocdPairSize = 3;
 constexpr uint8_t kPackedButtonRemapSize = 2;
 constexpr uint8_t kPackedRgbColorSize = 4;
@@ -807,6 +808,10 @@ void initializeModProfiles()
         mutableModProfiles[i].lightShield1 = 49;
         mutableModProfiles[i].lightShield2 = 94;
         mutableModProfiles[i].analogTriggersEnabled = false;
+        mutableModProfiles[i].baseUp = kDefaultBaseValue;
+        mutableModProfiles[i].baseDown = kDefaultBaseValue;
+        mutableModProfiles[i].baseLeft = kDefaultBaseValue;
+        mutableModProfiles[i].baseRight = kDefaultBaseValue;
         for (uint8_t slot = 0; slot < 4; slot++) {
             mutableModProfiles[i].modXX[slot] = 53;
             mutableModProfiles[i].modXY[slot] = 35;
@@ -1309,6 +1314,18 @@ void loadFromConfig(const GlyphOptions& options)
         if (source.has_analogTriggersEnabled) {
             destination.analogTriggersEnabled = source.analogTriggersEnabled;
         }
+        if (source.has_baseUp) {
+            destination.baseUp = clampModProfileValue(static_cast<int16_t>(source.baseUp));
+        }
+        if (source.has_baseDown) {
+            destination.baseDown = clampModProfileValue(static_cast<int16_t>(source.baseDown));
+        }
+        if (source.has_baseLeft) {
+            destination.baseLeft = clampModProfileValue(static_cast<int16_t>(source.baseLeft));
+        }
+        if (source.has_baseRight) {
+            destination.baseRight = clampModProfileValue(static_cast<int16_t>(source.baseRight));
+        }
     }
 
     const uint8_t profileCount = options.profiles_count < count() ? options.profiles_count : count();
@@ -1429,6 +1446,14 @@ void writeToConfig(GlyphOptions& options)
         destination.lightShield2 = source.lightShield2;
         destination.has_analogTriggersEnabled = true;
         destination.analogTriggersEnabled = source.analogTriggersEnabled;
+        destination.has_baseUp = true;
+        destination.baseUp = source.baseUp;
+        destination.has_baseDown = true;
+        destination.baseDown = source.baseDown;
+        destination.has_baseLeft = true;
+        destination.baseLeft = source.baseLeft;
+        destination.has_baseRight = true;
+        destination.baseRight = source.baseRight;
         destination.modXX_count = 4;
         destination.modXY_count = 4;
         destination.modYX_count = 4;
@@ -1947,6 +1972,24 @@ void adjustModProfileLightShield(uint8_t modProfileId, bool secondary, int8_t de
     }
 }
 
+void adjustModProfileBaseValue(uint8_t modProfileId, BaseDirection direction, int8_t delta)
+{
+    ensureMutableProfiles();
+    ModProfileState& profile = mutableModProfiles[clampModProfile(modProfileId) - 1];
+    if (!profile.enabled) {
+        return;
+    }
+
+    uint8_t* value = &profile.baseUp;
+    switch (direction) {
+        case BaseDirection::Up: value = &profile.baseUp; break;
+        case BaseDirection::Down: value = &profile.baseDown; break;
+        case BaseDirection::Left: value = &profile.baseLeft; break;
+        case BaseDirection::Right: value = &profile.baseRight; break;
+    }
+    *value = clampModProfileValue(static_cast<int16_t>(*value) + delta);
+}
+
 void setModProfileAnalogTriggersEnabled(uint8_t modProfileId, bool value)
 {
     ensureMutableProfiles();
@@ -1980,6 +2023,10 @@ void restoreModProfileDefaults(uint8_t modProfileId)
     profile.lightShield1 = defaults.lightShield1;
     profile.lightShield2 = defaults.lightShield2;
     profile.analogTriggersEnabled = defaults.analogTriggersEnabled;
+    profile.baseUp = kDefaultBaseValue;
+    profile.baseDown = kDefaultBaseValue;
+    profile.baseLeft = kDefaultBaseValue;
+    profile.baseRight = kDefaultBaseValue;
     for (uint8_t slot = 0; slot < 4; slot++) {
         profile.modXX[slot] = defaults.modXX[slot];
         profile.modXY[slot] = defaults.modXY[slot];

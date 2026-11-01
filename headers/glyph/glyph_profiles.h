@@ -126,6 +126,10 @@ struct ModProfileState {
     uint8_t modXY[4];
     uint8_t modYX[4];
     uint8_t modYY[4];
+    uint8_t baseUp;
+    uint8_t baseDown;
+    uint8_t baseLeft;
+    uint8_t baseRight;
     bool enabled;
 };
 
@@ -143,6 +147,13 @@ struct ButtonRemap {
 struct RgbColor {
     uint8_t button;
     uint32_t color;
+};
+
+enum class BaseDirection : uint8_t {
+    Up,
+    Down,
+    Left,
+    Right,
 };
 
 enum SocdLogicalSlot : uint8_t {
@@ -225,6 +236,7 @@ bool duplicateModProfile(uint8_t sourceModProfileId, uint8_t& newModProfileId);
 void deleteModProfile(uint8_t modProfileId);
 void adjustModProfileCoordinate(uint8_t modProfileId, bool modX, uint8_t slot, bool yAxis, int8_t delta);
 void adjustModProfileLightShield(uint8_t modProfileId, bool secondary, int8_t delta);
+void adjustModProfileBaseValue(uint8_t modProfileId, BaseDirection direction, int8_t delta);
 void setModProfileAnalogTriggersEnabled(uint8_t modProfileId, bool value);
 bool modProfileAnalogTriggersEnabled(uint8_t modProfileId);
 void restoreModProfileDefaults(uint8_t modProfileId);

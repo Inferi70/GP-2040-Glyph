@@ -488,12 +488,12 @@ void applyAnalogOutput(GlyphResolvedOutputState& state, uint8_t mask, bool right
 
     uint16_t& x = rightStick ? state.rx : state.lx;
     uint16_t& y = rightStick ? state.ry : state.ly;
-    const uint8_t xMagnitude = kFullAnalogMagnitude;
-    const uint8_t yMagnitude = kFullAnalogMagnitude;
-    if (mask & GAMEPAD_MASK_LEFT) x = analogValue(false, xMagnitude);
-    if (mask & GAMEPAD_MASK_RIGHT) x = analogValue(true, xMagnitude);
-    if (mask & GAMEPAD_MASK_UP) y = analogValue(false, yMagnitude);
-    if (mask & GAMEPAD_MASK_DOWN) y = analogValue(true, yMagnitude);
+    // Base values only shape the left (movement) stick; the right stick stays at
+    // full travel so C-stick inputs keep reaching smash range.
+    if (mask & GAMEPAD_MASK_LEFT) x = analogValue(false, rightStick ? kFullAnalogMagnitude : modProfile.baseLeft);
+    if (mask & GAMEPAD_MASK_RIGHT) x = analogValue(true, rightStick ? kFullAnalogMagnitude : modProfile.baseRight);
+    if (mask & GAMEPAD_MASK_UP) y = analogValue(false, rightStick ? kFullAnalogMagnitude : modProfile.baseUp);
+    if (mask & GAMEPAD_MASK_DOWN) y = analogValue(true, rightStick ? kFullAnalogMagnitude : modProfile.baseDown);
 }
 
 void applyDirectionalOutput(GlyphResolvedOutputState& state, uint8_t dpadMask, DpadMode dpadMode, const GlyphProfiles::ModProfileState& modProfile, uint8_t cAngleSlot, bool modX, bool modY)

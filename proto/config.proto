@@ -951,6 +951,10 @@ message GlyphModProfileEntry
     optional uint32 modYDiagonalX = 19;
     optional uint32 modYDiagonalY = 20;
     optional bool analogTriggersEnabled = 21;
+    optional uint32 baseUp = 22;
+    optional uint32 baseDown = 23;
+    optional uint32 baseLeft = 24;
+    optional uint32 baseRight = 25;
 }
 
 message GlyphOptions

@@ -40,6 +40,10 @@ constexpr int32_t kGlyphModProfileActionEditModYDiagonal = -119;
 constexpr int32_t kGlyphModProfileActionSingleValue = -120;
 constexpr int32_t kGlyphModProfileActionEditModXMagnitudes = -121;
 constexpr int32_t kGlyphModProfileActionEditModYMagnitudes = -122;
+constexpr int32_t kGlyphModProfileActionBaseUp = -123;
+constexpr int32_t kGlyphModProfileActionBaseDown = -124;
+constexpr int32_t kGlyphModProfileActionBaseLeft = -125;
+constexpr int32_t kGlyphModProfileActionBaseRight = -126;
 constexpr int32_t kGlyphSocdPairMenuBase = 1000;
 constexpr int32_t kGlyphSocdMenuPairsAction = 2000;
 bool g_startupLimitedMenu = false;
@@ -96,6 +100,7 @@ std::pair<std::string, std::string> glyphTopLabelLines(const std::string& label)
     if (label == "Mod Profile") return {"Mod", "Profile"};
     if (label == "Analog Triggers") return {"Analog", "Triggers"};
     if (label == "Light Shields") return {"Light", "Shields"};
+    if (label == "Base Values") return {"Base", "Values"};
     if (label == "SOCD Pairs") return {"SOCD", "Pairs"};
     if (label == "SOCD Pair") return {"SOCD", "Pair"};
     if (label == "Magnitudes") return {"Magnitude", ""};
@@ -119,6 +124,7 @@ const char* glyphIconText(const std::string& label)
     if (label == "Mod Profile") return "MOD";
     if (label == "Analog Triggers") return "AT";
     if (label == "Light Shields") return "LS";
+    if (label == "Base Values") return "BV";
     if (label == "SOCD Pairs" || label == "SOCD Pair") return "SP";
     if (label == "Magnitudes") return "MAG";
     if (label == "D-Pad Mode") return "DP";
@@ -141,6 +147,7 @@ const unsigned char* glyphSmallIcon(const std::string& label)
     if (label == "Mod Profile") return bitmap_profile_small;
     if (label == "Analog Triggers") return bitmap_profile_small;
     if (label == "Light Shields") return bitmap_profile_small;
+    if (label == "Base Values") return bitmap_profile_small;
     if (label == "SOCD Pairs" || label == "SOCD Pair") return bitmap_profile_small;
     if (label == "Magnitudes") return bitmap_profile_small;
     if (label == "D-Pad Mode") return bitmap_input_small;
@@ -163,6 +170,7 @@ const unsigned char* glyphLargeIcon(const std::string& label)
     if (label == "Mod Profile") return bitmap_profile_large;
     if (label == "Analog Triggers") return bitmap_profile_large;
     if (label == "Light Shields") return bitmap_profile_large;
+    if (label == "Base Values") return bitmap_profile_large;
     if (label == "SOCD Pairs" || label == "SOCD Pair") return bitmap_profile_large;
     if (label == "Magnitudes") return bitmap_profile_large;
     if (label == "D-Pad Mode") return bitmap_input_large;
@@ -211,6 +219,7 @@ std::string glyphListTitle(std::vector<MenuEntry>* menu,
                            std::vector<MenuEntry>* modProfileMenu,
                            std::vector<MenuEntry>* analogTriggersMenu,
                            std::vector<MenuEntry>* lightShieldMenu,
+                           std::vector<MenuEntry>* baseValueMenu,
                            std::vector<MenuEntry>* socdPairsMenu,
                            std::vector<MenuEntry>* socdPairModeMenu,
                            std::vector<MenuEntry>* modXAngleMenu,
@@ -231,6 +240,7 @@ std::string glyphListTitle(std::vector<MenuEntry>* menu,
     if (menu == modProfileMenu) return "Mod Profile";
     if (menu == analogTriggersMenu) return "Analog Triggers";
     if (menu == lightShieldMenu) return "Light Shields";
+    if (menu == baseValueMenu) return "Base Values";
     if (menu == socdPairsMenu) return "SOCD Pairs";
     if (menu == socdPairModeMenu) return "SOCD Pair";
     if (menu == modXAngleMenu) return "Edit Mod X";
@@ -523,8 +533,10 @@ void MainMenuScreen::populateGlyphModProfileMenu()
     analogTriggersMenu.push_back({"Disabled", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphAnalogTriggers, this), std::bind(&MainMenuScreen::selectGlyphAnalogTriggers, this), 0});
     analogTriggersMenu.push_back({"Enabled", NULL, nullptr, std::bind(&MainMenuScreen::currentGlyphAnalogTriggers, this), std::bind(&MainMenuScreen::selectGlyphAnalogTriggers, this), 1});
     populateGlyphLightShieldMenu();
+    populateGlyphBaseValueMenu();
     populateGlyphModAngleMenus();
 
+    modProfileMenu.push_back({"Base Values", NULL, &baseValueMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)});
     modProfileMenu.push_back({"Edit Mod X", NULL, &modXAngleMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)});
     modProfileMenu.push_back({"Edit Mod Y", NULL, &modYAngleMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)});
     modProfileMenu.push_back({"Light Shields", NULL, &lightShieldMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::testMenu, this)});
@@ -582,6 +594,15 @@ void MainMenuScreen::populateGlyphLightShieldMenu()
     lightShieldMenu.clear();
     lightShieldMenu.push_back({"Shield 1", NULL, &modSingleValueMenu, std::bind(&MainMenuScreen::currentGlyphModSingleValue, this), std::bind(&MainMenuScreen::selectGlyphModProfile, this), kGlyphModProfileActionLightShield1});
     lightShieldMenu.push_back({"Shield 2", NULL, &modSingleValueMenu, std::bind(&MainMenuScreen::currentGlyphModSingleValue, this), std::bind(&MainMenuScreen::selectGlyphModProfile, this), kGlyphModProfileActionLightShield2});
+}
+
+void MainMenuScreen::populateGlyphBaseValueMenu()
+{
+    baseValueMenu.clear();
+    baseValueMenu.push_back({"Up", NULL, &modSingleValueMenu, std::bind(&MainMenuScreen::currentGlyphModSingleValue, this), std::bind(&MainMenuScreen::selectGlyphModProfile, this), kGlyphModProfileActionBaseUp});
+    baseValueMenu.push_back({"Down", NULL, &modSingleValueMenu, std::bind(&MainMenuScreen::currentGlyphModSingleValue, this), std::bind(&MainMenuScreen::selectGlyphModProfile, this), kGlyphModProfileActionBaseDown});
+    baseValueMenu.push_back({"Left", NULL, &modSingleValueMenu, std::bind(&MainMenuScreen::currentGlyphModSingleValue, this), std::bind(&MainMenuScreen::selectGlyphModProfile, this), kGlyphModProfileActionBaseLeft});
+    baseValueMenu.push_back({"Right", NULL, &modSingleValueMenu, std::bind(&MainMenuScreen::currentGlyphModSingleValue, this), std::bind(&MainMenuScreen::selectGlyphModProfile, this), kGlyphModProfileActionBaseRight});
 }
 
 void MainMenuScreen::populateGlyphModSingleValueMenu()
@@ -786,6 +807,15 @@ void MainMenuScreen::selectGlyphModProfile()
             modSingleValueEditing = false;
             populateGlyphModSingleValueMenu();
             return;
+        case kGlyphModProfileActionBaseUp:
+        case kGlyphModProfileActionBaseDown:
+        case kGlyphModProfileActionBaseLeft:
+        case kGlyphModProfileActionBaseRight:
+            modSingleValueSource = selectedValue;
+            modSingleValueTitle = currentMenu->at(gpMenu->getIndex()).label;
+            modSingleValueEditing = false;
+            populateGlyphModSingleValueMenu();
+            return;
         default:
             break;
     }
@@ -845,17 +875,19 @@ int32_t MainMenuScreen::currentGlyphModSingleValue()
     const uint8_t profile = updateProfile >= 1 ? updateProfile : Storage::getInstance().GetGamepad()->getOptions().profileNumber;
     const GlyphProfiles::ModProfileState& modState = GlyphProfiles::getModProfile(GlyphProfiles::modProfile(profile));
     int32_t source = modSingleValueSource;
-    if (currentMenu == &lightShieldMenu && !currentMenu->empty()) {
+    if ((currentMenu == &lightShieldMenu || currentMenu == &baseValueMenu) && !currentMenu->empty()) {
         source = currentMenu->at(gpMenu->getIndex()).optionValue;
     }
 
-    if (source == kGlyphModProfileActionLightShield1) {
-        return modState.lightShield1;
+    switch (source) {
+        case kGlyphModProfileActionLightShield1: return modState.lightShield1;
+        case kGlyphModProfileActionLightShield2: return modState.lightShield2;
+        case kGlyphModProfileActionBaseUp: return modState.baseUp;
+        case kGlyphModProfileActionBaseDown: return modState.baseDown;
+        case kGlyphModProfileActionBaseLeft: return modState.baseLeft;
+        case kGlyphModProfileActionBaseRight: return modState.baseRight;
+        default: return 0;
     }
-    if (source == kGlyphModProfileActionLightShield2) {
-        return modState.lightShield2;
-    }
-    return 0;
 }
 
 void MainMenuScreen::selectGlyphAnalogTriggers()
@@ -1065,7 +1097,7 @@ void MainMenuScreen::drawGlyphListMenu()
 
     drawGlyphBitmap(getRenderer(), bitmap_glyph_list_menu_base, 128, 64, 0, 0);
 
-    std::string title = glyphListTitle(currentMenu, &profilesMenu, &modProfileMenu, &analogTriggersMenu, &lightShieldMenu, &socdPairsMenu, &socdPairModeMenu, &modXAngleMenu, &modYAngleMenu, &modMagnitudeMenu, &modCoordinateMenu, &modSingleValueMenu, &inputModeMenu, &usbHostMenu, &backendSupportMenu, &dpadModeMenu, &socdModeMenu, &rgbBrightnessMenu, &turboModeMenu, &saveMenu);
+    std::string title = glyphListTitle(currentMenu, &profilesMenu, &modProfileMenu, &analogTriggersMenu, &lightShieldMenu, &baseValueMenu, &socdPairsMenu, &socdPairModeMenu, &modXAngleMenu, &modYAngleMenu, &modMagnitudeMenu, &modCoordinateMenu, &modSingleValueMenu, &inputModeMenu, &usbHostMenu, &backendSupportMenu, &dpadModeMenu, &socdModeMenu, &rgbBrightnessMenu, &turboModeMenu, &saveMenu);
     auto titleLines = glyphListTitleLines(title);
     if (titleLines.first.length() > 10) {
         titleLines.first.resize(10);
@@ -1174,8 +1206,24 @@ bool MainMenuScreen::handleGlyphModProfileNavigation(GpioAction action)
         populateGlyphModAngleMenus();
         populateGlyphModCoordinateMenu();
     } else {
-        GlyphProfiles::adjustModProfileLightShield(GlyphProfiles::modProfile(profile), modSingleValueSource == kGlyphModProfileActionLightShield2, delta);
-        populateGlyphLightShieldMenu();
+        const uint8_t modProfile = GlyphProfiles::modProfile(profile);
+        switch (modSingleValueSource) {
+            case kGlyphModProfileActionBaseUp:
+                GlyphProfiles::adjustModProfileBaseValue(modProfile, GlyphProfiles::BaseDirection::Up, delta);
+                break;
+            case kGlyphModProfileActionBaseDown:
+                GlyphProfiles::adjustModProfileBaseValue(modProfile, GlyphProfiles::BaseDirection::Down, delta);
+                break;
+            case kGlyphModProfileActionBaseLeft:
+                GlyphProfiles::adjustModProfileBaseValue(modProfile, GlyphProfiles::BaseDirection::Left, delta);
+                break;
+            case kGlyphModProfileActionBaseRight:
+                GlyphProfiles::adjustModProfileBaseValue(modProfile, GlyphProfiles::BaseDirection::Right, delta);
+                break;
+            default:
+                GlyphProfiles::adjustModProfileLightShield(modProfile, modSingleValueSource == kGlyphModProfileActionLightShield2, delta);
+                break;
+        }
         populateGlyphModSingleValueMenu();
     }
 
@@ -1352,7 +1400,7 @@ void MainMenuScreen::updateMenuNavigation(GpioAction action) {
                     return;
                 }
 
-                if (menu == &lightShieldMenu && entry.submenu == &modSingleValueMenu) {
+                if ((menu == &lightShieldMenu || menu == &baseValueMenu) && entry.submenu == &modSingleValueMenu) {
                     modSingleValueSource = entry.optionValue;
                     modSingleValueTitle = entry.label;
                     modSingleValueEditing = false;
