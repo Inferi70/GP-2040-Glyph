@@ -44,6 +44,10 @@ constexpr int32_t kGlyphModProfileActionBaseUp = -123;
 constexpr int32_t kGlyphModProfileActionBaseDown = -124;
 constexpr int32_t kGlyphModProfileActionBaseLeft = -125;
 constexpr int32_t kGlyphModProfileActionBaseRight = -126;
+constexpr int32_t kGlyphModProfileActionRestoreBaseValues = -127;
+constexpr int32_t kGlyphModProfileActionRestoreModX = -128;
+constexpr int32_t kGlyphModProfileActionRestoreModY = -129;
+constexpr int32_t kGlyphModProfileActionRestoreLightShields = -130;
 constexpr int32_t kGlyphSocdPairMenuBase = 1000;
 constexpr int32_t kGlyphSocdMenuPairsAction = 2000;
 bool g_startupLimitedMenu = false;
@@ -546,7 +550,7 @@ void MainMenuScreen::populateGlyphModProfileMenu()
         modProfileMenu.push_back({"Delete Current", NULL, nullptr, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::selectGlyphModProfile, this), kGlyphModProfileActionDelete});
     }
     if (!GlyphProfiles::modProfileEditable(currentModProfile)) {
-        modProfileMenu.push_back({"Restore Current", NULL, nullptr, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::selectGlyphModProfile, this), kGlyphModProfileActionRestore});
+        modProfileMenu.push_back({"Restore Profile", NULL, nullptr, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::selectGlyphModProfile, this), kGlyphModProfileActionRestore});
     }
 }
 
@@ -567,6 +571,12 @@ void MainMenuScreen::populateGlyphModAngleMenus()
     modYAngleMenu.push_back({"C-Up", NULL, &modCoordinateMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::selectGlyphModProfile, this), kGlyphModProfileActionEditModYCUp});
     modYAngleMenu.push_back({"C-Left", NULL, &modCoordinateMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::selectGlyphModProfile, this), kGlyphModProfileActionEditModYCLeft});
     modYAngleMenu.push_back({"C-Down", NULL, &modCoordinateMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::selectGlyphModProfile, this), kGlyphModProfileActionEditModYCDown});
+
+    const uint8_t profile = updateProfile >= 1 ? updateProfile : Storage::getInstance().GetGamepad()->getOptions().profileNumber;
+    if (!GlyphProfiles::modProfileEditable(GlyphProfiles::modProfile(profile))) {
+        modXAngleMenu.push_back({"Restore", NULL, nullptr, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::selectGlyphModProfile, this), kGlyphModProfileActionRestoreModX});
+        modYAngleMenu.push_back({"Restore", NULL, nullptr, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::selectGlyphModProfile, this), kGlyphModProfileActionRestoreModY});
+    }
 
     modMagnitudeMenu.push_back({"Base", NULL, &modCoordinateMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::selectGlyphModProfile, this), modMagnitudeMenuIsModX ? kGlyphModProfileActionEditModXBase : kGlyphModProfileActionEditModYBase});
     modMagnitudeMenu.push_back({"Diagonal", NULL, &modCoordinateMenu, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::selectGlyphModProfile, this), modMagnitudeMenuIsModX ? kGlyphModProfileActionEditModXDiagonal : kGlyphModProfileActionEditModYDiagonal});
@@ -594,6 +604,11 @@ void MainMenuScreen::populateGlyphLightShieldMenu()
     lightShieldMenu.clear();
     lightShieldMenu.push_back({"Shield 1", NULL, &modSingleValueMenu, std::bind(&MainMenuScreen::currentGlyphModSingleValue, this), std::bind(&MainMenuScreen::selectGlyphModProfile, this), kGlyphModProfileActionLightShield1});
     lightShieldMenu.push_back({"Shield 2", NULL, &modSingleValueMenu, std::bind(&MainMenuScreen::currentGlyphModSingleValue, this), std::bind(&MainMenuScreen::selectGlyphModProfile, this), kGlyphModProfileActionLightShield2});
+
+    const uint8_t profile = updateProfile >= 1 ? updateProfile : Storage::getInstance().GetGamepad()->getOptions().profileNumber;
+    if (!GlyphProfiles::modProfileEditable(GlyphProfiles::modProfile(profile))) {
+        lightShieldMenu.push_back({"Restore", NULL, nullptr, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::selectGlyphModProfile, this), kGlyphModProfileActionRestoreLightShields});
+    }
 }
 
 void MainMenuScreen::populateGlyphBaseValueMenu()
@@ -603,6 +618,7 @@ void MainMenuScreen::populateGlyphBaseValueMenu()
     baseValueMenu.push_back({"Down", NULL, &modSingleValueMenu, std::bind(&MainMenuScreen::currentGlyphModSingleValue, this), std::bind(&MainMenuScreen::selectGlyphModProfile, this), kGlyphModProfileActionBaseDown});
     baseValueMenu.push_back({"Left", NULL, &modSingleValueMenu, std::bind(&MainMenuScreen::currentGlyphModSingleValue, this), std::bind(&MainMenuScreen::selectGlyphModProfile, this), kGlyphModProfileActionBaseLeft});
     baseValueMenu.push_back({"Right", NULL, &modSingleValueMenu, std::bind(&MainMenuScreen::currentGlyphModSingleValue, this), std::bind(&MainMenuScreen::selectGlyphModProfile, this), kGlyphModProfileActionBaseRight});
+    baseValueMenu.push_back({"Restore", NULL, nullptr, std::bind(&MainMenuScreen::modeValue, this), std::bind(&MainMenuScreen::selectGlyphModProfile, this), kGlyphModProfileActionRestoreBaseValues});
 }
 
 void MainMenuScreen::populateGlyphModSingleValueMenu()
@@ -711,6 +727,19 @@ void MainMenuScreen::selectGlyphModProfile()
             populateGlyphModProfileMenu();
             EventManager::getInstance().triggerEvent(new GPStorageSaveEvent(true));
         }
+        return;
+    }
+
+    if (selectedValue <= kGlyphModProfileActionRestoreBaseValues &&
+        selectedValue >= kGlyphModProfileActionRestoreLightShields) {
+        const GlyphProfiles::ModProfileSection section =
+            selectedValue == kGlyphModProfileActionRestoreBaseValues ? GlyphProfiles::ModProfileSection::BaseValues :
+            selectedValue == kGlyphModProfileActionRestoreModX ? GlyphProfiles::ModProfileSection::ModX :
+            selectedValue == kGlyphModProfileActionRestoreModY ? GlyphProfiles::ModProfileSection::ModY :
+            GlyphProfiles::ModProfileSection::LightShields;
+        GlyphProfiles::restoreModProfileSection(modProfile, section);
+        GlyphProfiles::writeToConfig(Storage::getInstance().getGlyphOptions());
+        EventManager::getInstance().triggerEvent(new GPStorageSaveEvent(true));
         return;
     }
 
@@ -831,6 +860,7 @@ void MainMenuScreen::selectGlyphModProfile()
 
     GlyphProfiles::setModProfile(profile, modProfile);
     GlyphProfiles::writeToConfig(Storage::getInstance().getGlyphOptions());
+    populateGlyphModProfileMenu();
     EventManager::getInstance().triggerEvent(new GPStorageSaveEvent(true));
 }
 

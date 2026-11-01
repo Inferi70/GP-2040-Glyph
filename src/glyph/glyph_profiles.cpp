@@ -2012,28 +2012,65 @@ void restoreModProfileDefaults(uint8_t modProfileId)
     ModProfileState& profile = mutableModProfiles[target - 1];
     profile.number = defaults.number;
     copyName(profile.name, defaults.name);
-    profile.modXHorizontal = defaults.modXHorizontal;
-    profile.modXVertical = defaults.modXVertical;
-    profile.modXDiagonalX = defaults.modXDiagonalX;
-    profile.modXDiagonalY = defaults.modXDiagonalY;
-    profile.modYHorizontal = defaults.modYHorizontal;
-    profile.modYVertical = defaults.modYVertical;
-    profile.modYDiagonalX = defaults.modYDiagonalX;
-    profile.modYDiagonalY = defaults.modYDiagonalY;
-    profile.lightShield1 = defaults.lightShield1;
-    profile.lightShield2 = defaults.lightShield2;
     profile.analogTriggersEnabled = defaults.analogTriggersEnabled;
-    profile.baseUp = kDefaultBaseValue;
-    profile.baseDown = kDefaultBaseValue;
-    profile.baseLeft = kDefaultBaseValue;
-    profile.baseRight = kDefaultBaseValue;
-    for (uint8_t slot = 0; slot < 4; slot++) {
-        profile.modXX[slot] = defaults.modXX[slot];
-        profile.modXY[slot] = defaults.modXY[slot];
-        profile.modYX[slot] = defaults.modYX[slot];
-        profile.modYY[slot] = defaults.modYY[slot];
-    }
     profile.enabled = true;
+    restoreModProfileSection(target, ModProfileSection::BaseValues);
+    restoreModProfileSection(target, ModProfileSection::ModX);
+    restoreModProfileSection(target, ModProfileSection::ModY);
+    restoreModProfileSection(target, ModProfileSection::LightShields);
+}
+
+void restoreModProfileSection(uint8_t modProfileId, ModProfileSection section)
+{
+    ensureMutableProfiles();
+    const uint8_t target = clampModProfile(modProfileId);
+    ModProfileState& profile = mutableModProfiles[target - 1];
+    if (!profile.enabled) {
+        return;
+    }
+
+    if (section == ModProfileSection::BaseValues) {
+        profile.baseUp = kDefaultBaseValue;
+        profile.baseDown = kDefaultBaseValue;
+        profile.baseLeft = kDefaultBaseValue;
+        profile.baseRight = kDefaultBaseValue;
+        return;
+    }
+
+    // Custom mod profiles have no preset to restore the remaining sections from.
+    if (target > kModProfileCount) {
+        return;
+    }
+
+    const ModProfile& defaults = kModProfiles[target - 1];
+    switch (section) {
+        case ModProfileSection::ModX:
+            profile.modXHorizontal = defaults.modXHorizontal;
+            profile.modXVertical = defaults.modXVertical;
+            profile.modXDiagonalX = defaults.modXDiagonalX;
+            profile.modXDiagonalY = defaults.modXDiagonalY;
+            for (uint8_t slot = 0; slot < 4; slot++) {
+                profile.modXX[slot] = defaults.modXX[slot];
+                profile.modXY[slot] = defaults.modXY[slot];
+            }
+            break;
+        case ModProfileSection::ModY:
+            profile.modYHorizontal = defaults.modYHorizontal;
+            profile.modYVertical = defaults.modYVertical;
+            profile.modYDiagonalX = defaults.modYDiagonalX;
+            profile.modYDiagonalY = defaults.modYDiagonalY;
+            for (uint8_t slot = 0; slot < 4; slot++) {
+                profile.modYX[slot] = defaults.modYX[slot];
+                profile.modYY[slot] = defaults.modYY[slot];
+            }
+            break;
+        case ModProfileSection::LightShields:
+            profile.lightShield1 = defaults.lightShield1;
+            profile.lightShield2 = defaults.lightShield2;
+            break;
+        case ModProfileSection::BaseValues:
+            break;
+    }
 }
 
 uint8_t defaultModProfileForLegacyMode(uint32_t mode)

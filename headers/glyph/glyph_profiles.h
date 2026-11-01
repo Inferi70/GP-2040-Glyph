@@ -156,6 +156,13 @@ enum class BaseDirection : uint8_t {
     Right,
 };
 
+enum class ModProfileSection : uint8_t {
+    BaseValues,
+    ModX,
+    ModY,
+    LightShields,
+};
+
 enum SocdLogicalSlot : uint8_t {
     SocdLogicalSlotDpadHorizontal = 0,
     SocdLogicalSlotDpadVertical = 1,
@@ -240,6 +247,7 @@ void adjustModProfileBaseValue(uint8_t modProfileId, BaseDirection direction, in
 void setModProfileAnalogTriggersEnabled(uint8_t modProfileId, bool value);
 bool modProfileAnalogTriggersEnabled(uint8_t modProfileId);
 void restoreModProfileDefaults(uint8_t modProfileId);
+void restoreModProfileSection(uint8_t modProfileId, ModProfileSection section);
 uint8_t defaultModProfileForLegacyMode(uint32_t mode);
 OutputIcon menuIcon(uint8_t profileNumber, uint8_t menuButtonIndex);
 Action buttonAction(uint8_t profileNumber, uint8_t buttonId);
